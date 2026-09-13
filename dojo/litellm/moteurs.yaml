@@ -1,0 +1,33 @@
+# Quel moteur incarne quel kata — la seule part du service des modèles qui ne se
+# dérive pas d'un harness, et c'est voulu (SPECS R3.2).
+#
+# Un harness dit ce qu'un kata *est* ; il ne dit pas sur quel modèle on le fait
+# tourner. Ça, c'est une décision de déploiement : elle change avec le budget,
+# la latence, l'hébergeur. Elle vit donc ici, et `kokaji passerelle --config`
+# croise ce fichier avec les harness pour engendrer la `model_list`.
+#
+# « Changer le moteur sous un kata = une ligne » reste vrai. La ligne a
+# seulement changé de fichier. Tout fournisseur que litellm sait joindre
+# convient — c'est le seul trafic sortant d'une instance (SPECS R12.5).
+
+defaut:
+  model: anthropic/claude-haiku-4-5-20251001
+  api_key: os.environ/ANTHROPIC_API_KEY
+
+# Autres incarnations, au choix :
+#   model: openai/gpt-4o-mini
+#   api_key: os.environ/OPENAI_API_KEY
+# ou, pour un hébergeur compatible OpenAI :
+#   model: openai/meta-llama/Llama-3.3-70B-Instruct
+#   api_key: os.environ/OPENAI_COMPAT_API_KEY
+#   api_base: os.environ/OPENAI_COMPAT_API_BASE
+
+# Une entrée par modèle virtuel qu'on veut servir autrement — c'est ce qui
+# permet d'exposer deux incarnations d'un même kata côte à côte et de les
+# comparer au banc (§5.6).
+#
+# par_modele:
+#   atelier/idee@instrumentee:
+#     model: openai/gpt-4o-mini
+#     api_key: os.environ/OPENAI_API_KEY
+par_modele: {}

@@ -1,0 +1,72 @@
+# Passerelle du Dojo — SPECS §3
+#
+# Un modèle virtuel par kata : `<harness_id>/<kata_id>`. La coupe est injectée
+# par le hook, jamais déclarée ici. Quel moteur incarne quel kata se décide dans
+# `moteurs.yaml` (R3.2) ; la liste ci-dessous s'en dérive.
+#
+# Le suffixe `@<cible>` force une cible ; sans lui, celle du Dojo s'applique.
+# Il sert à exposer deux incarnations d'un même kata côte à côte.
+#
+# Réengendrer, depuis la racine du dépôt, après avoir ajouté un harness :
+#   kokaji passerelle dojo/harness --config dojo/litellm/config.yaml \
+#       --moteurs dojo/litellm/moteurs.yaml --nu banc/persona
+
+# >>> engendré par `kokaji passerelle --config` — ne pas éditer à la main
+model_list:
+- model_name: atelier/idee
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/idee@sobre
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/idee@instrumentee
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/cadrage
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/cadrage@sobre
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/cadrage@instrumentee
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/decoupage
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/decoupage@sobre
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: atelier/decoupage@instrumentee
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+- model_name: banc/persona
+  litellm_params:
+    model: anthropic/claude-haiku-4-5-20251001
+    api_key: os.environ/ANTHROPIC_API_KEY
+# <<< fin de la part engendrée
+litellm_settings:
+  callbacks:
+    - hooks.coupe_injector.injector   # injecte la coupe, pose l'identité de ha
+    - hooks.journal_ha.journal        # inscrit chaque appel dans le journal
+  drop_params: true
+  # « Overloaded » (529) est un refus passager du fournisseur, pas une panne de
+  # la forge : sans relance, il remonte tel quel jusqu'à l'écran du praticien.
+  # Trois essais espacés absorbent l'immense majorité de ces refus ; au-delà,
+  # l'erreur est vraie et doit se voir.
+  num_retries: 3
+  retry_after: 2
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL
+  store_model_in_db: true

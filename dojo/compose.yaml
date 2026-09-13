@@ -1,77 +1,359 @@
-# Le dojo d'une instance Kokaji — RFC-009, pas 1.
+# Le dojo d'une instance Kokaji — SPECS §3, RFC-009.
 #
-# Quatre pièces, aucune n'émet vers l'extérieur hors des appels moteurs
-# configurés (D9.4) : la passerelle (litellm) route vers le fournisseur du
-# `.env`, la base porte ses comptes de passerelle, le chat (open-webui) parle
-# à la passerelle, le proxy (caddy) sert le tout.
+# Rien ici n'est développé sur mesure hors des deux hooks de la passerelle ;
+# le reste est assemblé. Aucune pièce n'émet vers l'extérieur hors des appels
+# moteurs configurés (R12.5) : la passerelle (litellm) route vers le
+# fournisseur du `.env`, la base porte ses comptes, le chat (open-webui) parle
+# à Kokaji, qui relaie à la passerelle ; la veille compose les ha ; la vigie
+# regarde que tout tient. Caddy, sur le profil `web`, publie deux hôtes.
 #
-# Démarrage : `cp .env.example .env`, renseigner, `docker compose up -d`.
+# Démarrage : voir README.md — `cp .env.example .env`, un harness sous
+# `harness/`, `docker compose up -d`.
+
+name: kokaji
+
+# Tenue des conteneurs — appris d'un incident sur la première instance. Les
+# services étaient tous en `unless-stopped`, sans plafond : un conteneur qui
+# plantait au démarrage repartait sans fin et la boucle a saturé le serveur.
+#   - `on-failure:5` — on réessaie, puis on s'arrête et on laisse la trace
+#     (`docker compose ps` montre `Exited`) plutôt que d'aggraver la panne.
+#     Un arrêt propre (`stop`, `down`) ne relance jamais.
+#   - un plafond mémoire et CPU par service, pour qu'un seul qui dérape ne
+#     prive pas les autres. Ce sont des plafonds, pas des réservations.
+# Après un `up -d`, regarder `docker compose ps` et `docker stats` une minute.
+x-tenue: &tenue
+  restart: on-failure:5
 
 services:
-  litellm:
-    image: ghcr.io/berriai/litellm:main-stable
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY manquant — voir .env.example}
-      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant}@postgres:5432/litellm
-      IONOS_API_KEY: ${IONOS_API_KEY:-}
-      IONOS_API_BASE: ${IONOS_API_BASE:-}
-    volumes:
-      - ./litellm-config.yaml:/app/config.yaml:ro
-    command: ["--config", "/app/config.yaml", "--port", "4000"]
-    ports:
-      - "127.0.0.1:4000:4000"
-
+  # --- La base de la passerelle ------------------------------------------------
   postgres:
     image: postgres:16-alpine
-    restart: unless-stopped
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
     environment:
       POSTGRES_USER: litellm
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant — voir .env.example}
       POSTGRES_DB: litellm
     volumes:
-      - donnees-postgres:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U litellm"]
       interval: 5s
-      timeout: 3s
-      retries: 12
+      timeout: 5s
+      retries: 20
 
+  # --- La passerelle : un modèle virtuel par kata (§3) ---------------------------
+  litellm:
+    image: ghcr.io/berriai/litellm:main-stable
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    environment:
+      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD}@postgres:5432/litellm
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY manquant}
+      LITELLM_SALT_KEY: ${LITELLM_SALT_KEY:?LITELLM_SALT_KEY manquant}
+      STORE_MODEL_IN_DB: "True"
+      LITELLM_LOG: ${LITELLM_LOG:-INFO}
+      PYTHONPATH: /app
+      # Le hook lit les coupes ici ; la cible par défaut est un choix de config (R3.1).
+      KOKAJI_COUPES_DIR: /coupes
+      KOKAJI_CIBLE_DEFAUT: ${KOKAJI_CIBLE_DEFAUT:-sobre}
+      # Le journal des ha — la trace durable, lue ensuite par la veille (§7).
+      KOKAJI_JOURNAL_DIR: /journal
+      KOKAJI_MODELES_NUS: ${KOKAJI_MODELES_NUS:-banc/persona}
+      # Les moteurs — le seul trafic sortant. Voir .env.example et litellm/moteurs.yaml.
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_COMPAT_API_KEY: ${OPENAI_COMPAT_API_KEY:-}
+      OPENAI_COMPAT_API_BASE: ${OPENAI_COMPAT_API_BASE:-}
+    volumes:
+      - ./litellm/config.yaml:/app/config.yaml:ro
+      - ./litellm/hooks:/app/hooks:ro
+      # Les coupes forgées par `kokaji forge` ou par `sceller` (§4).
+      - ${KOKAJI_COUPES_HOST:-./dist/coupes}:/coupes:ro
+      - ./journal:/journal
+    ports:
+      - "127.0.0.1:${DOJO_PORT_PASSERELLE:-4000}:4000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request;urllib.request.urlopen('http://localhost:4000/health/liveliness')\""]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  # --- Le chat -------------------------------------------------------------------
   open-webui:
     image: ghcr.io/open-webui/open-webui:main
-    restart: unless-stopped
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 2G
     depends_on:
-      - litellm
+      kokaji:
+        condition: service_started
     environment:
-      OPENAI_API_BASE_URL: http://litellm:4000/v1
-      OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      # Le chat parle à Kokaji, qui relaie à la passerelle (RFC-005 §3.2). Il
+      # ne voit jamais les coupes, et ne voit que les kata du harness courant
+      # de la personne connectée.
+      OPENAI_API_BASE_URL: http://kokaji:8100/v1
+      OPENAI_API_KEY: ${DOJO_CLE_CHAT:?DOJO_CLE_CHAT manquant}
+      # L'identité voyage signée. Sans ce secret, le chat enverrait des
+      # en-têtes en clair, que quiconque atteint le point d'entrée peut écrire :
+      # Kokaji les refuse, et la liste des modèles resterait vide.
+      FORWARD_USER_INFO_HEADER_JWT_SECRET: ${KOKAJI_CHAT_SECRET:?KOKAJI_CHAT_SECRET manquant}
+      ENABLE_FORWARD_USER_INFO_HEADERS: "True"
+      WEBUI_SECRET_KEY: ${WEBUI_SECRET_KEY:?WEBUI_SECRET_KEY manquant}
       WEBUI_NAME: Kokaji
-      # Aucune émission sortante du chat lui-même (D9.4).
-      ENABLE_OPENAI_API: "true"
-      ENABLE_OLLAMA_API: "false"
+      ENABLE_OLLAMA_API: "False"
+      # L'authentification du chat est sa seule porte : les inscriptions
+      # restent fermées. Le compte administrateur se crée une fois, fenêtre
+      # ouverte, puis on referme — voir README.md.
+      ENABLE_SIGNUP: ${DOJO_CHAT_INSCRIPTIONS:-False}
+      # Kokaji administre les comptes du chat par une clé d'API : c'est ce qui
+      # lui permet d'activer un compte à l'invitation.
+      ENABLE_API_KEYS: "True"
+      # Le chat appelle un modèle pour ses fonctions d'interface — titres,
+      # suggestions, étiquettes. Sans ça il appelle le kata, qui reçoit la coupe
+      # pour produire des suggestions : la matière d'observation est polluée
+      # par de faux ha, et la dépense double. On l'envoie vers un modèle servi
+      # sans coupe, et on coupe ce qui peut l'être.
+      TASK_MODEL: ${KOKAJI_MODELES_NUS:-banc/persona}
+      TASK_MODEL_EXTERNAL: ${KOKAJI_MODELES_NUS:-banc/persona}
+      ENABLE_TAGS_GENERATION: "False"
+      ENABLE_FOLLOW_UP_GENERATION: "False"
+      ENABLE_AUTOCOMPLETE_GENERATION: "False"
+      # Aucune émission sortante du chat lui-même (R12.5).
+      ENABLE_COMMUNITY_SHARING: "False"
+      ENABLE_VERSION_UPDATE_CHECK: "False"
     volumes:
-      - donnees-chat:/app/backend/data
+      - open_webui_data:/app/backend/data
     ports:
-      - "127.0.0.1:3000:8080"
+      - "127.0.0.1:${DOJO_PORT_CHAT:-3000}:8080"
 
+  # --- Kokaji : la lecture, le relais, l'administration (§7, §8, RFC-004) --------
+  kokaji:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: kokaji:local
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+    # Le service écrit dans le dossier des harness (une naissance, un
+    # scellement) : il lui faut l'identité qui le possède sur l'hôte.
+    user: "${KOKAJI_UID:-1000}:${KOKAJI_GID:-1000}"
+    # Le magasin des comptes bascule le service en mode partagé :
+    # authentification exigée, droits appliqués (RFC-004). Un portail externe
+    # qui poserait l'identité en en-tête s'ajouterait ici (`--entete-identite`,
+    # `--portail`) — sûr seulement si le service n'est joignable que par lui.
+    command:
+      - kokaji
+      - service
+      - /harness
+      - --journal
+      - /journal
+      - --hote
+      - 0.0.0.0
+      - --port
+      - "8100"
+      - --comptes
+      - /comptes/kokaji.sqlite3
+    environment:
+      KOKAJI_HARNESS: /harness
+      KOKAJI_COMPTES: /comptes/kokaji.sqlite3
+      # Le QG renvoie vers le chat ; il ne devine pas son adresse.
+      KOKAJI_CHAT_URL: ${KOKAJI_CHAT_URL:-http://localhost:3000}
+      # Les invitations portent l'adresse de l'instance.
+      KOKAJI_BASE: ${KOKAJI_BASE:-http://localhost:8100}
+      # Où relayer les complétions, et avec quelle clé. La clé dit *quel
+      # appelant* — c'est elle qui range le ha dans le bon corpus.
+      KOKAJI_PASSERELLE_URL: http://litellm:4000
+      KOKAJI_PASSERELLE_CLE: ${DOJO_CLE_CHAT:?DOJO_CLE_CHAT manquant}
+      KOKAJI_MODELES_NUS: ${KOKAJI_MODELES_NUS:-banc/persona}
+      KOKAJI_CHAT_SECRET: ${KOKAJI_CHAT_SECRET:?KOKAJI_CHAT_SECRET manquant}
+      # Le harness que tout compte peut copier sans en être membre (RFC-004 §7).
+      KOKAJI_HARNESS_EXEMPLE: ${KOKAJI_HARNESS_EXEMPLE:-atelier}
+      # Où sceller dépose les coupes qu'il forge.
+      KOKAJI_COUPES: /coupes
+      # Où joindre le chat pour y administrer les comptes, et avec quelle clé.
+      KOKAJI_CHAT_API: http://open-webui:8080
+      KOKAJI_CHAT_ADMIN: ${DOJO_CLE_CHAT_ADMIN:-}
+      # Sceller publie les deux registres de la passerelle : sans ça, un
+      # harness créé reste inutilisable jusqu'à une commande d'administrateur.
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY manquant}
+      KOKAJI_MOTEURS: /litellm/moteurs.yaml
+      # Où la vigie dépose son verdict. L'administration le lit là.
+      KOKAJI_VERDICTS: /verdicts/verdicts.json
+    volumes:
+      # Le dossier **des** harness : un harness ne peut naître que là où le
+      # service en sert plusieurs (RFC-006). En écriture — une naissance écrit.
+      - ${KOKAJI_HARNESS_HOST:-./harness}:/harness
+      - ./verdicts:/verdicts:ro
+      # Les coupes, en écriture : sceller forge (RFC-006 §4). La passerelle les
+      # lit au même endroit — un kata scellé est appelable sans relance.
+      - ${KOKAJI_COUPES_HOST:-./dist/coupes}:/coupes
+      - ./litellm:/litellm:ro
+      - ./journal:/journal:ro
+      # Empreintes de mots de passe et jetons : hors git, hors corpus (R12.2).
+      - ./comptes:/comptes
+    ports:
+      - "127.0.0.1:${DOJO_PORT_KOKAJI:-8100}:8100"
+
+  # --- La veille : du journal aux ha (§7) ----------------------------------------
+  veille:
+    image: kokaji:local
+    user: "${KOKAJI_UID:-1000}:${KOKAJI_GID:-1000}"
+    depends_on:
+      kokaji:
+        condition: service_started
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    command:
+      - kokaji
+      - middleware
+      - /harness
+      - --journal
+      - /journal
+      - --repos
+      - ${KOKAJI_REPOS:-120}
+      - --boucle
+      - ${KOKAJI_BOUCLE:-30}
+      # Les conversations vécues vont au corpus réel de chaque harness ; le
+      # reste — banc, sondes, rejeux — à celui des essais, par la seconde veille.
+      - --corpus
+      - reel
+      - --cle-appelante
+      - ${DOJO_ALIAS_CHAT:-chat}
+    volumes:
+      - ${KOKAJI_HARNESS_HOST:-./harness}:/harness
+      - ./journal:/journal:ro
+      - ./comptes:/comptes
+
+  veille-essai:
+    image: kokaji:local
+    user: "${KOKAJI_UID:-1000}:${KOKAJI_GID:-1000}"
+    depends_on:
+      kokaji:
+        condition: service_started
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
+    command:
+      - kokaji
+      - middleware
+      - /harness
+      - --journal
+      - /journal
+      - --repos
+      - ${KOKAJI_REPOS:-120}
+      - --boucle
+      - ${KOKAJI_BOUCLE:-30}
+      - --corpus
+      - essai
+      - --source
+      - simule
+    volumes:
+      # Celle-ci reste sur le harness d'exemple : le corpus `essai` est une
+      # notion de ce harness-là.
+      - ${KOKAJI_HARNESS_HOST:-./harness}/${KOKAJI_HARNESS_EXEMPLE:-atelier}:/harness
+      - ./journal:/journal:ro
+      - ./comptes:/comptes
+
+  # --- La vigie : les vérifications qui tournent seules --------------------------
+  # Elle écrit son verdict même quand tout va bien : c'est la fraîcheur du
+  # fichier qui trahit une vigie morte, pas son contenu. Son image porte un
+  # navigateur : elle regarde ce que le QG affiche.
+  vigie:
+    build:
+      context: ..
+      dockerfile: dojo/vigie/Dockerfile
+    image: kokaji-vigie:local
+    user: "${KOKAJI_UID:-1000}:${KOKAJI_GID:-1000}"
+    depends_on:
+      kokaji:
+        condition: service_started
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1536M
+    command:
+      - kokaji
+      - vigie
+      - /harness
+      - --verdicts
+      - /verdicts/verdicts.json
+      - --boucle
+      - ${KOKAJI_VIGIE_BOUCLE:-300}
+      - --url
+      - http://litellm:4000
+      - --admin
+      - ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY manquant}
+      - --cle
+      - ${DOJO_CLE_CHAT:?DOJO_CLE_CHAT manquant}
+      - --nu
+      - ${KOKAJI_MODELES_NUS:-banc/persona}
+      - --config
+      - /litellm/config.yaml
+      - --rendu
+      - http://kokaji:8100/
+    environment:
+      HOME: /tmp
+    volumes:
+      - ${KOKAJI_HARNESS_HOST:-./harness}:/harness:ro
+      - ./verdicts:/verdicts
+      - ./litellm:/litellm:ro
+
+  # --- Le proxy, pour publier : `docker compose --profile web up -d` -------------
   caddy:
+    profiles: [web]
     image: caddy:2-alpine
-    restart: unless-stopped
+    <<: *tenue
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
     depends_on:
       - open-webui
+      - kokaji
     environment:
-      DOMAINE: ${DOMAINE:-localhost}
+      DOJO_HOTE_CHAT: ${DOJO_HOTE_CHAT:-chat.localhost}
+      DOJO_HOTE_KOKAJI: ${DOJO_HOTE_KOKAJI:-kokaji.localhost}
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - donnees-caddy:/data
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     ports:
-      - "80:80"
-      - "443:443"
+      - "${DOJO_BIND:-127.0.0.1}:80:80"
+      - "${DOJO_BIND:-127.0.0.1}:443:443"
 
 volumes:
-  donnees-postgres:
-  donnees-chat:
-  donnees-caddy:
+  postgres_data:
+  open_webui_data:
+  caddy_data:
+  caddy_config:

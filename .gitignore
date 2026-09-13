@@ -4,3 +4,18 @@
 *.local.txt
 # Une coupe est un dérivé : régénérée, jamais commitée (RFC-007 D7.1).
 dist/
+# Le dojo d'une instance : ses harness (un repo chacun, D9.1), son journal,
+# ses comptes (R12.2), ses verdicts — rien de tout cela n'est le produit.
+dojo/harness/
+dojo/journal/*
+!dojo/journal/.gitkeep
+dojo/comptes/
+*.sqlite3
+*.sqlite3-journal
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/

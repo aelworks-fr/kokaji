@@ -1,0 +1,19 @@
+# Le proxy d'une instance publiée — SPECS §3, §12. Profil `web` du compose.
+#
+# Deux hôtes, deux surfaces : le chat, et Kokaji (QG, administration, relais
+# des complétions). Chacune porte sa propre authentification — le chat la
+# sienne, Kokaji ses comptes locaux (RFC-004) — le proxy n'ajoute que le TLS,
+# obtenu tout seul dès que l'hôte est un vrai domaine.
+#
+# Les hôtes sont séparés à dessein : sur un hôte partagé, une route Kokaji
+# oubliée ne tombe pas en 404, elle se déguise en page de chat.
+
+{$DOJO_HOTE_CHAT} {
+	encode zstd gzip
+	reverse_proxy open-webui:8080
+}
+
+{$DOJO_HOTE_KOKAJI} {
+	encode zstd gzip
+	reverse_proxy kokaji:8100
+}

@@ -80,7 +80,7 @@ while IFS= read -r f; do
   [ -f "$f" ] || continue
   case "$f" in
     docs/*|README.md|*/README.md|CLAUDE.md|LICENSE|NOTICE) continue ;;
-    dojo/.env.example|dojo/litellm-config.yaml|dojo/Caddyfile) continue ;;
+    dojo/.env.example|dojo/litellm/*|dojo/caddy/Caddyfile) continue ;;
     pyproject.toml|package.json|*/pyproject.toml|*/package.json) continue ;;
   esac
   # Un hôte sans point est un service du réseau interne du compose

@@ -24,17 +24,22 @@ seul canal entre elles est l'export/import de harness (RFC-006).
 ## Démarrer une instance
 
 ```
-git clone https://github.com/npelloux/kokaji
-cd kokaji/dojo
-cp .env.example .env    # renseigner ses clés moteurs
-docker compose up -d
+git clone https://github.com/aelworks-fr/kokaji
+cd kokaji && pip install -e . && cd dojo
+cp .env.example .env    # renseigner ses secrets et une clé moteur
+mkdir -p harness && cp -r ../atelier harness/atelier && kokaji forge harness/atelier
+kokaji passerelle harness --config litellm/config.yaml --moteurs litellm/moteurs.yaml --nu banc/persona
+docker compose up -d --build
 ```
 
-L'instance est vide et fonctionnelle quand les trois coches tiennent :
+L'instance est vide et fonctionnelle quand les quatre coches tiennent :
 
 - [ ] la passerelle répond : `curl -s http://localhost:4000/health/liveliness`
+- [ ] les kata de l'Atelier figurent dans la liste des modèles de la passerelle
+- [ ] Kokaji répond : `http://localhost:8100`
 - [ ] le chat s'ouvre : `http://localhost:3000`
-- [ ] le modèle configuré y figure dans la liste des modèles
+
+Le détail — clés, comptes, publication — est dans `dojo/README.md`.
 
 Le harness de démonstration vit dans `atelier/` — il est au produit ce que le
 lorem ipsum est au QG. Vos harness vivent **hors de ce repo** : un repo git

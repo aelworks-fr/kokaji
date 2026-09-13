@@ -26,6 +26,11 @@ pyproject.toml       Le paquet et ses extras : service, dev
 Dockerfile           L'image du service et de la veille              (§7, §8)
 
 dojo/                Le kit d'une instance — Docker Compose           (§3)
+  litellm/           Passerelle : moteurs, liste engendrée, hooks
+  caddy/             Publier deux hôtes en TLS — profil `web`
+  verif/             Le critère « juste assez », les tests de rendu
+  vigie/             L'image de la vigie, avec navigateur
+  harness/ journal/ comptes/   L'instance elle-même — hors git
 atelier/             Le harness de démonstration, domaine fictif      (§9)
 trempe/              La trempe du produit : check.sh, exemptions, gabarit
 docs/                SPECS, RFC 001→009, HDS v0, et la doc de chaque commande
