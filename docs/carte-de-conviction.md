@@ -2,7 +2,7 @@
 
 Ce que ce repo prouve, avec la trace de la preuve. Une conviction sans
 sabotage est une opinion : chaque vérificateur d'ici a été **vu refuser**
-(RFC-007 §7) avant d'être tenu pour acquis.
+(RFC-009 §7) avant d'être tenu pour acquis.
 
 ## A — Le clone étranger (nominal)
 
@@ -15,7 +15,7 @@ restera ouverte jusque-là.
 
 Le repo historique s'enregistre comme harness de cette instance et ses kata
 se forgent sans modification du produit. **À venir** : demande le geste
-d'enregistrement (RFC-007 §3), qui n'existe pas encore.
+d'enregistrement (RFC-009 §3), qui n'existe pas encore.
 
 ## C — Les sabotages de la trempe du produit
 

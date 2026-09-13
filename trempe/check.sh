@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# La trempe du produit — RFC-007. Trois vérificateurs et la souveraineté,
+# La trempe du produit — RFC-009. Trois vérificateurs et la souveraineté,
 # sur les seuls fichiers versionnés : ce que git ne suit pas ne sera pas
 # publié, le vérifier crierait sur ce qui ne sort jamais.
 set -uo pipefail
@@ -40,7 +40,7 @@ while IFS= read -r f; do
   done
 done < <(fichiers_suivis)
 
-# --- 2 · lint contenu (D7.2 / R10.6) -----------------------------------------
+# --- 2 · lint contenu (D9.2 / R10.6) -----------------------------------------
 # Le repo produit ne contient aucun contenu d'instance : pas de ha, pas de
 # corpus peuplé, aucun harness hors atelier/.
 while IFS= read -r f; do
@@ -60,14 +60,14 @@ while IFS= read -r f; do
   esac
 done < <(fichiers_suivis)
 
-# --- 3 · check coupe (D7.1) ---------------------------------------------------
+# --- 3 · check coupe (D9.1) ---------------------------------------------------
 # Une coupe est un dérivé : régénérée, jamais commitée.
 COUPES="$( { git ls-files 'dist/*'; git diff --cached --name-only -- 'dist/*'; } | sort -u)"
 if [ -n "$COUPES" ]; then
   refuser "coupe : dist/ est suivi par git — $(echo "$COUPES" | head -3 | tr '\n' ' ')"
 fi
 
-# --- 4 · souveraineté (D7.4), v0 honnête --------------------------------------
+# --- 4 · souveraineté (D9.4), v0 honnête --------------------------------------
 # Un check statique : aucune destination réseau en dur dans le produit, hors
 # (a) la configuration des moteurs (.env.example, litellm-config), (b) les
 # registres de paquets des manifestes de build, (c) la prose (docs, README,

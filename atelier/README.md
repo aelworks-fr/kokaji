@@ -7,4 +7,4 @@ est au produit ce que le lorem ipsum est au QG.
 Sa **définition** seule vit ici : manifest, kata, template, registre,
 personas de banc. Ses corpus sont vides — la pratique appartient à chaque
 instance, jamais au produit. Vos harness vivent hors de ce repo, un repo git
-par harness (RFC-007 D7.1).
+par harness (RFC-009 D9.1).

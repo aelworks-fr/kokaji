@@ -15,7 +15,7 @@ Quatre pièces :
 
 ## Souveraineté
 
-Chaque instance est souveraine (RFC-007 D7.4) : son contenu, ses comptes, ses
+Chaque instance est souveraine (RFC-009 D9.4) : son contenu, ses comptes, ses
 clés moteurs lui appartiennent. Le produit **ne voit rien** — aucune
 télémétrie, aucun compte central, aucune émission réseau hors des appels
 moteurs que l'instance configure. Les instances ne se connaissent pas ; le
@@ -38,7 +38,7 @@ L'instance est vide et fonctionnelle quand les trois coches tiennent :
 
 Le harness de démonstration vit dans `atelier/` — il est au produit ce que le
 lorem ipsum est au QG. Vos harness vivent **hors de ce repo** : un repo git
-par harness, enregistré auprès de votre instance (RFC-007 D7.1).
+par harness, enregistré auprès de votre instance (RFC-009 D9.1).
 
 ## Lire ensuite
 

@@ -1,4 +1,4 @@
-# RFC-007 — Séparation produit / instance (la forge open source)
+# RFC-009 — Séparation produit / instance (la forge open source)
 
 **Statut :** scellée (décisions structurantes validées en keiko, 2026)
 **Dépend de :** SPECS §10 (règles de séparation), RFC-004 (utilisateurs), RFC-006 (import/export)
@@ -25,7 +25,7 @@ contenu ; il faut trancher.
 
 ## 2. Décisions scellées
 
-### D7.1 — Persistance : hybride git + base
+### D9.1 — Persistance : hybride git + base
 
 Trois familles de données, trois régimes :
 
@@ -44,7 +44,7 @@ artefact fossile qui divergera de sa source — la trempe du produit doit le ref
 (`dist/` reste dans `.gitignore`, et un check CI échoue si un fichier de `dist/`
 est suivi).
 
-### D7.2 — Deux repos : le produit naît propre
+### D9.2 — Deux repos : le produit naît propre
 
 - **Nouveau repo public `kokaji`** : le produit seul, historique vierge.
   Forge, trempe, dojo (compose), QG, HDS, SPECS, RFC, gabarits, harness de
@@ -59,7 +59,7 @@ un passé, on n'en hérite pas.
 **Ce que ça interdit :** faire du repo actuel le repo public par « épuration ».
 Un historique git n'oublie rien ; un repo né propre n'a rien à oublier.
 
-### D7.3 — Licence : Apache-2.0
+### D9.3 — Licence : Apache-2.0
 
 Le repo produit est sous **Apache License 2.0** (LICENSE + NOTICE).
 Résout R10.5, en attente depuis le premier commit. Motifs : clause de brevet
@@ -67,9 +67,9 @@ explicite, compatibilité entreprise large, obligation de NOTICE qui sert notre
 règle d'attribution.
 
 Les repos de harness des utilisateurs choisissent **leur propre licence** —
-le produit n'impose rien au contenu (cohérent avec D7.4).
+le produit n'impose rien au contenu (cohérent avec D9.4).
 
-### D7.4 — Souveraineté totale, instances isolées
+### D9.4 — Souveraineté totale, instances isolées
 
 Chaque instance est **souveraine** : son contenu, ses utilisateurs, ses clés
 moteurs, ses données lui appartiennent en propre.
@@ -139,7 +139,7 @@ et forge depuis là. Désenregistrer ne détruit rien — le repo vit sa vie.
 ## 5. Plan d'épuration
 
 1. Créer le repo public `kokaji` (vierge) : LICENSE Apache-2.0, NOTICE, README,
-   CLAUDE.md, SPECS, RFC-001→007, HDS, gabarits, atelier/, dojo/, trempe du
+   CLAUDE.md, SPECS, RFC-001→009, HDS, gabarits, atelier/, dojo/, trempe du
    produit (lint vocabulaire + lint contenu).
 2. Y déplacer **par copie choisie** (jamais par filtrage d'historique) les
    fichiers produit du repo actuel, relus un à un avant commit.
