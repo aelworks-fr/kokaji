@@ -100,6 +100,31 @@ class Passerelle(unittest.TestCase):
             autorisation_de_la_cle("http://p", "m", "c", appeler)
 
 
+class LaConfigSeule(unittest.TestCase):
+    """Au premier démarrage, la passerelle n'existe pas encore : `--config` sans
+    `--url` écrit la liste et s'arrête, sans rien appeler. Le clone étranger
+    (RFC-009 §7) a trouvé le contraire : un défaut sur `--url` rendait cette
+    branche inatteignable, et le README échouait à sa cinquième ligne."""
+
+    def test_config_sans_url_ecrit_et_n_appelle_personne(self):
+        from kokaji.cli import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            racine = Path(tmp)
+            _ecrire_harness(racine / "h", MINIMAL)
+            moteurs = racine / "moteurs.yaml"
+            moteurs.write_text("defaut:\n  model: m/x\n  api_key: os.environ/X\n", encoding="utf-8")
+            config = racine / "config.yaml"
+            config.write_text("litellm_settings: {}\n", encoding="utf-8")
+
+            code = main([
+                "passerelle", str(racine / "h"),
+                "--config", str(config), "--moteurs", str(moteurs),
+            ])
+
+        self.assertEqual(code, 0)
+
+
 if __name__ == "__main__":
     unittest.main()
 
