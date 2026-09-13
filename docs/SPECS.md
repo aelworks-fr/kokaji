@@ -214,7 +214,8 @@ Trois kata suffisent à exercer tout Kokaji : héritage entre kata, chaîne pour
 - R10.2 — **La trempe s'applique à Kokaji lui-même** : la CI du repo porte sa propre liste de vocabulaire interdit (maintenue en local, hors repo public le cas échéant) et échoue si un terme y apparaît. La forge se forge elle-même.
 - R10.3 — Développement exclusivement sur matériel, comptes, clés et temps personnels ; adresse mail personnelle dans les commits.
 - R10.4 — Les harness professionnels, s'il en existe, vivent dans des dépôts distincts, sur leur infrastructure, et consomment Kokaji comme un outil externe — jamais l'inverse.
-- R10.5 — Choisir et poser une licence dès le premier commit (à arbitrer : open source permissive vs repo privé), et un fichier `NOTICE` établissant le caractère personnel du projet et sa date de commencement.
+- R10.5 — Choisir et poser une licence dès le premier commit, et un fichier `NOTICE` établissant le caractère personnel du projet et sa date de commencement. **Close** ([RFC-009](docs/rfc-009-separation-produit-instance.md) D9.3) : le produit est sous Apache-2.0.
+- R10.6 — **Le repo produit ne contient aucun contenu d'instance** : toute coupe, tout ha, tout harness non-démonstration vit hors du repo produit ([RFC-009](docs/rfc-009-separation-produit-instance.md) D9.2). Seul l'Atelier (§9) y vit, comme démonstration. La trempe du produit le vérifie et refuse.
 
 ## 11. Ordre de construction
 
@@ -230,3 +231,7 @@ Le co-autorat ([RFC-004](docs/rfc-004-utilisateurs-co-autorat.md)) ajoute quatre
 - R12.2 — **Les secrets d'authentification vivent hors git.** Empreintes de mots de passe et jetons de session sont dans un magasin ignoré par le dépôt, jamais dans un corpus ni dans une définition de harness.
 - R12.3 — **L'isolation par ACL est vérifiée par sabotage.** Chaque droit refusé du RFC-004 §3 a un test qui tente le geste et exige un refus net. Un droit qu'aucun sabotage n'attaque n'est pas tenu pour acquis.
 - R12.4 — **L'autorat ne donne pas la pratique.** Posséder un harness ne donne aucun accès aux ha non versés de ses contributeurs. C'est l'exigence dont tout le reste dépend : un harness partagé où le propriétaire lirait la pratique d'autrui par défaut tuerait l'honnêteté des sessions.
+
+La séparation produit / instance ([RFC-009](docs/rfc-009-separation-produit-instance.md) D9.4) en ajoute une cinquième :
+
+- R12.5 — **Souveraineté.** Chaque instance est souveraine : aucune télémétrie, aucun compte central, aucune émission réseau hors des appels aux moteurs qu'elle configure. Toute destination réseau en dur dans le produit, hors ces appels, est un bug ; la trempe du produit la détecte.
