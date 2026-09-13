@@ -7,3 +7,4 @@ trempe/check.sh          # le vérificateur code l'interdit en dur
 trempe/vocabulaire-interdit.local.txt.example  # le gabarit l'explique
 CLAUDE.md                # la discipline nomme l'interdit pour l'interdire
 trempe/exemptions.txt    # ses justifications citent ce qu'elles exemptent
+docs/carte-de-conviction.md  # le procès-verbal des sabotages cite ce qu'il a vu refuser
