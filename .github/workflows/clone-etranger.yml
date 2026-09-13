@@ -45,7 +45,7 @@ jobs:
       - name: git clone
         run: |
           git clone --quiet https://github.com/${{ github.repository }} etranger
-          cd etranger && git checkout --quiet ${{ github.sha }}
+          cd etranger && git checkout --quiet ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: le README, ligne à ligne
         working-directory: etranger
