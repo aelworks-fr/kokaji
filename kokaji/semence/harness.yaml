@@ -1,0 +1,65 @@
+# Semence — le squelette d'un harness qui n'a pas encore de domaine.
+#
+# Ce fichier ne décrit aucun métier, et c'est délibéré (SPECS §0) : Kokaji ne
+# connaît que la structure des harness. Tout ce qui est propre au vôtre s'écrit
+# ici, à la place de ce qui y est marqué à remplacer.
+#
+# Il vaut, il se forge et il se trempe tel quel : on peut donc pratiquer dès le
+# premier instant, et remplacer ensuite. Un squelette qu'il faudrait réparer
+# avant de s'en servir ne serait pas une semence.
+
+harness:
+  id: semence
+  nom: Semence
+  version: 0.1.0
+  langue: fr
+  domaine: >-
+    À décrire — le processus que ce harness couvre, en une phrase.
+
+kata:
+  # Une seule étape pour commencer. En ajouter se fait au module design, et
+  # chaque nouvelle étape déclare ce qu'elle établit dans `produit`.
+  - id: premiere-etape
+    nom: Première étape
+    source: kata/premiere-etape.yaml
+    livrable: Un premier livrable
+    amont: []
+    herite: []
+    produit:
+      # Ce que cette étape garantit avoir établi quand elle passe la main.
+      - premiere-etape.sujet: fait_etabli
+
+chaine:
+  noeuds:
+    - { id: premiere-etape, type: kata, nom: Première étape }
+    - { id: suite, type: externe, nom: La suite }
+  aretes:
+    - { de: premiere-etape, vers: suite, label: l'étape est faite }
+
+template: template.md
+
+cibles:
+  # Une seule incarnation pour commencer. Elle émet le bloc d'état : c'est ce
+  # qui rend la pratique observable, et l'observation est le but de la forge.
+  - id: sobre
+    etat_structure: true
+    en_tete: Semence
+    packaging: dossier
+
+trempe:
+  vocabulaire_interdit: []
+  registre: registre.yaml
+  checks_session: []
+
+etat:
+  # Du plus fort au plus faible : l'ordre est celui de la déclaration (RFC-002).
+  #
+  # `en_chantier` est là dès la semence, et ce n'est pas un ornement. Sans une
+  # valeur qui dise « on y travaille », la pratique en emprunte une à la liste
+  # voisine — mesuré 91 fois sur le harness d'exemple avant qu'elle n'existe.
+  # Un harness neuf hériterait du même manque.
+  statuts_champ: [fait_etabli, hypothese, en_chantier, en_pause, non_requis]
+  statuts_hypothese: [en_cours, validee, infirmee, en_pause]
+
+personas: personas/
+corpus: corpus/

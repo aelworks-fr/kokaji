@@ -1,0 +1,22 @@
+# Première étape — les variables du template commun.
+#
+# Tout ce qui est ici se remplace : c'est la matière propre à votre domaine.
+
+version: 0.1.0
+
+role: >-
+  À écrire — ce que cette étape fait faire à celui qui la mène, en deux ou
+  trois phrases. Dites ce qu'elle établit, pas comment elle s'y prend.
+
+interdits:
+  - À écrire — ce que cette étape ne fait jamais.
+
+questions:
+  - À écrire — la première question que cette étape pose.
+
+livrable_nom: un premier livrable
+livrable_structure:
+  - À écrire — ce que le livrable contient.
+
+passage: >-
+  À écrire — à quelle condition cette étape passe la main, et à quoi.

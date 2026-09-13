@@ -48,11 +48,14 @@ while IFS= read -r f; do
     *CAS-[0-9][0-9][0-9][0-9]*) refuser "contenu : un ha dans le produit — $f" ;;
   esac
   case "$f" in
+    kokaji/corpus/*) ;; # le module qui lit les corpus, pas un corpus
     */corpus/*) [ "$(basename "$f")" = ".gardien" ] || refuser "contenu : corpus peuplé — $f" ;;
   esac
   case "$f" in
     harness.yaml|*/harness.yaml)
-      [ "$f" = "atelier/harness.yaml" ] || refuser "contenu : harness hors atelier/ — $f" ;;
+      # La semence (kokaji/semence/) est le gabarit d'un harness neuf : du produit.
+      case "$f" in atelier/harness.yaml|kokaji/semence/harness.yaml) ;;
+        *) refuser "contenu : harness hors atelier/ — $f" ;; esac ;;
   esac
   case "$f" in
     *fiche.md|*transcript.md|*etats.jsonl|*scellements.jsonl|*.ecartes.jsonl)
@@ -83,7 +86,7 @@ while IFS= read -r f; do
   # Un hôte sans point est un service du réseau interne du compose
   # (litellm:4000) : rien n'en sort de la machine.
   if grep -nE 'https?://' "$f" 2>/dev/null \
-      | grep -vE 'https?://(localhost|127\.0\.0\.1|[a-z0-9-]+)([:/]|$)' | grep -q .; then
+      | grep -vE 'https?://(localhost|127\.0\.0\.1|[a-z0-9-]+)([^a-z0-9.-]|$)' | grep -q .; then
     refuser "souveraineté : destination réseau en dur dans $f"
   fi
 done < <(fichiers_suivis)

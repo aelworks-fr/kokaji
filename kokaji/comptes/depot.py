@@ -1,0 +1,506 @@
+"""Le magasin des comptes et des ACL — RFC-004 §2, SPECS R12.1 et R12.2.
+
+Un fichier SQLite, **hors git** : il contient des empreintes de mots de passe et
+des jetons de session. C'est la seule donnée de Kokaji qui ne doit jamais entrer
+dans un corpus ni dans une définition de harness.
+
+Pourquoi une base ici, alors que tout le reste du projet est en fichiers lisibles
+à l'œil : parce que ces données ont des invariants qui se tiennent par des
+contraintes (unicité d'un email, unicité d'un propriétaire) et qu'on ne veut ni
+les relire ni les fusionner à la main. Un corpus se lit ; un magasin de comptes
+se vérifie.
+"""
+
+from __future__ import annotations
+
+import secrets
+import sqlite3
+import uuid
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
+
+from argon2 import PasswordHasher
+from argon2.exceptions import VerifyMismatchError
+
+from .droits import exiger
+from .modele import ETRANGER, Acl, AclInvalide, Utilisateur, email_plausible
+
+__all__ = ["Comptes", "IdentiteInconnue"]
+
+DUREE_SESSION = timedelta(hours=12)
+# Une invitation qui traîne est une porte ouverte : elle se périme d'elle-même.
+DUREE_INVITATION = timedelta(days=7)
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS utilisateurs (
+    id        TEXT PRIMARY KEY,
+    nom       TEXT NOT NULL,
+    email     TEXT NOT NULL UNIQUE COLLATE NOCASE,
+    empreinte TEXT NOT NULL,
+    cree_le   TEXT NOT NULL,
+    -- L'administration **de l'exploitation** : comptes, invitations, ACL, état
+    -- du service. Elle ne donne aucun accès à la pratique d'autrui — R12.4 tient
+    -- pour l'admin comme pour tout le monde, et c'est vérifié par sabotage.
+    admin     INTEGER NOT NULL DEFAULT 0,
+    -- Le harness que cette personne pratique (RFC-005 §2.2). Nul est une
+    -- réponse valide : tant qu'un seul harness est accessible, personne n'a à
+    -- choisir. La clé étrangère fait le ménage le jour où un harness
+    -- disparaît — une préférence caduque se lit comme absente, pas comme une
+    -- faute.
+    harness_courant TEXT REFERENCES harness_acl(harness_id) ON DELETE SET NULL
+);
+
+-- Une invitation est un jeton à usage unique, daté, adressé à un email. Elle ne
+-- crée rien : c'est celui qui la consomme qui crée son compte, avec le mot de
+-- passe qu'il choisit. Personne d'autre ne l'a jamais connu.
+CREATE TABLE IF NOT EXISTS invitations (
+    jeton          TEXT PRIMARY KEY,
+    email          TEXT NOT NULL COLLATE NOCASE,
+    cree_par       TEXT NOT NULL REFERENCES utilisateurs(id),
+    cree_le        TEXT NOT NULL,
+    expire_le      TEXT NOT NULL,
+    consomme_le    TEXT,
+    utilisateur_id TEXT REFERENCES utilisateurs(id)
+);
+
+-- Réservée pour un rattachement OAuth ultérieur (RFC-004 §2.1). Vide en v1, et
+-- c'est délibéré : la place est tenue pour que l'id d'un utilisateur n'ait
+-- jamais à changer le jour où un fournisseur externe entrera en jeu.
+CREATE TABLE IF NOT EXISTS identites_externes (
+    utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    fournisseur    TEXT NOT NULL,
+    sujet_externe  TEXT NOT NULL,
+    PRIMARY KEY (fournisseur, sujet_externe)
+);
+
+-- Un harness, une ligne : la contrainte de clé primaire *est* l'invariant
+-- « exactement un propriétaire ». En avoir deux n'est pas refusé, c'est
+-- inexprimable.
+CREATE TABLE IF NOT EXISTS harness_acl (
+    harness_id   TEXT PRIMARY KEY,
+    proprietaire TEXT NOT NULL REFERENCES utilisateurs(id),
+    -- Quand il a été archivé, ou nul. Une date plutôt qu'un booléen : archiver
+    -- est un geste daté, et le principe d'observabilité veut qu'on sache
+    -- *quand* une forme a cessé de servir, pas seulement qu'elle a cessé.
+    archive_le   TEXT
+);
+
+CREATE TABLE IF NOT EXISTS contributeurs (
+    harness_id     TEXT NOT NULL REFERENCES harness_acl(harness_id) ON DELETE CASCADE,
+    utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    PRIMARY KEY (harness_id, utilisateur_id)
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    jeton          TEXT PRIMARY KEY,
+    utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    expire_le      TEXT NOT NULL
+);
+"""
+
+
+class IdentiteInconnue(Exception):
+    """Identifiants refusés, ou jeton périmé."""
+
+
+def _instant(texte: str) -> datetime:
+    quand = datetime.fromisoformat(texte)
+    return quand if quand.tzinfo else quand.replace(tzinfo=UTC)
+
+
+class Comptes:
+    """Le magasin. Ouvert sur un chemin, ou en mémoire pour les tests."""
+
+    def __init__(self, chemin: Path | str = ":memory:"):
+        self.chemin = chemin
+        self._db = sqlite3.connect(str(chemin), check_same_thread=False)
+        self._db.row_factory = sqlite3.Row
+        self._db.execute("PRAGMA foreign_keys = ON")
+        self._db.executescript(SCHEMA)
+        self._migrer()
+        self._db.commit()
+        self._hacheur = PasswordHasher()
+
+    def _migrer(self) -> None:
+        """Les colonnes venues après coup, posées sur une base déjà écrite.
+
+        `CREATE TABLE IF NOT EXISTS` ne touche pas une table qui existe : sans
+        ce geste, un magasin ouvert avant le RFC-005 garderait son schéma
+        d'alors, et la faute n'apparaîtrait qu'à la première lecture du harness
+        courant — c'est-à-dire en service, pas au démarrage.
+        """
+        colonnes = {r["name"] for r in self._db.execute("PRAGMA table_info(utilisateurs)")}
+        if "harness_courant" not in colonnes:
+            self._db.execute(
+                "ALTER TABLE utilisateurs ADD COLUMN harness_courant TEXT "
+                "REFERENCES harness_acl(harness_id) ON DELETE SET NULL"
+            )
+        acl = {r["name"] for r in self._db.execute("PRAGMA table_info(harness_acl)")}
+        if "archive_le" not in acl:
+            self._db.execute("ALTER TABLE harness_acl ADD COLUMN archive_le TEXT")
+
+    def fermer(self) -> None:
+        self._db.close()
+
+    # --- les utilisateurs (§2.1) ------------------------------------------
+
+    def creer_utilisateur(
+        self, nom: str, email: str, mot_de_passe: str, admin: bool = False
+    ) -> Utilisateur:
+        if not email_plausible(email):
+            raise AclInvalide(f"email invraisemblable : {email!r}")
+        if len(mot_de_passe) < 12:
+            raise AclInvalide("mot de passe trop court : douze caractères au moins")
+
+        utilisateur = Utilisateur(
+            id=str(uuid.uuid4()), nom=nom.strip(), email=email.strip(), cree_le=datetime.now(UTC)
+        )
+        try:
+            self._db.execute(
+                "INSERT INTO utilisateurs (id, nom, email, empreinte, cree_le, admin) "
+                "VALUES (?,?,?,?,?,?)",
+                (
+                    utilisateur.id,
+                    utilisateur.nom,
+                    utilisateur.email,
+                    self._hacheur.hash(mot_de_passe),
+                    utilisateur.cree_le.isoformat(),
+                    1 if admin else 0,
+                ),
+            )
+        except sqlite3.IntegrityError as err:
+            raise AclInvalide(f"email déjà pris : {email}") from err
+        self._db.commit()
+        return utilisateur
+
+    def _utilisateur(self, ligne: sqlite3.Row | None) -> Utilisateur | None:
+        if ligne is None:
+            return None
+        return Utilisateur(
+            id=ligne["id"],
+            nom=ligne["nom"],
+            email=ligne["email"],
+            cree_le=_instant(ligne["cree_le"]),
+        )
+
+    def utilisateur(self, utilisateur_id: str) -> Utilisateur | None:
+        return self._utilisateur(
+            self._db.execute("SELECT * FROM utilisateurs WHERE id = ?", (utilisateur_id,)).fetchone()
+        )
+
+    def par_email(self, email: str) -> Utilisateur | None:
+        return self._utilisateur(
+            self._db.execute(
+                "SELECT * FROM utilisateurs WHERE email = ? COLLATE NOCASE", (email.strip(),)
+            ).fetchone()
+        )
+
+    def est_admin(self, utilisateur_id: str) -> bool:
+        ligne = self._db.execute(
+            "SELECT admin FROM utilisateurs WHERE id = ?", (utilisateur_id,)
+        ).fetchone()
+        return bool(ligne and ligne["admin"])
+
+    def promouvoir(self, utilisateur_id: str, admin: bool = True) -> None:
+        self._db.execute(
+            "UPDATE utilisateurs SET admin = ? WHERE id = ?", (1 if admin else 0, utilisateur_id)
+        )
+        self._db.commit()
+
+    def utilisateurs(self) -> list[dict]:
+        """Tous les comptes — la liste de la page admin. Aucun secret n'en sort."""
+        return [
+            {
+                "id": l["id"],
+                "nom": l["nom"],
+                "email": l["email"],
+                "cree_le": l["cree_le"],
+                "admin": bool(l["admin"]),
+            }
+            for l in self._db.execute("SELECT * FROM utilisateurs ORDER BY cree_le")
+        ]
+
+    def changer_mot_de_passe(self, utilisateur_id: str, nouveau: str) -> None:
+        if len(nouveau) < 12:
+            raise AclInvalide("mot de passe trop court : douze caractères au moins")
+        self._db.execute(
+            "UPDATE utilisateurs SET empreinte = ? WHERE id = ?",
+            (self._hacheur.hash(nouveau), utilisateur_id),
+        )
+        self._db.commit()
+
+    # --- les invitations ---------------------------------------------------
+
+    def inviter(self, email: str, par: str, duree: timedelta = DUREE_INVITATION) -> str:
+        """Ouvre une porte nominative, à usage unique et datée.
+
+        Elle ne crée aucun compte : elle autorise quelqu'un à s'en créer un, avec
+        un mot de passe que lui seul choisira. C'est ce qui évite de transmettre
+        un secret — un mot de passe qu'on envoie est un mot de passe partagé.
+        """
+        if not email_plausible(email):
+            raise AclInvalide(f"email invraisemblable : {email!r}")
+        if self.par_email(email) is not None:
+            raise AclInvalide(f"un compte existe déjà pour {email}")
+        if self.utilisateur(par) is None:
+            raise AclInvalide("invitant inconnu")
+
+        jeton = secrets.token_urlsafe(32)
+        maintenant = datetime.now(UTC)
+        self._db.execute(
+            "INSERT INTO invitations (jeton, email, cree_par, cree_le, expire_le) "
+            "VALUES (?,?,?,?,?)",
+            (jeton, email.strip(), par, maintenant.isoformat(), (maintenant + duree).isoformat()),
+        )
+        self._db.commit()
+        return jeton
+
+    def invitations(self) -> list[dict]:
+        return [
+            {
+                "jeton": l["jeton"],
+                "email": l["email"],
+                "cree_par": l["cree_par"],
+                "cree_le": l["cree_le"],
+                "expire_le": l["expire_le"],
+                "consomme_le": l["consomme_le"],
+                "vivante": l["consomme_le"] is None
+                and _instant(l["expire_le"]) > datetime.now(UTC),
+            }
+            for l in self._db.execute("SELECT * FROM invitations ORDER BY cree_le DESC")
+        ]
+
+    def invitation(self, jeton: str) -> dict:
+        """L'invitation, si elle vaut encore. Le refus ne dit pas laquelle des
+        trois raisons — inconnue, consommée ou périmée : une porte fermée n'a
+        pas à renseigner sur ce qu'il y a derrière."""
+        ligne = self._db.execute(
+            "SELECT * FROM invitations WHERE jeton = ?", (jeton or "",)
+        ).fetchone()
+        if (
+            ligne is None
+            or ligne["consomme_le"] is not None
+            or _instant(ligne["expire_le"]) < datetime.now(UTC)
+        ):
+            raise IdentiteInconnue("invitation inconnue, déjà utilisée ou périmée")
+        return {"jeton": ligne["jeton"], "email": ligne["email"], "expire_le": ligne["expire_le"]}
+
+    def consommer(self, jeton: str, nom: str, mot_de_passe: str) -> Utilisateur:
+        """Crée le compte de l'invité. Un jeton ne sert qu'une fois."""
+        ouverte = self.invitation(jeton)
+        utilisateur = self.creer_utilisateur(nom, ouverte["email"], mot_de_passe)
+        self._db.execute(
+            "UPDATE invitations SET consomme_le = ?, utilisateur_id = ? WHERE jeton = ?",
+            (datetime.now(UTC).isoformat(), utilisateur.id, jeton),
+        )
+        self._db.commit()
+        return utilisateur
+
+    def revoquer(self, jeton: str) -> None:
+        """Ferme une invitation non consommée. Une porte se referme sans trace
+        d'usage : on la marque consommée, elle ne vaut plus."""
+        self._db.execute(
+            "UPDATE invitations SET consomme_le = ? WHERE jeton = ? AND consomme_le IS NULL",
+            (datetime.now(UTC).isoformat(), jeton),
+        )
+        self._db.commit()
+
+    # --- les sessions (§6 : le middleware authentifie) ---------------------
+
+    def ouvrir_session(self, email: str, mot_de_passe: str) -> str:
+        """Rend un jeton de session, ou refuse.
+
+        Le refus est le même que l'email soit inconnu ou le mot de passe faux :
+        distinguer les deux dirait à un inconnu qui possède un compte ici.
+        """
+        ligne = self._db.execute(
+            "SELECT * FROM utilisateurs WHERE email = ? COLLATE NOCASE", (email.strip(),)
+        ).fetchone()
+        if ligne is None:
+            # Une vérification à vide, pour que le temps de réponse ne trahisse
+            # pas l'existence du compte.
+            self._hacheur.hash("sans objet")
+            raise IdentiteInconnue("identifiants refusés")
+        try:
+            self._hacheur.verify(ligne["empreinte"], mot_de_passe)
+        except VerifyMismatchError as err:
+            raise IdentiteInconnue("identifiants refusés") from err
+
+        jeton = secrets.token_urlsafe(32)
+        self._db.execute(
+            "INSERT INTO sessions (jeton, utilisateur_id, expire_le) VALUES (?,?,?)",
+            (jeton, ligne["id"], (datetime.now(UTC) + DUREE_SESSION).isoformat()),
+        )
+        self._db.commit()
+        return jeton
+
+    def session(self, jeton: str) -> Utilisateur:
+        ligne = self._db.execute(
+            "SELECT * FROM sessions WHERE jeton = ?", (jeton or "",)
+        ).fetchone()
+        if ligne is None or _instant(ligne["expire_le"]) < datetime.now(UTC):
+            raise IdentiteInconnue("session inconnue ou périmée")
+        connu = self.utilisateur(ligne["utilisateur_id"])
+        if connu is None:
+            raise IdentiteInconnue("session orpheline")
+        return connu
+
+    def fermer_session(self, jeton: str) -> None:
+        self._db.execute("DELETE FROM sessions WHERE jeton = ?", (jeton,))
+        self._db.commit()
+
+    # --- l'autorat (§2.2) --------------------------------------------------
+
+    def enregistrer_harness(self, harness_id: str, proprietaire: str) -> Acl:
+        """Attache un harness à son propriétaire. Un harness n'en a qu'un."""
+        if self.utilisateur(proprietaire) is None:
+            raise AclInvalide("propriétaire inconnu")
+        acl = Acl(harness_id, proprietaire)
+        try:
+            self._db.execute(
+                "INSERT INTO harness_acl (harness_id, proprietaire) VALUES (?,?)",
+                (acl.harness_id, acl.proprietaire),
+            )
+        except sqlite3.IntegrityError as err:
+            raise AclInvalide(f"harness déjà enregistré : {harness_id}") from err
+        self._db.commit()
+        return acl
+
+    def acl(self, harness_id: str) -> Acl | None:
+        ligne = self._db.execute(
+            "SELECT proprietaire FROM harness_acl WHERE harness_id = ?", (harness_id,)
+        ).fetchone()
+        if ligne is None:
+            return None
+        contributeurs = tuple(
+            r["utilisateur_id"]
+            for r in self._db.execute(
+                "SELECT utilisateur_id FROM contributeurs WHERE harness_id = ? ORDER BY rowid",
+                (harness_id,),
+            )
+        )
+        return Acl(harness_id, ligne["proprietaire"], contributeurs)
+
+    def role(self, harness_id: str, utilisateur_id: str) -> str:
+        """Le rôle d'un utilisateur sur un harness — `etranger` si aucune ACL."""
+        acl = self.acl(harness_id)
+        return acl.role(utilisateur_id) if acl else "etranger"
+
+    def _remplacer(self, acl: Acl) -> Acl:
+        self._db.execute(
+            "UPDATE harness_acl SET proprietaire = ? WHERE harness_id = ?",
+            (acl.proprietaire, acl.harness_id),
+        )
+        self._db.execute("DELETE FROM contributeurs WHERE harness_id = ?", (acl.harness_id,))
+        self._db.executemany(
+            "INSERT INTO contributeurs (harness_id, utilisateur_id) VALUES (?,?)",
+            [(acl.harness_id, c) for c in acl.contributeurs],
+        )
+        self._db.commit()
+        return acl
+
+    def _exigee(self, harness_id: str) -> Acl:
+        acl = self.acl(harness_id)
+        if acl is None:
+            raise AclInvalide(f"harness non enregistré : {harness_id}")
+        return acl
+
+    def ajouter_contributeur(self, harness_id: str, utilisateur_id: str) -> Acl:
+        if self.utilisateur(utilisateur_id) is None:
+            raise AclInvalide("contributeur inconnu")
+        return self._remplacer(self._exigee(harness_id).avec(utilisateur_id))
+
+    def retirer_contributeur(self, harness_id: str, utilisateur_id: str) -> Acl:
+        return self._remplacer(self._exigee(harness_id).sans(utilisateur_id))
+
+    def transferer(self, harness_id: str, vers: str, garder_ancien: bool = True) -> Acl:
+        if self.utilisateur(vers) is None:
+            raise AclInvalide("destinataire inconnu")
+        return self._remplacer(self._exigee(harness_id).transferee_a(vers, garder_ancien))
+
+    # --- le harness courant (RFC-005 §2.2) ---------------------------------
+
+    def harness_courant(self, utilisateur_id: str) -> str | None:
+        """L'ensemble des kata que cette personne pratique — ou rien.
+
+        Une préférence dont le rôle a été retiré n'est pas une erreur : elle se
+        lit comme absente et le défaut reprend la main. Ce défaut est le seul
+        harness accessible s'il n'y en a qu'un — un déploiement mono-harness
+        n'oblige donc personne à choisir, et n'a rien à migrer.
+        """
+        ligne = self._db.execute(
+            "SELECT harness_courant FROM utilisateurs WHERE id = ?", (utilisateur_id,)
+        ).fetchone()
+        choisi = ligne["harness_courant"] if ligne else None
+        if choisi and self.role(choisi, utilisateur_id) != ETRANGER:
+            return choisi
+        siens = self.harness_de(utilisateur_id)
+        return siens[0][0] if len(siens) == 1 else None
+
+    def choisir_harness(self, utilisateur_id: str, harness_id: str | None) -> str | None:
+        """Pose le harness courant ; `None` efface le choix et rend au défaut.
+
+        Choisir suppose de pouvoir lire : c'est le geste `lire` de la matrice du
+        RFC-004 §3, pas un droit nouveau. Laisser passer un harness où l'on est
+        étranger ferait d'une préférence un contournement d'ACL — la surface des
+        modèles se calcule sur ce champ (RFC-005 §3.2).
+        """
+        if self.utilisateur(utilisateur_id) is None:
+            raise AclInvalide("utilisateur inconnu")
+        if harness_id is not None:
+            exiger("lire", self.role(harness_id, utilisateur_id), harness_id)
+        self._db.execute(
+            "UPDATE utilisateurs SET harness_courant = ? WHERE id = ?",
+            (harness_id, utilisateur_id),
+        )
+        self._db.commit()
+        return self.harness_courant(utilisateur_id)
+
+    # --- l'archivage (RFC-006 §5) ------------------------------------------
+
+    def archiver(self, harness_id: str, quand: datetime | None = None) -> str:
+        """Retire un harness du service, sans rien détruire.
+
+        Le principe d'observabilité est fondateur : ce qui a été observé ne
+        disparaît pas parce que la forme qui l'a produit ne sert plus. Le
+        dossier et le corpus demeurent — seule cette date change.
+        """
+        self._exigee(harness_id)
+        le = (quand or datetime.now(UTC)).isoformat(timespec="seconds")
+        self._db.execute(
+            "UPDATE harness_acl SET archive_le = ? WHERE harness_id = ?", (le, harness_id)
+        )
+        self._db.commit()
+        return le
+
+    def desarchiver(self, harness_id: str) -> None:
+        """Remet un harness au service. Archiver n'est pas un aller simple."""
+        self._exigee(harness_id)
+        self._db.execute(
+            "UPDATE harness_acl SET archive_le = NULL WHERE harness_id = ?", (harness_id,)
+        )
+        self._db.commit()
+
+    def archive_le(self, harness_id: str) -> str | None:
+        ligne = self._db.execute(
+            "SELECT archive_le FROM harness_acl WHERE harness_id = ?", (harness_id,)
+        ).fetchone()
+        return (ligne["archive_le"] or None) if ligne else None
+
+    def harness_de(self, utilisateur_id: str) -> list[tuple[str, str]]:
+        """Les harness d'un utilisateur, avec son rôle — la liste de l'onglet Profil."""
+        possedes = [
+            (r["harness_id"], "proprietaire")
+            for r in self._db.execute(
+                "SELECT harness_id FROM harness_acl WHERE proprietaire = ? ORDER BY harness_id",
+                (utilisateur_id,),
+            )
+        ]
+        contribues = [
+            (r["harness_id"], "contributeur")
+            for r in self._db.execute(
+                "SELECT harness_id FROM contributeurs WHERE utilisateur_id = ? ORDER BY harness_id",
+                (utilisateur_id,),
+            )
+        ]
+        return sorted(possedes + contribues)

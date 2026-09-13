@@ -1,0 +1,46 @@
+[project]
+name = "kokaji"
+version = "0.1.0"
+description = "Forge générique de harness conversationnels"
+requires-python = ">=3.11"
+# `ruamel.yaml` sert à réécrire un manifest **sans perdre ses commentaires** :
+# un manifest est une source, et ce projet écrit ses raisons à côté de ses
+# décisions. `pyyaml` les efface — voir `conception/yaml_source.py`.
+dependencies = ["pyyaml>=6", "argon2-cffi>=23", "ruamel.yaml>=0.18"]
+
+[project.optional-dependencies]
+# Le middleware expose une surface HTTP en lecture seule (SPECS §7).
+# `httpx` n'était qu'un outil de test : le relais des complétions en fait
+# une dépendance de service (RFC-005 §3.2).
+service = ["fastapi>=0.110", "uvicorn>=0.29", "httpx>=0.27"]
+# `playwright` sert les tests de rendu (NOTE-0008). Il demande un navigateur :
+# `playwright install chromium` puis `sudo playwright install-deps`. Sans lui,
+# `tests/test_rendu.py` se saute en le disant — voir `dojo/verif/rendu.sh`.
+dev = ["pytest>=8", "ruff>=0.5", "httpx>=0.27", "playwright>=1.50"]
+
+[project.scripts]
+kokaji = "kokaji.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kokaji"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"kokaji/qg/vue.html" = "kokaji/qg/vue.html"
+"kokaji/qg/organic-styles.css" = "kokaji/qg/organic-styles.css"
+"kokaji/qg/admin.html" = "kokaji/qg/admin.html"
+"kokaji/qg/invitation.html" = "kokaji/qg/invitation.html"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint.per-file-ignores]
+# Les tests ajoutent la racine au chemin avant d'importer le paquet : les
+# imports doivent donc suivre, pas précéder.
+"tests/*" = ["E402"]

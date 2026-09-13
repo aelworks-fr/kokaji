@@ -40,6 +40,19 @@ Le harness de démonstration vit dans `atelier/` — il est au produit ce que le
 lorem ipsum est au QG. Vos harness vivent **hors de ce repo** : un repo git
 par harness, enregistré auprès de votre instance (RFC-009 D9.1).
 
+## Le code
+
+Le produit est un paquet Python, `kokaji/`, et sa CLI du même nom :
+
+```
+pip install -e ".[service,dev]"
+python -m pytest -q tests
+kokaji valider atelier && kokaji trempe atelier
+```
+
+`STRUCTURE.md` donne la carte ; `docs/` la doc de chaque commande. La trempe
+du produit (`trempe/check.sh`) tourne avant tout le reste, en local comme en CI.
+
 ## Lire ensuite
 
 `docs/SPECS.md` d'abord — tout part de là — puis les RFC dans l'ordre.

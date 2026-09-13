@@ -1,0 +1,2129 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kokaji · QG</title>
+<link rel="stylesheet" href="/qg/organic-styles.css">
+<style>
+  /* Rien n'est écrit en dur ici : chaque valeur vient des jetons d'Organic. */
+  body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); margin: 0; }
+  /* `hidden` est une déclaration d'intention, pas une mise en forme : toute
+     classe portant un `display` l'écrase silencieusement. C'est arrivé — les
+     trois modules et le dialogue de scellement s'affichaient tous à la fois. */
+  [hidden] { display: none !important; }
+  .page { max-width: 1180px; margin: 0 auto; padding: var(--space-6) var(--space-4) var(--space-8); }
+
+  /* 0 · la coque — barre d'onglets verticale */
+  .coque { display: flex; min-height: 100vh; }
+  /* Le module prend la place qui reste, et sa colonne se centre dedans. Sans
+     ces deux lignes, une section large de 760 px restait collée au flanc : sur
+     un écran ultra-large, le produit tenait dans le tiers gauche et les deux
+     tiers droits étaient vides. Rien ne changeait sous 1180 px, donc ni les
+     mesures de 360 ni celles de 1280 ne pouvaient le voir — il fallait un
+     écran plus grand que tous ceux qu'on regardait.
+     Le conteneur, lui, prenait déjà la place : ce qui manquait était de centrer
+     la colonne dedans. */
+  .decouvrir, .profil, .design { width: 100%; margin-inline: auto; }
+  .flanc { width: 224px; flex: none; padding: 24px 16px; display: flex; flex-direction: column;
+           gap: 4px; border-right: 1px solid var(--color-neutral-200); }
+  .flanc-marque { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+                  font-size: 22px; padding: 0 12px 18px; }
+  .onglet { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 999px;
+            border: none; font: inherit; font-size: 14px; background: transparent; cursor: pointer;
+            color: var(--color-neutral-700); text-align: left; }
+  .onglet:hover { background: var(--color-neutral-200); }
+  .onglet[aria-current="page"] { background: var(--color-accent-200); color: var(--color-accent-900);
+                                 font-weight: 600; }
+  .onglet .point-onglet { width: 8px; height: 8px; border-radius: 999px; flex: none;
+                          background: var(--color-neutral-400); }
+  .onglet[aria-current="page"] .point-onglet { background: var(--color-accent-600); }
+  .onglet .tag { margin-left: auto; }
+  /* Le sélecteur de harness — au-dessus des onglets, parce qu'il commande ce
+     qu'ils montrent tous les trois. Changer de harness change la page entière,
+     pas une section : sa place est dans la coque, pas dans un module. */
+  .flanc-harness { padding: 0 12px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .flanc-harness label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
+                         color: var(--color-neutral-500); }
+  .flanc-harness select { width: 100%; font: inherit; font-size: 13.5px; padding: 7px 10px;
+                          border-radius: 10px; border: 1px solid var(--color-neutral-300);
+                          background: var(--color-bg); color: var(--color-text); }
+  .flanc-espace { flex: 1; }
+  .contenu { flex: 1; min-width: 0; }
+
+  /* 0 bis · le module Découvrir — la seule page qui s'adresse à quelqu'un qui
+     arrive. Elle explique le cycle, pas la mécanique : ce qu'on peut faire ici,
+     dans quel ordre, et ce que chaque mot veut dire. */
+  .decouvrir { max-width: 760px; padding: 36px 40px 72px; display: flex;
+               flex-direction: column; gap: 26px; }
+  .decouvrir h1 { font-family: var(--font-heading); font-size: 30px; margin: 0; }
+  .decouvrir h2 { font-family: var(--font-heading); font-size: 19px; margin: 0 0 10px; }
+  .decouvrir p { font-size: 14.5px; line-height: 1.6; color: var(--color-neutral-800);
+                 margin: 0 0 10px; max-width: 62ch; }
+  .decouvrir dt { font-weight: 600; font-size: 14.5px; margin-top: 12px; }
+  .decouvrir dd { margin: 2px 0 0; font-size: 14px; line-height: 1.55;
+                  color: var(--color-neutral-700); max-width: 60ch; }
+  .pas-du-cycle { display: flex; gap: 14px; align-items: flex-start; }
+  .pas-du-cycle-rang { flex: none; width: 26px; height: 26px; border-radius: 999px;
+                background: var(--color-accent-200); color: var(--color-accent-900);
+                display: grid; place-items: center; font-size: 13px; font-weight: 700; }
+
+  /* 0 ter · la dépense, dans le module design */
+  .depense { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 12px; }
+  .depense-chiffre { display: flex; flex-direction: column; gap: 3px; }
+  .depense-val { font-family: var(--font-heading); font-size: 22px; line-height: 1; }
+  .depense-mot { font-size: 11.5px; color: var(--color-neutral-600); }
+  .depense-kata { margin-top: 16px; font-size: 13px; }
+
+  /* 1 · le module Profil */
+  .profil { max-width: 980px; padding: 36px 40px 64px; display: flex; flex-direction: column; gap: 28px; }
+  .profil-tete { display: flex; align-items: center; gap: 18px; }
+  .avatar { width: 64px; height: 64px; flex: none; border-radius: 999px;
+            background: var(--color-accent-2-200); border: 1.5px solid var(--color-accent-2-500);
+            display: grid; place-items: center; font-family: var(--font-heading);
+            font-weight: var(--font-heading-weight); font-size: 24px; color: var(--color-accent-2-900); }
+  .profil-nom { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+                font-size: 30px; margin: 0; line-height: 1.15; }
+  .profil-meta { font-size: 13px; color: var(--color-neutral-600); margin: 4px 0 0; }
+  .profil h2 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+               font-size: 20px; margin: 0; }
+  .profil-sous { font-size: 12px; color: var(--color-neutral-600); margin: 6px 0 12px; }
+  .rangee { display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+            border-radius: var(--radius-lg); background: var(--color-neutral-100);
+            box-shadow: var(--shadow-sm); margin-bottom: 10px; }
+  .rangee-nom { font-size: 14.5px; font-weight: 600; }
+  .rangee-meta { font-size: 12px; color: var(--color-neutral-500); margin-top: 2px; }
+  .rangee-espace { flex: 1; }
+  .rangee-version { font-weight: 400; color: var(--color-neutral-500); }
+  .btn-fantome { border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 12px;
+                 background: transparent; border: 1px solid var(--color-neutral-300);
+                 color: var(--color-neutral-700); cursor: pointer; }
+  .btn-fantome:hover { background: var(--color-neutral-200); }
+  .btn-fantome[disabled] { opacity: .45; cursor: not-allowed; }
+  .btn-plein { border-radius: 999px; padding: 8px 18px; font: inherit; font-size: 13px;
+               background: var(--color-accent-500); border: 1px solid var(--color-accent-600);
+               color: var(--color-neutral-100); cursor: pointer; }
+  .btn-plein:hover { background: var(--color-accent-600); }
+  .btn-plein[disabled] { opacity: .45; cursor: not-allowed; }
+
+  /* 3 · le design du harness — la seule surface d'écriture du produit.
+     L'encre (`neutral-900`) y porte tout le contractuel-négatif : la marque f♯,
+     les liens rompus, « la définition ne tient pas ». La terracotta reste la
+     voix positive et celle du scellement ; la sauge est absente de ce module,
+     elle appartient aux possibles d'un sujet. Aucun rouge. */
+  .design { max-width: 1180px; padding: 32px 40px 72px; display: flex;
+            flex-direction: column; gap: 18px; }
+  .design-tete { display: flex; align-items: flex-start; gap: 16px; }
+  .design-sous { font-size: 13px; color: var(--color-neutral-600); margin: 6px 0 0; }
+  .verdict { padding: 20px 24px; }
+  .verdict-rang { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .pastille { border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600;
+              white-space: nowrap; flex: none; }
+  .pastille.rien { background: var(--color-neutral-200); color: var(--color-neutral-600); }
+  .pastille.nonepr { background: transparent; color: var(--color-neutral-700);
+                     border: 1.5px dashed var(--color-neutral-400); }
+  .pastille.casse { background: var(--color-neutral-900); color: var(--color-neutral-100); }
+  .pastille.tient { background: var(--color-accent-200); color: var(--color-accent-900); }
+  .verdict-detail { font-size: 12.5px; color: var(--color-neutral-600); margin: 8px 0 0; }
+  .verdict-note { font-size: 11.5px; color: var(--color-neutral-500); margin: 10px 0 0; }
+  .anomalie { border: 1.5px solid var(--color-neutral-900); border-radius: var(--radius-md);
+              padding: 12px 16px; margin-top: 10px; background: var(--color-neutral-100); }
+  .anomalie-ou { font-family: ui-monospace, monospace; font-size: 12px; font-weight: 600; }
+  .anomalie-dit { font-size: 13px; margin: 4px 0 0; }
+  .journal-scel { background: var(--color-accent-100); border-radius: var(--radius-md);
+                  padding: 12px 16px; margin-top: 12px; font-family: ui-monospace, monospace;
+                  font-size: 12px; }
+
+  .axes { display: flex; gap: 8px; }
+  .axe { border-radius: 999px; padding: 8px 16px; font: inherit; font-size: 13px; border: none;
+         background: var(--color-neutral-200); color: var(--color-neutral-700); cursor: pointer; }
+  .axe[aria-current="page"] { background: var(--color-accent-200); color: var(--color-accent-900);
+                              font-weight: 600; }
+  .badge-encre { display: inline-grid; place-items: center; min-width: 18px; height: 18px;
+                 border-radius: 999px; background: var(--color-neutral-900);
+                 color: var(--color-neutral-100); font-size: 11px; font-weight: 700;
+                 margin-left: 8px; padding: 0 5px; }
+
+  .noeud-def { width: 52px; height: 52px; border-radius: 999px;
+               border: 2px solid var(--color-neutral-300); background: var(--color-neutral-100);
+               display: grid; place-items: center; font-size: 11px; color: var(--color-neutral-600); }
+  .noeud-def.jalon { border-radius: var(--radius-md); }
+  .noeud-def.externe { border-style: dashed; }
+  .champ-pilule { border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px;
+                  font-family: ui-monospace, monospace; text-align: center; width: 100%;
+                  background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300);
+                  color: var(--color-text); }
+  .plus { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--color-neutral-300);
+          background: var(--color-neutral-100); color: var(--color-neutral-700); font: inherit;
+          cursor: pointer; line-height: 1; padding: 0; }
+
+  .rail { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 18px; }
+  .jeton-kata { display: flex; flex-direction: column; align-items: center; gap: 4px;
+                background: none; border: none; font: inherit; cursor: pointer; padding: 0; }
+  .jeton-kata .forme { width: 46px; height: 46px; border-radius: 999px;
+                       border: 2px solid var(--color-neutral-300);
+                       background: var(--color-neutral-100); position: relative; }
+  .jeton-kata .forme.jalon { border-radius: var(--radius-md); }
+  .jeton-kata[aria-current="page"] .forme { outline: 2px solid var(--color-neutral-900);
+                                            outline-offset: 3px; }
+  .jeton-kata .id { font-family: ui-monospace, monospace; font-size: 11px;
+                    color: var(--color-neutral-700); }
+  .marque-encre { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px;
+                  border-radius: 999px; background: var(--color-neutral-900);
+                  color: var(--color-neutral-100); font-size: 10.5px; font-weight: 700;
+                  display: grid; place-items: center; padding: 0 4px; }
+
+  .ligne-f { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+             padding: 10px 14px; border-radius: var(--radius-md); margin-bottom: 8px;
+             background: var(--color-neutral-200); font-size: 13px; }
+  .ligne-f.rompue { background: var(--color-accent-100); }
+  .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
+  .mot { color: var(--color-neutral-600); font-size: 12px; }
+  .chip-ok { background: var(--color-accent-200); color: var(--color-accent-900); }
+  .chip-encre { background: var(--color-neutral-900); color: var(--color-neutral-100); }
+  .select-pilule { border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px;
+                   background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300);
+                   color: var(--color-text); }
+  .regle-f { font-size: 12px; color: var(--color-neutral-600); margin: 14px 0 0;
+             padding-top: 10px; border-top: 1px solid var(--color-neutral-200); }
+
+  .puce-mot { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
+              padding: 5px 12px; background: var(--color-neutral-200); font-size: 12px;
+              font-family: ui-monospace, monospace; margin: 0 6px 6px 0; }
+  .puce-mot button { border: none; background: none; cursor: pointer; font: inherit;
+                     color: var(--color-neutral-600); padding: 0; }
+  .bascule { border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px;
+             border: none; cursor: pointer; }
+  .bascule.exige { background: var(--color-accent-200); color: var(--color-accent-900); }
+  .bascule.inactif { background: var(--color-neutral-300); color: var(--color-neutral-700); }
+
+  .diff-ligne { display: flex; gap: 10px; align-items: baseline; padding: 8px 12px;
+                border-radius: var(--radius-md); margin-bottom: 6px; }
+  .diff-ligne.contrat { background: var(--color-accent-100); }
+  .diff-ou { font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 600; }
+  .diff-val { font-family: ui-monospace, monospace; font-size: 11.5px;
+              color: var(--color-neutral-600); overflow-wrap: anywhere; }
+  .chip-diese { border: 1.5px solid var(--color-neutral-900); color: var(--color-neutral-900);
+                background: transparent; }
+  pre.hds { background: var(--color-neutral-200); border-radius: var(--radius-md); padding: 14px;
+            font-size: 12px; overflow-x: auto; margin: 10px 0 0; }
+
+  .voile { position: fixed; inset: 0; background: rgba(32,30,29,.45); display: grid;
+           place-items: center; padding: 20px; }
+  .dialogue { background: var(--color-neutral-100); border-radius: var(--radius-lg);
+              box-shadow: var(--shadow-lg); max-width: 560px; width: 100%; padding: 28px; }
+  .consequence { background: var(--color-neutral-200); border-radius: var(--radius-md);
+                 padding: 14px 16px; font-size: 13px; margin-bottom: 18px; }
+  .champ-large { width: 100%; border-radius: var(--radius-md); padding: 9px 12px; font: inherit;
+                 font-size: 13px; background: var(--color-neutral-100);
+                 border: 1px solid var(--color-neutral-300); color: var(--color-text); }
+  .nav-tag { margin-left: var(--space-3); }
+  .nav-spacer { flex: 1; }
+  .pill-select {
+    border-radius: 999px; padding: 8px 16px; background: var(--color-neutral-100);
+    border: 1px solid var(--color-neutral-300); font: inherit; font-size: 13px;
+    color: var(--color-text); max-width: 22rem;
+  }
+
+  /* 2 · en-tête du sujet */
+  .sujet-titre { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+                 font-size: 34px; margin: var(--space-6) 0 var(--space-1); line-height: 1.15; }
+  .sujet-meta { font-size: 13px; color: var(--color-neutral-600); margin: 0 0 var(--space-2); }
+  .sujet-ligne { font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; margin: 0; }
+  .avis { border-left: 3px solid var(--color-neutral-500); background: var(--color-neutral-100);
+          padding: var(--space-2) var(--space-3); margin: var(--space-3) 0; font-size: 13px;
+          color: var(--color-neutral-700); border-radius: var(--radius-sm); max-width: 70ch; }
+
+  /* 3 · le fil */
+  .fil { background: var(--color-neutral-100); border-radius: var(--radius-lg);
+         padding: 28px 28px 20px; box-shadow: var(--shadow-sm); margin-top: var(--space-6); }
+  /* Le fil doit tenir de 3 à 10 nœuds dans une colonne rétrécie par le flanc :
+     la rangée défile en elle-même plutôt que de déborder de sa carte. */
+  .rang { display: flex; align-items: flex-start; overflow-x: auto; padding-bottom: var(--space-2); }
+  /* `min-width: 0` laissait l'enveloppe se réduire à zéro : la colonne, elle,
+     garde ses 96 px et débordait par-dessus sa voisine — deux noms de nœud
+     imprimés l'un sur l'autre. Le plancher rend la compression impossible, et
+     c'est alors la rangée qui défile, comme prévu. */
+  .enveloppe { flex: 1 1 0; min-width: 104px; display: flex; align-items: flex-start; }
+  .enveloppe:last-child { flex: 0 0 auto; }
+  .colonne { width: 100%; min-width: 96px; max-width: 132px; flex: none; padding: 0 4px;
+             display: flex; flex-direction: column; align-items: center; }
+  .nom-noeud { overflow-wrap: break-word; }
+  .noeud { flex: none; }
+  .arete { flex: 1; min-width: 12px; height: 3px; background: var(--color-neutral-300);
+           margin-top: 32px; align-self: flex-start; }
+  .noeud { width: 64px; height: 64px; border-radius: 999px; border: 2px solid var(--color-neutral-300);
+           background: var(--color-neutral-100); position: relative; cursor: pointer;
+           display: grid; place-items: center; font: inherit; padding: 0; }
+  .noeud.jalon { border-radius: var(--radius-md); }
+  .noeud.vierge { border-style: dashed; border-color: var(--color-neutral-400); }
+  .noeud[aria-expanded="true"] { outline: 2px solid var(--color-accent-2-600); outline-offset: 3px; }
+  .noeud:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .chaleur { font-size: 12px; font-weight: 700; }
+  .badge-options { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 18px;
+                   border-radius: 999px; background: var(--color-accent-2-200);
+                   border: 1.5px solid var(--color-accent-2-500); color: var(--color-accent-2-900);
+                   font-size: 11.5px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+  .marque-refut { position: absolute; bottom: -5px; right: -5px; width: 16px; height: 16px;
+                  transform: rotate(45deg); background: var(--color-neutral-100);
+                  border: 2px solid var(--color-neutral-800); }
+  .nom-noeud { font-size: 13px; font-weight: 600; margin-top: var(--space-2); text-align: center; }
+  .type-noeud { font-size: 11px; color: var(--color-neutral-600); }
+  .fraicheur { font-size: 11px; color: var(--color-neutral-500); }
+  .fraicheur.ancienne { font-style: italic; }
+
+  .legende { border-top: 1px solid var(--color-neutral-200); margin-top: var(--space-4);
+             padding-top: var(--space-3); font-size: 12px; color: var(--color-neutral-700);
+             display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+  .legende .groupe { display: flex; align-items: center; gap: 6px; }
+  /* La puce de la légende de chaleur. Elle s'appelait `.pastille` — comme le
+     verdict du module design, qui est une étiquette de texte. La dernière
+     déclaration gagnait : le verdict se retrouvait en 16×16 et son libellé
+     s'imprimait par-dessus le paragraphe suivant. Deux choses sans rapport ne
+     partagent plus un nom. */
+  .puce-legende { width: 16px; height: 16px; border-radius: 999px;
+                  border: 1px solid var(--color-neutral-300); }
+  .puce-legende.sauge { width: 10px; height: 10px; background: var(--color-accent-2-500);
+                        border-color: var(--color-accent-2-600); }
+  .losange { width: 11px; height: 11px; transform: rotate(45deg);
+             background: var(--color-neutral-100); border: 2px solid var(--color-neutral-800); }
+
+  /* 4 · le dossier */
+  .dossier { margin-top: var(--space-4); border-radius: var(--radius-lg); padding: 28px; }
+  .dossier-tete { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
+  .dossier-tete h2 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+                     font-size: 22px; margin: 0; }
+  .etape { font-size: 12px; color: var(--color-neutral-600); }
+  .deux-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: var(--space-4); }
+  @media (max-width: 800px) { .deux-colonnes { grid-template-columns: 1fr; } }
+  .titre-bloc { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
+                color: var(--color-neutral-600); font-weight: 700; margin: 0 0 var(--space-2); }
+  .ligne-champ { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
+                 padding: 6px 0; border-bottom: 1px solid var(--color-neutral-200); font-size: 14px; }
+  .conf { font-size: 11px; color: var(--color-neutral-500); }
+  .refutee { text-decoration: line-through; color: var(--color-neutral-600); }
+  .tag-etabli { background: var(--color-accent-200); color: var(--color-accent-900); }
+  .tag-hypothese { background: var(--color-neutral-100); color: var(--color-neutral-700);
+                   border: 1.5px dashed var(--color-neutral-400); }
+  .tag-pause { background: var(--color-neutral-200); color: var(--color-neutral-600); }
+  .tag-refutee { background: var(--color-neutral-100); color: var(--color-neutral-800);
+                 border: 2px solid var(--color-neutral-800); }
+
+  .seance { background: var(--color-neutral-200); border-radius: var(--radius-md);
+            padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
+  .seance-tete { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .seance-titre { font-size: 13px; font-weight: 600; }
+  .seance-meta { font-size: 11.5px; color: var(--color-neutral-500); }
+  .lire { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--color-accent-700);
+          background: none; border: none; cursor: pointer; font-family: inherit; }
+  .transcript { max-height: 320px; overflow-y: auto; margin-top: var(--space-2);
+                border-top: 1px solid var(--color-neutral-300); padding-top: var(--space-2); }
+  .tour { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); }
+  .role { flex: 0 0 52px; font-size: 10.5px; text-transform: uppercase; font-weight: 700; padding-top: 2px; }
+  .role.kata { color: var(--color-accent-700); }
+  .role.humain { color: var(--color-accent-2-800); }
+  .dit { font-size: 13px; line-height: 1.5; color: var(--color-neutral-800); white-space: pre-wrap; }
+  .pied-transcript { font-size: 11px; color: var(--color-neutral-500);
+                     border-top: 1px solid var(--color-neutral-300); padding-top: 6px; margin-top: 6px; }
+  .provenance { font-size: 12px; color: var(--color-neutral-500);
+                border-top: 1px solid var(--color-neutral-200); padding-top: var(--space-2);
+                margin-top: var(--space-4); }
+  .vierge-dit { font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; }
+
+  /* 5 · le bas */
+  .bas { display: grid; grid-template-columns: 5fr 7fr; gap: 24px; margin-top: var(--space-6); }
+  @media (max-width: 900px) { .bas { grid-template-columns: 1fr; } }
+
+  /* --- L'étroit ----------------------------------------------------------
+     Un téléphone fait 360 px de large. Le flanc en prenait 224 : les deux
+     tiers de l'écran pour trois onglets. Sous 760 px la coque s'empile donc,
+     le flanc devient une barre horizontale qui défile, et tout ce qui était
+     posé en colonnes se met en ligne.
+
+     Rien n'est masqué au passage : une interface qui cache des choses sur
+     petit écran fait croire qu'elles n'existent pas. */
+  @media (max-width: 760px) {
+    .coque { flex-direction: column; min-height: auto; }
+    .flanc {
+      width: auto; flex-direction: row; align-items: center; gap: 8px;
+      padding: 12px 12px 10px; border-right: none;
+      border-bottom: 1px solid var(--color-neutral-200);
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+    }
+    .flanc-marque { padding: 0 8px 0 4px; font-size: 18px; flex: none; }
+    .onglet { padding: 8px 12px; font-size: 13px; white-space: nowrap; flex: none; }
+    /* La puce « miroir en lecture » et le « à faire » disent la même chose que
+       l'onglet actif : sur un rang qui défile, elles ne font que pousser le
+       reste hors de vue. */
+    .flanc > .tag-outline, .onglet .tag { display: none; }
+    .flanc-espace { display: none; }
+
+    .page { padding: var(--space-4) var(--space-3) var(--space-6); }
+    .profil, .design { padding: 20px 16px 48px; gap: 18px; }
+    .profil-tete { gap: 12px; }
+    .avatar { width: 48px; height: 48px; font-size: 19px; }
+    .profil-nom, .sujet-titre { font-size: 24px; }
+
+    /* La barre du QG : deux sélecteurs et un lien, qui doivent s'empiler
+       proprement au lieu de déborder. */
+    .nav { flex-wrap: wrap; row-gap: 8px; padding: 12px 14px; }
+    .nav-spacer { display: none; }
+    .pill-select { max-width: 100%; flex: 1 1 10rem; }
+
+    .rangee { padding: 12px 14px; gap: 10px; }
+    .rangee-espace { flex-basis: 100%; height: 0; }
+
+    /* Le module 3 : les rangs de contrat et le bandeau de verdict tiennent en
+       largeur en repassant à la ligne, jamais en tronquant une valeur. */
+    .verdict { padding: 16px 14px; }
+    .verdict-rang { row-gap: 10px; }
+    .axes { overflow-x: auto; }
+    .axe { white-space: nowrap; flex: none; }
+    .ligne-f { padding: 10px 12px; row-gap: 8px; }
+    .dialogue { padding: 20px; }
+
+    /* Sur un écran étroit, plus rien ne se partage la largeur : chaque nœud
+       garde sa taille lisible et la rangée défile sous le pouce. */
+    .enveloppe { flex: 0 0 auto; }
+    .transcript { max-height: 60vh; }
+    /* La colonne du rôle prend 52 px sur 360 : le texte du tour n'a plus de
+       place pour respirer. On la réduit, et le texte peut passer dessous. */
+    .role { flex: 0 0 40px; }
+    .dit { min-width: 0; }
+  }
+
+  /* Les très grands écrans. Centrer la colonne a supprimé le vide à droite ;
+     il restait une colonne de bureau posée au milieu d'un mur. Ce qui gagne à
+     s'élargir, ce sont les surfaces **tabulaires** — la chaîne du QG et ses
+     colonnes, les rangs du design — pas la prose.
+
+     Les paragraphes gardent donc leur mesure : `p` et `dd` restent bornés à
+     62 et 60 caractères, ici comme ailleurs. Une ligne de texte de 200
+     caractères n'est pas plus lisible parce que l'écran le permet — l'œil
+     perd le début de la ligne suivante. Découvrir, qui est de la prose
+     presque pure, ne gagne qu'un peu d'air autour de ses cartes. */
+  @media (min-width: 1800px) {
+    .page, .design { max-width: 1520px; }
+    .profil { max-width: 1240px; }
+    .decouvrir { max-width: 880px; }
+  }
+
+  /* Rien ne doit pousser la page en largeur : un défilement horizontal du
+     document entier rend tout inatteignable au pouce. */
+  .rang, .axes, .flanc, pre.hds, .transcript { max-width: 100%; }
+  .mono, .diff-val, .anomalie-ou { overflow-wrap: anywhere; }
+  .bas h2 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
+            font-size: 20px; margin: 0 0 var(--space-1); }
+  .sous-ligne { font-size: 12px; color: var(--color-neutral-600); margin: 0 0 var(--space-3); }
+  .option { display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md);
+            padding: var(--space-2) var(--space-3); margin-bottom: 6px; }
+  .option.ouverte { background: var(--color-accent-2-100); }
+  .option.engagee, .option.ecartee { background: var(--color-neutral-100); }
+  .point { width: 10px; height: 10px; border-radius: 999px; flex: 0 0 10px; }
+  .point.ouverte { background: var(--color-accent-2-500); }
+  .point.engagee { background: var(--color-accent-500); }
+  .point.ecartee { background: var(--color-neutral-400); }
+  .option-corps { flex: 1; min-width: 0; }
+  .option-libelle { font-size: 13.5px; }
+  .option.ecartee .option-libelle { text-decoration: line-through; color: var(--color-neutral-500); }
+  .option-meta { font-size: 11.5px; color: var(--color-neutral-500); }
+
+  .decision { display: flex; gap: var(--space-3); }
+  .chrono { flex: 0 0 12px; display: flex; flex-direction: column; align-items: center; }
+  .chrono .point { width: 12px; height: 12px; background: var(--color-accent-500); }
+  .chrono .fil-vertical { width: 2px; flex: 1; background: var(--color-neutral-200); min-height: 18px; }
+  .decision-corps { padding-bottom: var(--space-4); }
+  .decision-libelle { font-size: 14px; font-weight: 600; }
+  .decision-meta { font-size: 11.5px; color: var(--color-neutral-500); margin-bottom: 6px; }
+  .puces { display: flex; flex-wrap: wrap; gap: 6px; }
+  .puce-fermee { background: var(--color-neutral-200); color: var(--color-neutral-600);
+                 text-decoration: line-through; }
+  .rien { font-size: 13.5px; color: var(--color-neutral-600); max-width: 52ch; }
+</style>
+
+<div class="coque">
+<aside class="flanc">
+  <div class="flanc-marque">Kokaji</div>
+  <div class="flanc-harness" id="flanc-harness" hidden>
+    <label for="harness-courant">Harness</label>
+    <select id="harness-courant"></select>
+  </div>
+  <button class="onglet" id="btn-creer-harness" hidden
+          style="font-size:13px;color:var(--color-neutral-600)">＋ Créer un harness</button>
+  <button class="onglet" id="btn-admin" hidden
+          style="font-size:13px;color:var(--color-neutral-600)">⚙ Administration</button>
+  <button class="onglet" id="onglet-decouvrir" aria-current="false">
+    <span class="point-onglet"></span>Découvrir</button>
+  <button class="onglet" id="onglet-profil" aria-current="false">
+    <span class="point-onglet"></span>Profil</button>
+  <button class="onglet" id="onglet-qg" aria-current="page">
+    <span class="point-onglet"></span>QG — observer</button>
+  <button class="onglet" id="onglet-design" aria-current="false">
+    <span class="point-onglet"></span>Design du harness
+    <span class="tag tag-outline" style="font-size:10px">à faire</span></button>
+  <div class="flanc-espace"></div>
+  <span class="tag tag-outline" style="font-size:11px">miroir en lecture</span>
+</aside>
+
+<div class="contenu">
+
+<section id="module-decouvrir" hidden class="decouvrir">
+  <div>
+    <h1>La forge</h1>
+    <p class="sous">Ce qu'on peut faire ici, dans quel ordre, et ce que les mots veulent dire.</p>
+  </div>
+
+  <div class="card elev-sm" style="padding:24px">
+    <p><strong>Kokaji sert des conversations qui suivent une méthode.</strong> Vous décrivez
+      la méthode une fois ; le chat la tient à chaque fois, avec la même exigence et les
+      mêmes interdits. Ce qui s'y passe est ensuite observable — c'est la raison d'être de
+      la forge : comprendre ce qui marche vraiment, plutôt que de le supposer.</p>
+    <p class="rien">Kokaji ne connaît aucun métier. Tout ce qui est propre au vôtre vit
+      dans votre harness, et nulle part ailleurs.</p>
+  </div>
+
+  <div>
+    <h2>Quatre mots, et rien d'autre à retenir</h2>
+    <dl style="margin:0">
+      <dt>Un harness</dt>
+      <dd>L'ensemble de votre méthode : les étapes, leur ordre, ce que chacune doit
+        établir. Vous en possédez au moins un, vous pouvez en avoir plusieurs — un par
+        démarche que vous outillez.</dd>
+      <dt>Un kata</dt>
+      <dd>Une étape de cette méthode. Dans le chat, c'est ce que vous choisissez avant de
+        commencer à parler : « Clarifier l'idée », « Cadrer le projet ». Chaque kata sait
+        ce qu'il doit faire établir avant de passer la main au suivant.</dd>
+      <dt>Un sujet</dt>
+      <dd>Ce sur quoi vous travaillez — un dossier, un client, une décision. Le même sujet
+        traverse plusieurs étapes, et c'est ce qui permet de suivre son avancement.</dd>
+      <dt>Un cas</dt>
+      <dd>Une conversation, gardée avec ce qu'elle a produit. Vous n'avez rien à faire
+        pour en créer : toute séance en devient un. C'est la matière qui permet de
+        constater, plus tard, si la méthode tient.</dd>
+    </dl>
+  </div>
+
+  <div>
+    <h2>Le cycle</h2>
+    <div style="display:flex;flex-direction:column;gap:16px;margin-top:6px">
+      <div class="pas-du-cycle"><span class="pas-du-cycle-rang">1</span><div>
+        <strong>Choisir un harness.</strong>
+        <p>Le sélecteur, en haut à gauche, dit lequel vous pratiquez. Il commande tout le
+          reste : ce que le chat vous propose, ce que le QG vous montre. S'il n'y en a
+          qu'un, il n'y a rien à choisir et le sélecteur ne s'affiche pas.</p></div></div>
+      <div class="pas-du-cycle"><span class="pas-du-cycle-rang">2</span><div>
+        <strong>L'adapter, si besoin.</strong>
+        <p>L'onglet <em>Design du harness</em> est le seul endroit où l'on écrit. Vous y
+          modifiez les étapes, puis <em>Éprouver</em> applique vos changements à une copie
+          et vérifie qu'ils tiennent — rien n'est écrit tant que vous n'avez pas scellé.
+          Un harness neuf est une copie d'un harness qui marche : on part de quelque chose
+          qui tient, on l'adapte.</p></div></div>
+      <div class="pas-du-cycle"><span class="pas-du-cycle-rang">3</span><div>
+        <strong>Sceller.</strong>
+        <p>Sceller arrête une version sous votre nom, avec la raison du changement. C'est
+          ce geste qui prépare les étapes pour le chat. Sans changement à sceller, vous
+          pouvez arrêter la version en cours telle quelle — cela la vérifie et la
+          date.</p></div></div>
+      <div class="pas-du-cycle"><span class="pas-du-cycle-rang">4</span><div>
+        <strong>Pratiquer.</strong>
+        <p>Le lien <em>pratiquer</em> mène au chat. Vous y choisissez une étape, vous
+          nommez votre sujet, et vous conversez. Le chat ne vous propose que les étapes du
+          harness que vous pratiquez : rien d'autre n'est atteignable.</p></div></div>
+      <div class="pas-du-cycle"><span class="pas-du-cycle-rang">5</span><div>
+        <strong>Observer.</strong>
+        <p>L'onglet <em>QG</em> montre où en est chaque sujet, ce que chaque étape a
+          réellement établi, et ce qui reste en suspens. C'est là qu'on voit si la méthode
+          tient — non pas en la relisant, mais en regardant ce qu'elle a produit.</p></div></div>
+    </div>
+  </div>
+
+  <div class="card elev-sm" style="padding:24px">
+    <h2 style="margin-top:0">Ce que Kokaji ne fait pas</h2>
+    <p>Il ne décide à votre place ni de votre méthode, ni de vos sujets. Il ne relit pas
+      vos conversations pour vous dire quoi penser. Il tient une forme, garde ce qui s'est
+      passé, et vous rend de quoi juger.</p>
+    <p class="rien">Vos conversations vous appartiennent : personne d'autre ne les lit,
+      pas même le propriétaire du harness que vous pratiquez, tant que vous ne les avez
+      pas versées.</p>
+  </div>
+</section>
+
+<section id="module-profil" hidden class="profil">
+  <div class="profil-tete">
+    <div class="avatar" id="profil-initiale">·</div>
+    <div>
+      <h1 class="profil-nom" id="profil-nom">…</h1>
+      <p class="profil-meta" id="profil-meta"></p>
+    </div>
+  </div>
+
+  <div>
+    <h2>Activités accessibles</h2>
+    <p class="profil-sous">Les sujets que tu peux observer ou pratiquer, et par quel harness.</p>
+    <div id="profil-activites"></div>
+  </div>
+
+  <div>
+    <h2>Mes harness</h2>
+    <p class="profil-sous">Ce que tu possèdes ou co-forges.</p>
+    <div id="profil-harness"></div>
+  </div>
+</section>
+
+<section id="module-design" hidden class="design">
+  <div class="design-tete">
+    <div style="flex:1">
+      <h1 class="profil-nom">Design du harness</h1>
+      <p class="design-sous" id="design-sous"></p>
+    </div>
+    <button class="btn-fantome" id="btn-membres">qui forge avec moi</button>
+  </div>
+
+  <div class="card elev-md verdict" id="verdict"></div>
+  <div class="card elev-sm" id="membres" hidden style="padding:20px 24px"></div>
+
+  <div class="axes">
+    <button class="axe" id="axe-partition" aria-current="page">1 · Partitionnement</button>
+    <button class="axe" id="axe-contrats">2 · Contrats f♯<span class="badge-encre"
+      id="badge-contrats" hidden></span></button>
+    <button class="axe" id="axe-trempe">3 · Trempe</button>
+  </div>
+
+  <div class="card elev-sm" id="axe-corps" style="padding:24px"></div>
+
+  <div class="card elev-sm" id="carte-depense" hidden style="padding:24px">
+    <h2 style="font-family:var(--font-heading);font-size:17px;margin:0">Ce que cette forme coûte</h2>
+    <p class="rien" style="margin:6px 0 0">Le prix d'un bloc d'état est ce qui compare :
+      un total dit la longueur des conversations, pas l'efficacité de la forme. Et un kata
+      qui coûte peu sans rien observer n'est pas économe — il est muet, d'où le carré
+      posé à côté de la dépense.</p>
+    <div class="depense" id="depense-tout"></div>
+    <p class="verdict-detail" id="depense-double" hidden></p>
+    <div class="depense-kata" id="depense-kata"></div>
+  </div>
+
+  <div class="card elev-sm" id="proposition" style="padding:24px"></div>
+</section>
+
+<div class="voile" id="voile" hidden>
+  <div class="dialogue">
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);
+               font-size:24px;margin:0 0 16px">Sceller cette définition</h2>
+    <div class="consequence">
+      <strong>Sceller périme le corpus.</strong> Les ha existants documentent une forme qui
+      n'existe plus. Après le scellement : <code>kokaji forge</code>, puis
+      <code>kokaji regression</code> pour mesurer ce que ce changement fait à la pratique.
+    </div>
+    <label class="mot" for="scel-auteur">Auteur — journalisé avec le scellement</label>
+    <input class="champ-large" id="scel-auteur" style="margin:6px 0 14px" autocomplete="off">
+    <label class="mot" for="scel-motif">Motif — facultatif</label>
+    <input class="champ-large" id="scel-motif" style="margin:6px 0 14px" autocomplete="off">
+    <p class="diff-val" id="scel-versions"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn-fantome" id="scel-annuler">Annuler</button>
+      <button class="btn-plein" id="scel-valider" disabled>Sceller et signer</button>
+    </div>
+  </div>
+</div>
+
+<div class="voile" id="voile-naissance" hidden>
+  <div class="dialogue">
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);
+               font-size:24px;margin:0 0 16px">Créer un harness</h2>
+    <div class="consequence">
+      <strong>Copier, ou partir de rien.</strong> Copier donne une forme qui marche, qu'on
+      adapte ; partir de rien donne une seule étape à remplir. Dans les deux cas la
+      définition suit, <strong>la pratique jamais</strong> : le corpus du nouveau est vide,
+      et rien de ce qui a été observé ailleurs ne le rejoint.
+    </div>
+    <label class="mot" for="ne-source">Copier</label>
+    <select class="champ-large" id="ne-source" style="margin:6px 0 14px"></select>
+    <div id="ne-adoption" hidden>
+      <label class="mot" for="ne-provenance">D'où viennent ces textes</label>
+      <input class="champ-large" id="ne-provenance" style="margin:6px 0 14px"
+             autocomplete="off" placeholder="faits main, avant la forge">
+      <div id="ne-prompts"></div>
+      <button class="btn-fantome" id="ne-un-texte" style="margin:0 0 14px">＋ un autre texte</button>
+      <p class="rien" style="margin:0 0 14px">Chaque texte devient une étape, servie telle
+        quelle — rien n'est réécrit, et l'empreinte des textes est gardée au manifest.</p>
+    </div>
+    <label class="mot" for="ne-id">Identifiant — définitif, et jamais montré</label>
+    <input class="champ-large" id="ne-id" style="margin:6px 0 4px" autocomplete="off"
+           placeholder="devis">
+    <p class="rien" style="margin:0 0 14px">Il est écrit dans chaque conversation gardée :
+      il ne pourra plus changer. Le nom, lui, reste libre.</p>
+    <label class="mot" for="ne-nom">Nom — celui qu'on verra</label>
+    <input class="champ-large" id="ne-nom" style="margin:6px 0 14px" autocomplete="off"
+           placeholder="Réponses à devis">
+    <p class="diff-val" id="ne-dit"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn-fantome" id="ne-annuler">Annuler</button>
+      <button class="btn-plein" id="ne-valider" disabled>Créer</button>
+    </div>
+  </div>
+</div>
+
+<section id="module-qg">
+<nav class="nav">
+  <span class="nav-brand">QG</span>
+  <span class="tag tag-outline nav-tag">miroir en lecture — l'état vient de la pratique</span>
+  <span class="nav-spacer"></span>
+  <label class="text-muted" for="corpus" style="font-size:12px">corpus</label>
+  <select id="corpus" class="pill-select"></select>
+  <label class="text-muted" for="sujets" style="font-size:12px">sujet</label>
+  <select id="sujets" class="pill-select"></select>
+  <a id="vers-chat" class="tag tag-accent-2" hidden style="text-decoration:none"
+     target="_blank" rel="noopener">pratiquer ↗</a>
+</nav>
+
+<div class="page">
+  <div id="panne" hidden class="card elev-md" style="padding:28px">
+    <h1 class="sujet-titre" style="margin-top:0">Le middleware ne répond pas</h1>
+    <p class="sujet-ligne">Rien n'est affiché plutôt que des données périmées présentées
+      comme vivantes. Recharge quand le service est revenu.</p>
+  </div>
+
+  <div id="vue">
+    <h1 class="sujet-titre" id="titre">…</h1>
+    <p class="sujet-meta" id="meta"></p>
+    <p class="sujet-ligne" id="ligne"></p>
+    <p class="avis" id="relu" hidden>État <strong>ré-abstrait</strong> depuis le transcript,
+      non émis en session. Ce que montre cette vue est une lecture, pas une observation.</p>
+    <p class="avis" id="vivante" hidden>Session <strong>en cours</strong> — la vue suit une
+      conversation qui n'est pas close.</p>
+
+    <section class="fil">
+      <div class="rang" id="rang"></div>
+      <div class="legende" id="legende"></div>
+    </section>
+
+    <section class="card elev-md dossier" id="dossier" hidden></section>
+
+    <div class="bas">
+      <section class="card elev-sm" style="padding:24px">
+        <h2>Possibles vivants</h2>
+        <p class="sous-ligne" id="possibles-sous"></p>
+        <div id="possibles"></div>
+      </section>
+      <section class="card elev-sm" style="padding:24px">
+        <h2>Décisions</h2>
+        <p class="sous-ligne">Chaque décision porte ce qu'elle referme et ce qu'elle ouvre.</p>
+        <div id="decisions"></div>
+      </section>
+    </div>
+  </div>
+  </div>
+</section>
+
+</div><!-- .contenu -->
+</div><!-- .coque -->
+
+<script>
+const $ = (id) => document.getElementById(id);
+const VIEILLISSEMENT = 30; // jours — un âge est une donnée, pas une alarme
+let vue = null, noeudChoisi = null, seanceOuverte = null, corpusChoisi = null;
+// L'onglet ne vit que dans la page : rien à écrire, rien à retenir d'une visite
+// à l'autre. Le QG s'ouvre par défaut — c'est le module qui existe vraiment.
+let ongletChoisi = "qg";
+// Où vit le chat. Le service le dit ; la page ne le devine pas — une adresse
+// écrite en dur ici deviendrait fausse au premier déménagement.
+let CHAT = "";
+
+const e = (t) => String(t ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const jeton = (nom) => `var(--color-${nom})`;
+
+// La rampe de chaleur — cinq marches, jamais un binaire.
+function marche(noeud) {
+  if (!noeud.pratique || noeud.chaleur === null)
+    return { fond: "neutral-100", bord: "neutral-400", encre: "neutral-500", tirets: true, texte: "—" };
+  const h = noeud.chaleur, pct = Math.round(h * 100) + "%";
+  if (h === 0)  return { fond: "neutral-100", bord: "neutral-300", encre: "neutral-500", texte: pct };
+  if (h <= .25) return { fond: "accent-100",  bord: "accent-300",  encre: "accent-800",  texte: pct };
+  if (h <= .5)  return { fond: "accent-300",  bord: "accent-400",  encre: "accent-900",  texte: pct };
+  if (h <= .75) return { fond: "accent-500",  bord: "accent-600",  encre: "neutral-100", texte: pct };
+  return          { fond: "accent-700",  bord: "accent-800",  encre: "accent-100",  texte: pct };
+}
+
+function jours(iso) {
+  if (!iso) return null;
+  const t = Date.parse(String(iso).replace(" ", "T"));
+  return Number.isNaN(t) ? null : (Date.now() - t) / 86400000;
+}
+function fraicheur(iso) {
+  const j = jours(iso);
+  if (j === null) return { texte: "jamais pratiqué", ancienne: false };
+  if (j < 1) return { texte: "aujourd'hui", ancienne: false };
+  return { texte: `il y a ${Math.round(j)} j`, ancienne: j > VIEILLISSEMENT };
+}
+
+async function lire(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function envoyer(methode, url, corps) {
+  const r = await fetch(url, {
+    method: methode,
+    headers: corps ? { "content-type": "application/json" } : {},
+    body: corps ? JSON.stringify(corps) : undefined,
+  });
+  const dit = await r.json().catch(() => ({}));
+  // Le motif du service, pas un texte brut : « aucun compte pour cet email »
+  // se corrige, « 404 » se subit.
+  if (!r.ok) throw new Error(dit.detail || "refusé");
+  return dit;
+}
+
+function panne() { $("panne").hidden = false; $("vue").hidden = true; }
+
+async function chargerSujets() {
+  const liste = await lire(`/qg/sujets?corpus=${encodeURIComponent(corpusChoisi)}`);
+  const select = $("sujets");
+  select.innerHTML = "";
+  liste.forEach(s => { const o = document.createElement("option"); o.value = s; o.textContent = s; select.appendChild(o); });
+  select.disabled = !liste.length;
+  if (!liste.length) return vide();
+  charger(liste[0]);
+}
+
+function vide() {
+  vue = null; noeudChoisi = null;
+  $("titre").textContent = "Aucun sujet observé";
+  $("meta").textContent = `corpus « ${corpusChoisi} »`;
+  $("ligne").textContent = "Un sujet n'apparaît que si une session a émis un bloc d'état — " +
+    "ce que seules les cibles instrumentées font. Rien n'est inventé en attendant.";
+  ["relu", "vivante", "dossier"].forEach(i => $(i).hidden = true);
+  $("rang").innerHTML = ""; $("legende").innerHTML = "";
+  $("possibles").innerHTML = ""; $("possibles-sous").textContent = "";
+  $("decisions").innerHTML = "";
+}
+
+async function charger(sujet) {
+  const p = new URLSearchParams({ corpus: corpusChoisi });
+  if (sujet) p.set("sujet", sujet);
+  try { vue = await lire(`/qg/donnees?${p}`); } catch { return vide(); }
+  noeudChoisi = null; seanceOuverte = null;
+  rendre();
+}
+
+function rendre() {
+  $("titre").textContent = vue.sujet;
+  $("meta").textContent =
+    `harness « ${vue.harness} » · corpus « ${vue.corpus} » · chaîne de ${vue.noeuds.length}`;
+  $("ligne").textContent = vue.observe_le
+    ? `Dernier état observé le ${String(vue.observe_le).slice(0, 19).replace("T", " à ")}.`
+    : "Aucun état observé pour l'instant.";
+  $("relu").hidden = !vue.reabstrait;
+  $("vivante").hidden = !vue.en_cours;
+  rendreFil(); rendreDossier(); rendrePossibles(); rendreDecisions();
+}
+
+function rendreFil() {
+  const rang = $("rang");
+  rang.innerHTML = "";
+  vue.noeuds.forEach((n, i) => {
+    const col = document.createElement("div");
+    col.className = "colonne";
+    const m = marche(n);
+    const f = fraicheur(n.dernier_etat);
+
+    col.innerHTML = `
+      <button class="noeud ${n.type === "jalon" ? "jalon" : ""} ${m.tirets ? "vierge" : ""}"
+              aria-expanded="${noeudChoisi === n.id}"
+              style="background:${jeton(m.fond)};border-color:${jeton(m.bord)}">
+        <span class="chaleur" style="color:${jeton(m.encre)}">${m.texte}</span>
+        ${n.options_vivantes ? `<span class="badge-options"
+           title="${n.options_vivantes} possible(s) vivant(s) né(s) ici">${n.options_vivantes}</span>` : ""}
+        ${n.refutees ? `<span class="marque-refut"
+           title="${n.refutees} hypothèse(s) infirmée(s) — une trempe ratée est une information"></span>` : ""}
+      </button>
+      <div class="nom-noeud">${e(n.nom)}</div>
+      <div class="type-noeud">${e(n.type)}</div>
+      <div class="fraicheur ${f.ancienne ? "ancienne" : ""}">${e(f.texte)}</div>`;
+    col.querySelector("button").onclick = () => {
+      noeudChoisi = noeudChoisi === n.id ? null : n.id;
+      seanceOuverte = null; rendreFil(); rendreDossier();
+    };
+    // Chaque nœud vit dans une enveloppe élastique : c'est elle qui se
+    // comprime, la colonne gardant sa largeur lisible. Sans ça, une chaîne
+    // longue débordait de sa carte au lieu d'y défiler.
+    const env = document.createElement("div");
+    env.className = "enveloppe";
+    env.appendChild(col);
+    if (i < vue.noeuds.length - 1) {
+      const a = document.createElement("div"); a.className = "arete"; env.appendChild(a);
+    }
+    rang.appendChild(env);
+  });
+
+  const marches = [["neutral-100", "neutral-300"], ["accent-100", "accent-300"],
+                   ["accent-300", "accent-400"], ["accent-500", "accent-600"],
+                   ["accent-700", "accent-800"]];
+  $("legende").innerHTML = `
+    <span class="groupe">
+      ${marches.map(([f, b]) => `<span class="puce-legende"
+         style="background:${jeton(f)};border-color:${jeton(b)}"></span>`).join("")}
+      chaleur = (champs établis + hypothèses validées) ÷ (champs connus + hypothèses hors pause)
+    </span>
+    <span class="groupe"><span class="puce-legende sauge"></span> possibles vivants nés à ce nœud</span>
+    <span class="groupe"><span class="losange"></span> hypothèse infirmée — écartée, ne refroidit jamais le nœud</span>`;
+}
+
+const TAG_CHAMP = { fait_etabli: ["tag-etabli", "établi"], hypothese: ["tag-hypothese", "hypothèse"],
+                    en_pause: ["tag-pause", "en pause"] };
+const TAG_HYP = { validee: ["tag-etabli", "validée"], en_cours: ["tag-hypothese", "en cours"],
+                  infirmee: ["tag-refutee", "infirmée ◇"], en_pause: ["tag-pause", "en pause"] };
+
+function rendreDossier() {
+  const d = $("dossier");
+  const n = vue.noeuds.find(x => x.id === noeudChoisi);
+  if (!n) { d.hidden = true; d.innerHTML = ""; return; }
+  d.hidden = false;
+
+  const tete = `
+    <div class="dossier-tete"><h2>${e(n.nom)}</h2>
+      <span class="tag tag-neutral">${e(n.type)}</span>
+      <span class="etape">${e(n.etape || "")}</span>
+      <button class="btn btn-ghost" style="margin-left:auto" id="fermer">fermer</button></div>`;
+
+  if (!n.pratique) {
+    d.innerHTML = tete + `<p class="vierge-dit" style="margin-top:var(--space-4)">Aucune pratique
+      n'a touché ce nœud. Son état apparaîtra ici, champ par champ, à mesure que des sessions
+      l'émettront — rien n'est inventé en attendant.</p>`;
+    $("fermer").onclick = () => { noeudChoisi = null; rendreFil(); rendreDossier(); };
+    return;
+  }
+
+  const champs = n.attendus.length ? n.attendus.map(c => {
+    const s = n.champs[c];
+    const [cls, mot] = TAG_CHAMP[s] || ["tag-neutral", s || "—"];
+    return `<div class="ligne-champ"><span>${e(c)}</span><span class="tag ${cls}">${e(mot)}</span></div>`;
+  }).join("") : `<p class="rien">Ce nœud ne produit aucun champ.</p>`;
+
+  const hypotheses = n.hypotheses.length ? n.hypotheses.map(h => {
+    const [cls, mot] = TAG_HYP[h.statut] || ["tag-neutral", h.statut || "—"];
+    return `<div class="ligne-champ">
+      <span class="${h.statut === "infirmee" ? "refutee" : ""}">${e(h.libelle)}</span>
+      <span style="display:flex;gap:8px;align-items:center;white-space:nowrap">
+        <span class="tag ${cls}">${e(mot)}</span>
+        <span class="conf">conf. ${e(h.confiance || "—")}</span></span></div>`;
+  }).join("") : `<p class="rien">Aucune hypothèse déclarée.</p>`;
+
+  const seances = n.sessions.length ? n.sessions.map(s => {
+    const ouverte = seanceOuverte === s.id;
+    const tours = ouverte ? `<div class="transcript">
+      ${s.tours.map(t => `<div class="tour">
+        <span class="role ${t.role === "kata" ? "kata" : "humain"}">${e(t.role)}</span>
+        <span class="dit">${e(t.texte)}</span></div>`).join("")}
+      <div class="pied-transcript">Blocs d'état émis : ${s.blocs}${
+        s.reabstrait ? " — ré-abstraits, non émis en session" : ""}</div></div>` : "";
+    return `<div class="seance"><div class="seance-tete">
+        <span class="seance-titre">${e(s.titre)}</span>
+        <span class="seance-meta">${e(String(s.date || "").slice(0, 10))} · ${
+          s.nombre_tours ?? "?"} tours · kata ${e(s.version_kata)} · ${e(s.moteur)}</span>
+        ${s.fil && CHAT ? `<a class="lire" href="${e(CHAT)}/c/${e(s.fil)}" target="_blank" rel="noopener">reprendre la conversation ↗</a>` : ""}
+          <button class="lire" data-seance="${e(s.id)}">${
+          ouverte ? "replier" : "lire le transcript"}</button>
+      </div>${tours}</div>`;
+  }).join("") : `<p class="rien">Aucune session enregistrée pour ce nœud.</p>`;
+
+  d.innerHTML = tete + `
+    <div class="deux-colonnes">
+      <div><p class="titre-bloc">Champs du dossier</p>${champs}</div>
+      <div><p class="titre-bloc">Hypothèses</p>${hypotheses}</div>
+    </div>
+    <div style="margin-top:var(--space-6)"><p class="titre-bloc">Journal de pratique</p>${seances}</div>
+    <p class="provenance">${e(n.provenance.harness || "")} · ${e(n.provenance.kata || "")} ·
+      version ${e(n.provenance.version || "—")} · dernier bloc d'état
+      ${e(String(n.dernier_etat || "—").slice(0, 19).replace("T", " à "))}</p>`;
+
+  $("fermer").onclick = () => { noeudChoisi = null; rendreFil(); rendreDossier(); };
+  d.querySelectorAll(".lire").forEach(b => b.onclick = () => {
+    seanceOuverte = seanceOuverte === b.dataset.seance ? null : b.dataset.seance;
+    rendreDossier();
+  });
+}
+
+const ORDRE = { ouverte: 0, engagee: 1, ecartee: 2 };
+const MOT = { ouverte: "ouverte", engagee: "engagée", ecartee: "écartée" };
+
+function rendrePossibles() {
+  const toutes = vue.noeuds.flatMap(n => n.options);
+  const ouvertes = toutes.filter(o => o.statut === "ouverte").length;
+  $("possibles-sous").textContent =
+    `${ouvertes} ouverte(s) · ${toutes.length - ouvertes} tranchée(s) — un compte, jamais une note.`;
+
+  if (!toutes.length) {
+    $("possibles").innerHTML = `<p class="rien">Aucune option relevée pour l'instant.
+      Elles naissent dans la pratique ; la première session les sèmera.</p>`;
+    return;
+  }
+  toutes.sort((a, b) => (ORDRE[a.statut] ?? 3) - (ORDRE[b.statut] ?? 3));
+  $("possibles").innerHTML = toutes.map(o => {
+    const age = o.age_jours === null ? "" : ` · née il y a ${Math.round(o.age_jours)} j`;
+    const tag = o.statut === "ouverte" ? "tag-accent-2"
+              : o.statut === "engagee" ? "tag-accent" : "tag-neutral";
+    return `<div class="option ${e(o.statut)}">
+      <span class="point ${e(o.statut)}"></span>
+      <span class="option-corps">
+        <span class="option-libelle">${e(o.libelle)}</span>
+        <div class="option-meta">à « ${e(o.noeud)} »${age}</div>
+      </span>
+      <span class="tag ${tag}">${e(MOT[o.statut] || o.statut)}</span></div>`;
+  }).join("");
+}
+
+function rendreDecisions() {
+  if (!vue.decisions.length) {
+    $("decisions").innerHTML =
+      `<p class="rien">Aucune décision tracée — tous les possibles sont encore ouverts.</p>`;
+    return;
+  }
+  const liste = [...vue.decisions].reverse();
+  $("decisions").innerHTML = liste.map((d, i) => `
+    <div class="decision">
+      <div class="chrono"><span class="point"></span>${
+        i < liste.length - 1 ? '<span class="fil-vertical"></span>' : ""}</div>
+      <div class="decision-corps">
+        <div class="decision-libelle">${e(d.libelle)}</div>
+        <div class="decision-meta">${e(String(d.horodatage || "").slice(0, 10))} · à « ${e(d.noeud)} »</div>
+        <div class="puces">
+          ${d.ferme.map(l => `<span class="tag puce-fermee">${e(l)}</span>`).join("")}
+          ${d.ouvre.map(l => `<span class="tag tag-accent-2">+ ${e(l)}</span>`).join("")}
+        </div>
+      </div>
+    </div>`).join("");
+}
+
+const ONGLETS = { decouvrir: "module-decouvrir", profil: "module-profil",
+                  qg: "module-qg", design: "module-design" };
+
+function montrerOnglet(nom) {
+  ongletChoisi = nom;
+  for (const [cle, id] of Object.entries(ONGLETS)) {
+    $(id).hidden = cle !== nom;
+    $("onglet-" + cle).setAttribute("aria-current", cle === nom ? "page" : "false");
+  }
+  if (nom === "profil") rendreProfil();
+  // Le module 3 lit sa définition à la première ouverture. Sans cette ligne il
+  // affichait sa coque et trois cartes vides : la page était là, la donnée non.
+  if (nom === "design" && !def) { chargerDesign(); chargerDepense(); }
+}
+
+function jours(depuis) {
+  if (!depuis) return null;
+  const d = Date.parse(depuis);
+  return Number.isNaN(d) ? null : Math.floor((Date.now() - d) / 86400000);
+}
+
+function derniereFois(depuis) {
+  const n = jours(depuis);
+  if (n === null) return "jamais pratiqu\u00e9";
+  return n === 0 ? "pratiqu\u00e9 aujourd'hui" : `pratiqu\u00e9 il y a ${n}\u00a0j`;
+}
+
+// Le module Profil (design, module 1). Sans magasin de comptes, personne n'est
+// nomm\u00e9 : on le dit, plut\u00f4t que d'inventer une identit\u00e9 pour remplir le gabarit.
+async function rendreProfil() {
+  let profil;
+  try { profil = await lire(`/qg/profil?corpus=${encodeURIComponent(corpusChoisi)}`); }
+  catch { panne(); return; }
+
+  const u = profil.utilisateur;
+  $("profil-initiale").textContent = u ? u.initiale : "\u00b7";
+  $("profil-nom").textContent = u ? u.nom : "Praticien local";
+  $("profil-meta").textContent = u
+    ? `${profil.sessions} session(s) \u00b7 ${profil.activites.length} sujet(s)`
+    : `aucun compte configur\u00e9 \u2014 installation mono-praticien \u00b7 `
+      + `${profil.sessions} session(s) \u00b7 ${profil.activites.length} sujet(s)`;
+
+  const roles = {
+    praticien: ["accent-2-200", "accent-2-900"],
+    observateur: ["neutral-200", "neutral-700"]
+  };
+  $("profil-activites").innerHTML = profil.activites.length
+    ? profil.activites.map((a, i) => {
+        const [fond, encre] = roles[a.role] || roles.observateur;
+        return `<div class="rangee">
+          <div>
+            <div class="rangee-nom">${e(a.sujet)}</div>
+            <div class="rangee-meta">harness \u00ab ${e(a.harness)} \u00bb v${e(a.version)} \u00b7
+              ${a.sessions} session(s) \u00b7 ${e(derniereFois(a.derniere))}</div>
+          </div>
+          <div class="rangee-espace"></div>
+          <span class="tag" style="background:${jeton(fond)};color:${jeton(encre)}">${e(a.role)}</span>
+          <button class="btn-fantome" data-sujet="${i}">ouvrir au QG</button>
+        </div>`;
+      }).join("")
+    : `<p class="rien">Aucun sujet observable dans ce corpus. Un sujet na\u00eet en pratique :
+       il appara\u00eetra ici d\u00e8s qu'une session en aura nomm\u00e9 un.</p>`;
+
+  $("profil-activites").querySelectorAll("button[data-sujet]").forEach(b => {
+    b.onclick = () => {
+      const a = profil.activites[Number(b.dataset.sujet)];
+      noeudChoisi = null; seanceOuverte = null;
+      montrerOnglet("qg");
+      $("sujets").value = a.sujet;
+      charger(a.sujet);
+    };
+  });
+
+  $("profil-harness").innerHTML = profil.harness.map((h, i) => `<div class="rangee">
+      <div>
+        <div class="rangee-nom">${e(h.nom)} <span class="rangee-version">v${e(h.version)}</span></div>
+        <div class="rangee-meta">${h.noeuds} n\u0153uds \u00b7 ${e(h.composition)} \u00b7
+          ${h.sujets} sujet(s) en cours</div>
+      </div>
+      <div class="rangee-espace"></div>
+      <span class="tag tag-accent">${e(h.role)}</span>
+      <button class="btn-fantome" data-design="${i}">ouvrir le design</button>
+    </div>`).join("");
+
+  // Le pendant de « ouvrir au QG » : depuis une activité on va voir un sujet
+  // qui court, depuis un harness on va voir la forme qui le porte.
+  $("profil-harness").querySelectorAll("button[data-design]").forEach(b => {
+    b.onclick = () => montrerOnglet("design");
+  });
+}
+
+
+// ---------------------------------------------------------------------------
+// Module 3 — le design du harness. La seule surface d'écriture du produit.
+//
+// Un état de page, et rien d'autre : `brouillon` vit ici, `epreuve` retombe à
+// null à la moindre retouche. Rien n'est persisté entre deux gestes — une page
+// non scellée est simplement perdue, et c'est voulu : un brouillon invalide
+// gardé « pour plus tard » serait une définition à laquelle plus personne ne
+// peut se fier.
+// ---------------------------------------------------------------------------
+let def = null;            // la définition scellée, telle que le middleware la rend
+let brouillon = null;      // ce que la page propose
+let epreuve = null;        // le verdict rendu par le serveur, ou null si non éprouvé
+let axe = "partition", kataChoisi = null, membresOuverts = false, montreYaml = false;
+
+const RANG = (s) => (def ? def.statuts_champ.indexOf(s) : -1);
+const couvre = (garanti, exige) => {
+  if (!exige) return true;                       // présence seule
+  const g = RANG(garanti), e = RANG(exige);
+  return g !== -1 && e !== -1 && g <= e;         // l'ordre va du plus fort au plus faible
+};
+
+function copie(x) { return JSON.parse(JSON.stringify(x)); }
+function retouche() { epreuve = null; rendreDesign(); }
+
+/** Ce que le kata `id` produit, par champ. */
+function garanties() {
+  const m = {};
+  brouillon.kata.forEach(k => k.produit.forEach(p => { m[p.champ] = { statut: p.statut, par: k.id }; }));
+  return m;
+}
+
+/** Les liens rompus, calculés en direct : c'est la règle du f♯, à l'écran. */
+function liensRompus() {
+  const g = garanties(), rompus = [];
+  brouillon.kata.forEach(k => k.herite.forEach(h => {
+    const promesse = g[h.champ];
+    if (!promesse) rompus.push({ kata: k.id, champ: h.champ, raison: "rien ne le produit" });
+    else if (!couvre(promesse.statut, h.minimum))
+      rompus.push({ kata: k.id, champ: h.champ, raison: "exige plus que l'amont ne promet" });
+  }));
+  return rompus;
+}
+
+/** La proposition, au vocabulaire du HDS — seulement ce qui change. */
+function proposition() {
+  const p = {};
+  const kata = [];
+  brouillon.kata.forEach(k => {
+    const origine = def.kata.find(o => o.id === k.id);
+    const entree = { id: k.id };
+    let bouge = !origine;
+    if (!origine || origine.nom !== k.nom) { entree.nom = k.nom; bouge = bouge || !!origine; }
+    const herite = k.herite.map(h => (h.minimum ? { [h.champ]: h.minimum } : h.champ));
+    const herOrig = origine
+      ? origine.herite.map(h => (h.minimum ? { [h.champ]: h.minimum } : h.champ)) : null;
+    if (!origine || JSON.stringify(herite) !== JSON.stringify(herOrig)) { entree.herite = herite; bouge = true; }
+    const produit = k.produit.map(x => ({ [x.champ]: x.statut }));
+    const proOrig = origine ? origine.produit.map(x => ({ [x.champ]: x.statut })) : null;
+    if (!origine || JSON.stringify(produit) !== JSON.stringify(proOrig)) { entree.produit = produit; bouge = true; }
+    if (!origine || JSON.stringify(k.amont) !== JSON.stringify(origine.amont)) { entree.amont = k.amont; bouge = true; }
+    // Le livrable est exigé par le manifest : un kata neuf qui n'en porte pas
+    // est refusé, et le refus parlerait d'un champ que la page n'a jamais montré.
+    if (!origine || origine.livrable !== k.livrable) { entree.livrable = k.livrable; bouge = true; }
+    if (bouge) kata.push(entree);
+  });
+  if (kata.length) p.kata = kata;
+
+  const partis = def.kata.filter(o => !brouillon.kata.some(k => k.id === o.id)).map(o => o.id);
+  if (partis.length) p.retirer = partis;
+
+  const tr = {};
+  if (JSON.stringify(brouillon.trempe.vocabulaire_interdit) !== JSON.stringify(def.trempe.vocabulaire_interdit))
+    tr.vocabulaire_interdit = brouillon.trempe.vocabulaire_interdit;
+  if (JSON.stringify(brouillon.trempe.checks_session) !== JSON.stringify(def.trempe.checks_session))
+    tr.checks_session = brouillon.trempe.checks_session;
+  if (JSON.stringify(brouillon.trempe.justesse) !== JSON.stringify(def.trempe.justesse))
+    tr.justesse = brouillon.trempe.justesse;
+  if (JSON.stringify(brouillon.trempe.grille_judge) !== JSON.stringify(def.trempe.grille_judge))
+    tr.grille_judge = brouillon.trempe.grille_judge;
+  if (Object.keys(tr).length) p.trempe = tr;
+  return p;
+}
+
+/** Un YAML lisible de la proposition — le format d'échange, pas une jolie sortie. */
+function versYaml(valeur, creux = 0) {
+  const pad = " ".repeat(creux);
+  if (Array.isArray(valeur))
+    return valeur.map(v => {
+      const rendu = versYaml(v, creux + 2);
+      return typeof v === "object" && v !== null
+        ? `${pad}-${rendu.startsWith("\n") ? rendu : " " + rendu.trimStart()}`
+        : `${pad}- ${rendu}`;
+    }).join("\n");
+  if (valeur && typeof valeur === "object")
+    return Object.entries(valeur).map(([c, v]) => {
+      const rendu = versYaml(v, creux + 2);
+      return typeof v === "object" && v !== null && Object.keys(v).length
+        ? `${pad}${c}:\n${rendu}` : `${pad}${c}: ${rendu.trimStart()}`;
+    }).join("\n");
+  return String(valeur);
+}
+
+async function chargerDesign() {
+  try { def = await lire("/conception"); }
+  catch {
+    // Le panneau de panne vit dans l'onglet QG : d'ici, il ne se voit pas. Un
+    // module qui échoue en silence se lit comme un module vide — on le dit là
+    // où l'œil est.
+    $("verdict").innerHTML = `<p class="rien">La définition n'a pas pu être lue.
+      Rien n'est affiché plutôt que des données inventées — recharge quand le
+      service est revenu.</p>`;
+    return;
+  }
+  brouillon = { kata: copie(def.kata), trempe: copie(def.trempe) };
+  epreuve = null;
+  kataChoisi = brouillon.kata.length ? brouillon.kata[0].id : null;
+  rendreDesign();
+}
+
+let depense = null;      // le relevé d'usage, ou null tant qu'il n'a pas été lu
+
+async function chargerDepense() {
+  // Muette si elle échoue : la dépense éclaire la définition, elle ne la
+  // conditionne pas. Un chiffre absent vaut mieux qu'un module design vide.
+  try { depense = await lire("/qg/usage"); } catch { return; }
+  rendreDepense();
+}
+
+function nombre(n) { return n.toLocaleString("fr-FR"); }
+
+function rendreDepense() {
+  if (!depense || !depense.tout.ha) return;
+  const t = depense.tout;
+  const chiffre = (val, mot) =>
+    `<div class="depense-chiffre"><span class="depense-val">${e(val)}</span>
+       <span class="depense-mot">${e(mot)}</span></div>`;
+  $("depense-tout").innerHTML =
+      chiffre(nombre(t.jetons), `jetons · corpus ${depense.corpus}`)
+    + chiffre(nombre(t.par_tour), "par tour")
+    + chiffre(t.par_bloc === null ? "—" : nombre(t.par_bloc), "par bloc d'état")
+    // Rapporté aux ha jugés, pas à tous : une cible qui ne demande aucun bloc
+    // d'état ne reçoit pas de carré, et la compter ferait passer pour un échec
+    // un ha qui n'avait rien à prouver.
+    + chiffre(`${t.conformes}/${t.juges || "—"}`, "carrés conformes");
+
+  // Un total faux présenté comme juste est pire qu'un total absent : la part
+  // en double est dite, et elle est dedans — la retrancher en silence donnerait
+  // un chiffre que personne ne pourrait relier aux fiches.
+  const d = depense.doubles;
+  $("depense-double").hidden = !d.ha;
+  if (d.ha) $("depense-double").textContent =
+    `${d.ha} ha de ce corpus sont aussi versés dans un autre corpus du harness : `
+    + `${nombre(d.jetons)} jetons comptés deux fois, compris dans le total ci-dessus.`;
+
+  const rangs = Object.entries(depense.par_kata).sort((a, b) => b[1].jetons - a[1].jetons);
+  $("depense-kata").innerHTML = rangs.map(([id, d]) => `<div class="rangee">
+      <div><div class="rangee-nom">${e(id)}</div>
+        <div class="rangee-meta">${d.ha} ha · ${d.tours} tour(s) · ${d.blocs} bloc(s) d'état</div></div>
+      <div class="rangee-espace"></div>
+      <span class="mono">${nombre(d.par_tour)} /tour ·
+        ${d.par_bloc === null ? "—" : nombre(d.par_bloc)} /bloc</span>
+      <span class="tag ${d.conformes ? "tag-neutral" : "tag-outline"}"
+            style="margin-left:10px">${d.conformes}/${d.juges || "—"}</span>
+    </div>`).join("");
+  $("carte-depense").hidden = false;
+}
+
+function rendreDesign() {
+  if (!def) return;
+  const scel = def.harness.dernier_scellement;
+  $("design-sous").textContent =
+    `harness « ${def.harness.nom} » v${def.harness.version}`
+    + (scel ? ` · scellé le ${String(scel.le).slice(0, 10)} par ${scel.auteur}` : " · jamais scellé")
+    + " · le seul endroit du produit où l'on écrit";
+  $("btn-membres").textContent = "qui forge avec moi"
+    + (def.membres ? ` · ${1 + def.membres.contributeurs.length}` : "");
+
+  rendreVerdict();
+  rendreMembres();
+  const rompus = liensRompus();
+  $("badge-contrats").hidden = rompus.length === 0;
+  $("badge-contrats").textContent = rompus.length;
+  for (const [nom, id] of Object.entries({ partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe" }))
+    $(id).setAttribute("aria-current", axe === nom ? "page" : "false");
+  ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe })[axe]();
+  // Reconstruit avec l'axe : sans ce rebranchement, le bouton existerait sans agir.
+  // Deux natures d'étape, deux gestes : dans un harness adopté, une étape est
+  // un texte qui entre tel quel — pas une source de forge à remplir.
+  if ($("btn-ajouter-kata"))
+    $("btn-ajouter-kata").onclick =
+      def.harness.exogene ? ouvrirAdoptionEtape : ajouterUnKata;
+  rendreProposition();
+}
+
+function rendreVerdict() {
+  const p = proposition();
+  const combien = Object.keys(p).length ? (p.kata || []).length + (p.retirer || []).length
+    + (p.trempe ? Object.keys(p.trempe).length : 0) : 0;
+  const rompus = liensRompus();
+  let pastille, detail, scellable = false;
+
+  if (!combien) {
+    pastille = `<span class="pastille rien">· aucun changement</span>`;
+    // On peut arrêter une définition qu'on n'a pas modifiée : c'est le geste
+    // qui manquait, et sans lui un harness qui vient de naître — copie exacte —
+    // ne pouvait jamais être scellé.
+    scellable = true;
+    // « celle qui est scellée » était faux : la page montre ce qui est sur le
+    // disque, scellé ou non — l'Atelier sert depuis des semaines sans l'avoir
+    // jamais été. Le sous-titre le disait déjà ; les deux sont d'accord.
+    const scel = def.harness.dernier_scellement;
+    detail = (scel
+      ? "La définition affichée est celle du disque. Dernier scellement le "
+        + `${String(scel.le).slice(0, 10)} par ${e(scel.auteur)}. `
+      : "La définition affichée est celle du disque — ce harness n'a jamais été scellé. ")
+      + "L'arrêter la vérifie et l'inscrit au journal, sous son nom et sans changer sa version.";
+  } else if (epreuve === null) {
+    pastille = `<span class="pastille nonepr">? non éprouvé</span>`;
+    detail = `${combien} changement(s) ne vivent que dans cette page — rien n'est écrit, `
+      + "et aucun brouillon n'est gardé.";
+  } else if (!epreuve.tient) {
+    pastille = `<span class="pastille casse">✕ la définition ne tient pas</span>`;
+    detail = `${epreuve.fautes.length} faute(s), ${epreuve.anomalies.length} anomalie(s).`;
+  } else {
+    pastille = `<span class="pastille tient">✓ la définition tient</span>`;
+    detail = `${combien} changement(s) éprouvé(s).`;
+    scellable = true;
+  }
+
+  const dits = epreuve && !epreuve.tient ? [...epreuve.fautes, ...epreuve.anomalies] : [];
+  $("verdict").innerHTML = `
+    <div class="verdict-rang">
+      ${pastille}
+      <span style="flex:1"></span>
+      <button class="btn-plein" id="btn-eprouver">Éprouver</button>
+      <button class="btn-fantome" id="btn-sceller" ${scellable ? "" : "disabled"}>${
+        combien ? "Sceller…" : "Arrêter cette version…"}</button>
+      ${CHAT ? `<a class="tag tag-accent-2" style="text-decoration:none" target="_blank"
+         rel="noopener" href="${e(CHAT)}">pratiquer ↗</a>` : ""}
+    </div>
+    <p class="verdict-detail">${e(detail)}</p>
+    ${dits.map(d => {
+      const m = /^\[([\w-]+)\]\s+([^:]+)\s*:\s*(.*)$/.exec(d);
+      return `<div class="anomalie">
+        <div class="anomalie-ou">${e(m ? m[2].trim() : "définition")}</div>
+        <p class="anomalie-dit">${e(m ? m[3] : d)}</p>
+      </div>`;
+    }).join("")}
+    ${rompus.length && epreuve === null ? `<p class="verdict-detail">${rompus.length}
+       lien(s) rompu(s) vu(s) dans la page — l'épreuve dira le reste.</p>` : ""}
+    <p class="verdict-note">Éprouver applique la proposition à une copie du harness, puis la
+      charge, la forge et la trempe pour de vrai. Ce n'est pas un contrôle de formulaire.</p>
+    <div id="scel-trace"></div>`;
+
+  $("btn-eprouver").onclick = eprouver;
+  $("btn-sceller").onclick = ouvrirScellement;
+}
+
+function rendreMembres() {
+  $("membres").hidden = !membresOuverts;
+  if (!membresOuverts) return;
+  if (!def.membres) {
+    $("membres").innerHTML = `<p class="rien">Aucun magasin de comptes : cette installation
+      est mono-praticien, il n'y a personne à lister.</p>`;
+    return;
+  }
+  // Le nom d'abord, l'identifiant nulle part : on reconnaît quelqu'un à son
+  // nom, jamais à un UUID. L'email départage deux homonymes, et il est déjà
+  // connu de tout membre du harness — c'est par lui qu'on ajoute.
+  const rangee = (qui, role, fond, encre, retirable) => `<div class="ligne-f">
+      <div>
+        <div class="rangee-nom">${e(qui.nom)}</div>
+        ${qui.email ? `<div class="rangee-meta">${e(qui.email)}</div>` : ""}
+      </div><span style="flex:1"></span>
+      ${retirable ? `<button class="btn-fantome" data-retirer="${e(qui.id)}"
+        style="margin-right:10px">retirer</button>` : ""}
+      <span class="tag" style="background:${jeton(fond)};color:${jeton(encre)}">${role}</span>
+    </div>`;
+  const patron = def.membres.proprietaire;
+  // Le rôle vient de l'offre, lue au démarrage : le déduire du module Profil
+  // ferait dépendre ce panneau d'un onglet que le propriétaire n'ouvre pas
+  // forcément, et le geste disparaîtrait sans raison visible.
+  const sien = (offreHarness && offreHarness.harness || [])
+    .find(h => h.id === def.harness.id);
+  const jeSuisLePatron = !!sien && sien.role === "proprietaire";
+  $("membres").innerHTML =
+    `<span class="tag tag-outline">question ouverte — placement selon RFC-004 §4</span>
+     <p class="verdict-detail">L'autorat est ici parce qu'il porte sur l'œuvre, mais reste un
+       volet : il n'entre jamais dans une proposition et ne touche jamais le verdict.</p>`
+    + rangee(patron, "propriétaire", "accent-200", "accent-900", false)
+    + def.membres.contributeurs
+        .map(c => rangee(c, "co-auteur", "neutral-300", "neutral-800", jeSuisLePatron)).join("")
+    + (jeSuisLePatron ? `
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
+        <select id="membre-email"
+                style="flex:1;min-width:15rem;border-radius:999px;padding:8px 14px;font:inherit;
+                       font-size:13px;background:var(--color-neutral-100);
+                       border:1px solid var(--color-neutral-300)"></select>
+        <button class="btn-fantome" id="membre-ajouter">Ajouter au harness</button>
+      </div>
+      <p class="verdict-detail" id="membre-dit"></p>
+      <p class="verdict-detail">On choisit parmi les comptes du service : inviter quelqu'un
+        qui n'en a pas est un autre geste, et le confondre créerait des comptes depuis un
+        écran qui parle d'autorat.</p>` : "");
+
+  if (!jeSuisLePatron) return;
+  $("membre-ajouter").onclick = ajouterUnMembre;
+  remplirCandidats();
+  $("membres").querySelectorAll("button[data-retirer]").forEach(b => {
+    b.onclick = () => retirerUnMembre(b.dataset.retirer);
+  });
+}
+
+async function remplirCandidats() {
+  const liste = $("membre-email");
+  let vus;
+  try { vus = (await lire("/membres/candidats")).candidats; }
+  catch { liste.innerHTML = `<option value="">liste indisponible</option>`; return; }
+
+  // Personne à proposer se dit, et le bouton se ferme : une liste vide et une
+  // liste non chargée ont la même apparence, et l'une des deux se répare en
+  // invitant quelqu'un.
+  if (!vus.length) {
+    liste.innerHTML = `<option value="">aucun compte à ajouter</option>`;
+    $("membre-ajouter").disabled = true;
+    $("membre-dit").textContent = "Tous les comptes du service forgent déjà ici. "
+      + "Pour en ouvrir un autre, il faut l'inviter au service.";
+    return;
+  }
+  $("membre-ajouter").disabled = false;
+  liste.innerHTML = vus.map(c =>
+    `<option value="${e(c.email)}">${e(c.nom)} — ${e(c.email)}</option>`).join("");
+}
+
+async function ajouterUnMembre() {
+  const email = $("membre-email").value.trim();
+  if (!email) return;
+  $("membre-dit").textContent = "";
+  try {
+    def.membres = await envoyer("POST", "/membres", { email });
+  } catch (err) {
+    // Dit à l'écran : un ajout refusé qui ne dit rien se lit comme un ajout
+    // fait, et l'on repart en croyant avoir ouvert une porte.
+    $("membre-dit").textContent = err.message || "refusé";
+    return;
+  }
+  rendreMembres();
+}
+
+async function retirerUnMembre(id) {
+  try { def.membres = await envoyer("DELETE", "/membres/" + encodeURIComponent(id)); }
+  catch (err) { $("membre-dit").textContent = err.message || "refusé"; return; }
+  rendreMembres();
+}
+
+// --- axe 1 · le partitionnement : la chaîne, sans sujet dedans ---------------
+function rendrePartition() {
+  const corps = $("axe-corps");
+  const formes = { kata: "", jalon: "jalon", externe: "externe" };
+  corps.innerHTML = `<p class="mot" style="margin:0 0 16px">Comment le domaine est
+    découpé. Aucune chaleur, aucun possible : ici il n'y a pas de sujet.</p>
+    <div class="rang" id="rang-def"></div>
+    <button class="btn-fantome" id="btn-ajouter-kata" style="margin-top:16px">
+      ＋ Ajouter une étape</button>
+    <p class="rien" id="ajout-dit" style="margin-top:8px"></p>`;
+  const rang = $("rang-def");
+
+  brouillon.kata.forEach((k, i) => {
+    const env = document.createElement("div");
+    env.className = "enveloppe";
+    const col = document.createElement("div");
+    col.className = "colonne";
+    col.innerHTML = `
+      <div class="noeud-def ${formes[k.type || "kata"]}">${e((k.id || "?").slice(0, 3))}</div>
+      <input class="champ-pilule" style="margin-top:8px" value="${e(k.id)}" data-id="${i}">
+      <select class="select-pilule" style="margin-top:6px" data-type="${i}">
+        ${["kata", "jalon", "externe"].map(x =>
+          `<option ${x === (k.type || "kata") ? "selected" : ""}>${x}</option>`).join("")}
+      </select>
+      <button class="btn-fantome" style="margin-top:6px;font-size:11px" data-retirer="${i}">retirer</button>`;
+    env.appendChild(col);
+    if (i < brouillon.kata.length - 1) {
+      const a = document.createElement("div");
+      a.className = "arete";
+      a.style.position = "relative";
+      env.appendChild(a);
+      const plus = document.createElement("button");
+      plus.className = "plus";
+      plus.textContent = "+";
+      plus.dataset.inserer = i + 1;
+      plus.style.cssText = "align-self:center;margin-top:22px";
+      env.appendChild(plus);
+    }
+    rang.appendChild(env);
+  });
+
+  rang.querySelectorAll("input[data-id]").forEach(x => {
+    x.onchange = () => { brouillon.kata[Number(x.dataset.id)].id = x.value.trim(); retouche(); };
+  });
+  rang.querySelectorAll("select[data-type]").forEach(x => {
+    x.onchange = () => { brouillon.kata[Number(x.dataset.type)].type = x.value; retouche(); };
+  });
+  rang.querySelectorAll("button[data-retirer]").forEach(x => {
+    x.onclick = () => { brouillon.kata.splice(Number(x.dataset.retirer), 1); retouche(); };
+  });
+  rang.querySelectorAll("button[data-inserer]").forEach(x => {
+    x.onclick = () => {
+      const ou = Number(x.dataset.inserer);
+      brouillon.kata.splice(ou, 0, {
+        id: `kata-${brouillon.kata.length + 1}`, nom: "Nouveau kata", type: "kata",
+        livrable: "", amont: [], herite: [], produit: [], emet_options: false
+      });
+      retouche();
+    };
+  });
+}
+
+// --- axe 2 · les contrats : le f♯, avec sa règle sous les yeux ---------------
+// Ajouter une étape. Elle arrive **à la fin**, sans amont : un enchaînement se
+// décide, il ne se devine pas — et l'axe des contrats est fait pour ça.
+//
+// Sa page de kata, sa place dans la chaîne et ses noms au registre sont semés
+// par le scellement : la page n'a pas à les inventer, et ne le pourrait pas
+// sans redire ce que le moteur sait déjà.
+function ajouterUnKata() {
+  const pris = new Set(brouillon.kata.map(k => k.id));
+  let n = brouillon.kata.length + 1;
+  while (pris.has(`etape-${n}`)) n += 1;
+  const id = `etape-${n}`;
+  brouillon.kata.push({
+    id, nom: `Étape ${n}`, type: "kata",
+    livrable: `Livrable de l'étape ${n}`,
+    amont: [], herite: [], produit: [{ champ: `${id}.a-nommer`, statut: "fait_etabli" }],
+  });
+  rendreDesign();
+  $("ajout-dit").textContent =
+    "Étape ajoutée à la fin, sans amont. Renomme-la, dis ce qu'elle établit, "
+    + "puis relie-la dans « Contrats f♯ ». Rien n'est écrit avant le scellement.";
+}
+
+function ouvrirAdoptionEtape() {
+  $("ajout-dit").innerHTML = `
+    <span class="mot">Le texte entre tel quel, comme à l'import — et il s'écrit
+      tout de suite, sans scellement : un harness adopté n'a pas encore de
+      version à arrêter.</span>
+    <input class="champ-large" id="etape-nom" style="margin:8px 0 6px"
+           autocomplete="off" placeholder="nom de l'étape — relire">
+    <textarea class="champ-large" id="etape-texte" rows="6"
+              style="margin:0 0 8px;font-family:ui-monospace,monospace;font-size:12.5px"
+              placeholder="Le prompt, collé tel quel."></textarea>
+    <button class="btn-plein" id="etape-valider">Adopter cette étape</button>
+    <span class="diff-val" id="etape-dit" style="margin-left:10px"></span>`;
+  $("etape-valider").onclick = adopterUneEtape;
+}
+
+async function adopterUneEtape() {
+  const nom = $("etape-nom").value.trim(), texte = $("etape-texte").value;
+  if (!nom || !texte.trim()) {
+    $("etape-dit").textContent = "un nom et un texte, tous deux non vides"; return;
+  }
+  $("etape-valider").disabled = true;
+  try {
+    await envoyer("POST",
+      "/harness/" + encodeURIComponent(def.harness.id) + "/etape-adoptee",
+      { nom, texte });
+  } catch (err) {
+    $("etape-dit").textContent = err.message || "refusé";
+    $("etape-valider").disabled = false;
+    return;
+  }
+  // La définition servie vient de changer : on la relit au lieu de la deviner.
+  def = null; await chargerDesign();
+}
+
+function rendreContrats() {
+  const rompus = liensRompus(), g = garanties();
+  const parKata = {};
+  rompus.forEach(r => { (parKata[r.kata] = parKata[r.kata] || []).push(r); });
+  if (!brouillon.kata.some(k => k.id === kataChoisi)) kataChoisi = brouillon.kata[0]?.id || null;
+  const k = brouillon.kata.find(x => x.id === kataChoisi);
+
+  const rail = brouillon.kata.map(x => {
+    const casse = (parKata[x.id] || []).length;
+    const change = JSON.stringify(x) !== JSON.stringify(def.kata.find(o => o.id === x.id) || {});
+    return `<button class="jeton-kata" data-kata="${e(x.id)}"
+             aria-current="${x.id === kataChoisi ? "page" : "false"}">
+        <span class="forme ${x.type === "jalon" ? "jalon" : ""}">
+          ${casse ? `<span class="marque-encre">✕</span>`
+            : change ? `<span class="marque-encre">♯</span>` : ""}
+        </span>
+        <span class="id">${e(x.id)}</span>
+      </button>`;
+  }).join("");
+
+  if (!k) { $("axe-corps").innerHTML = `<div class="rail">${rail}</div>
+    <p class="rien">Aucun kata dans la chaîne.</p>`; return; }
+
+  const consommateurs = (champ) =>
+    brouillon.kata.filter(x => x.herite.some(h => h.champ === champ)).map(x => x.id);
+  const seuils = ["", ...def.statuts_champ];
+
+  const herite = k.herite.length ? k.herite.map((h, i) => {
+    const promesse = g[h.champ];
+    const ok = promesse && couvre(promesse.statut, h.minimum);
+    return `<div class="ligne-f ${ok ? "" : "rompue"}">
+      <span class="mono">${e(h.champ)}</span>
+      <span class="mot">exige</span>
+      <select class="select-pilule" data-min="${i}">
+        ${seuils.map(s => `<option value="${e(s)}" ${s === h.minimum ? "selected" : ""}
+           >${s ? e(s) : "présence seule"}</option>`).join("")}
+      </select>
+      <span style="flex:1"></span>
+      ${promesse
+        ? `<span class="mot">· ${e(promesse.par)} garantit</span>
+           <span class="tag ${ok ? "chip-ok" : "chip-encre"}">${e(promesse.statut)}</span>`
+        : `<span class="tag chip-encre">rien ne le produit</span>`}
+      <button class="btn-fantome" data-ret-min="${i}" title="ne plus s'appuyer dessus"
+              style="margin-left:8px">×</button>
+    </div>`;
+  }).join("") : `<p class="rien">Ne s'appuie sur rien — ce kata ouvre la chaîne.</p>`;
+
+  // L'adjonction amont : s'appuyer sur un champ qu'un autre kata garantit. La
+  // liste n'offre que ce qui existe — un héritage tapé de mémoire donnerait un
+  // lien rompu à la première épreuve, autant ne pas l'offrir.
+  const heritables = Object.entries(g)
+    .filter(([champ, x]) => x.par !== k.id && !k.herite.some(h => h.champ === champ));
+  const ajoutHerite = heritables.length ? `<div class="ligne-f">
+      <select class="select-pilule" id="herite-neuf">
+        ${heritables.map(([champ, x]) =>
+          `<option value="${e(champ)}">${e(champ)} — garanti par ${e(x.par)}</option>`).join("")}
+      </select>
+      <button class="btn-fantome" id="herite-ajouter">s'appuyer dessus</button>
+      <span style="flex:1"></span>
+      <span class="mot">l'amont suit tout seul</span>
+    </div>` : `<p class="rien" style="margin-top:6px">Rien d'autre à hériter :
+      aucun autre kata ne garantit de champ que celui-ci ne lise déjà.</p>`;
+
+  const produit = k.produit.length ? k.produit.map((x, i) => {
+    const lu = consommateurs(x.champ);
+    return `<div class="ligne-f">
+      <span class="mono">${e(x.champ)}</span>
+      <span class="mot">garantit au moins</span>
+      <select class="select-pilule" data-prod="${i}">
+        ${def.statuts_champ.map(s => `<option ${s === x.statut ? "selected" : ""}>${e(s)}</option>`).join("")}
+      </select>
+      <span style="flex:1"></span>
+      <span class="mot">${lu.length ? "lu par " + lu.map(e).join(", ") : "lu par personne"}</span>
+      <button class="btn-fantome" data-ret-prod="${i}" title="ne plus le garantir"
+              style="margin-left:8px">×</button>
+    </div>`;
+  }).join("") : `<p class="rien">N'établit rien — un nœud externe lit la chaîne sans y ajouter.</p>`;
+
+  // L'adjonction aval : promettre un champ de plus. Il naît au statut le plus
+  // faible — sous-promettre est permis, sur-promettre non : monter le seuil
+  // est un geste qu'on fait en connaissance, pas un défaut qu'on subit.
+  const ajoutProduit = `<div class="ligne-f">
+      <input class="champ-pilule" id="produit-neuf" style="width:12rem;text-align:left"
+             placeholder="nom du champ — minuscules, tirets">
+      <button class="btn-fantome" id="produit-ajouter">le garantir</button>
+      <span style="flex:1"></span>
+      <span class="mot">déclaré au registre lors du scellement</span>
+    </div>`;
+
+  const origine = def.kata.find(o => o.id === k.id);
+  const change = origine && JSON.stringify(k) !== JSON.stringify(origine);
+  const versions = epreuve?.versions || {};
+
+  $("axe-corps").innerHTML = `<div class="rail">${rail}</div>
+    <p class="mot" style="margin:0 0 12px">${e(k.id)} ${change
+      ? `— version ${versions[k.id] ? "→ " + e(versions[k.id]) + " au scellement ♯" : "modifiée ♯"}`
+      : "· inchangé"}</p>
+    <h3 style="font-size:14px;margin:18px 0 8px">Ce sur quoi il s'appuie</h3>${herite}${ajoutHerite}
+    <h3 style="font-size:14px;margin:18px 0 8px">Ce qu'il établit</h3>${produit}${ajoutProduit}
+    <p class="diff-val" id="contrat-dit"></p>
+    <p class="regle-f">La règle du f♯ : <strong>une exigence de l'aval ne peut jamais dépasser
+      la garantie la plus forte de l'amont</strong> (${def.statuts_champ.map(e).join(" &gt; ")}).
+      Elle se vérifie à chaque retouche ; ses violations sont ce que l'épreuve remonte.</p>`;
+
+  $("axe-corps").querySelectorAll("button[data-kata]").forEach(b => {
+    b.onclick = () => { kataChoisi = b.dataset.kata; rendreDesign(); };
+  });
+  $("axe-corps").querySelectorAll("select[data-min]").forEach(s => {
+    s.onchange = () => { k.herite[Number(s.dataset.min)].minimum = s.value; retouche(); };
+  });
+  $("axe-corps").querySelectorAll("select[data-prod]").forEach(s => {
+    s.onchange = () => { k.produit[Number(s.dataset.prod)].statut = s.value; retouche(); };
+  });
+  $("axe-corps").querySelectorAll("button[data-ret-min]").forEach(b => {
+    b.onclick = () => { k.herite.splice(Number(b.dataset.retMin), 1); retouche(); };
+  });
+  $("axe-corps").querySelectorAll("button[data-ret-prod]").forEach(b => {
+    b.onclick = () => { k.produit.splice(Number(b.dataset.retProd), 1); retouche(); };
+  });
+  if ($("herite-ajouter")) $("herite-ajouter").onclick = () => {
+    const champ = $("herite-neuf").value;
+    const producteur = garanties()[champ]?.par;
+    k.herite.push({ champ, minimum: "" });
+    // Hériter sans amont est une faute de manifest : le lien de chaîne suit le
+    // contrat, pour que l'épreuve juge la forme voulue et non un oubli.
+    if (producteur && !k.amont.includes(producteur)) k.amont.push(producteur);
+    retouche();
+  };
+  if ($("produit-ajouter")) $("produit-ajouter").onclick = () => {
+    const nom = $("produit-neuf").value.trim();
+    if (!/^[a-z0-9]+([_-][a-z0-9]+)*$/.test(nom)) {
+      $("contrat-dit").textContent =
+        "le nom d'un champ s'écrit en minuscules, chiffres, tirets ou tirets bas.";
+      return;
+    }
+    const champ = `${k.id}.${nom}`;
+    if (k.produit.some(x => x.champ === champ)) {
+      $("contrat-dit").textContent = `${champ} est déjà garanti.`; return;
+    }
+    k.produit.push({ champ, statut: def.statuts_champ[def.statuts_champ.length - 1] });
+    retouche();
+  };
+}
+
+// --- axe 3 · la trempe : jamais un f♯ ---------------------------------------
+function rendreTrempe() {
+  const tr = brouillon.trempe;
+  $("axe-corps").innerHTML = `
+    <h3 style="font-size:14px;margin:0 0 8px">Vocabulaire interdit</h3>
+    <div id="mots">${tr.vocabulaire_interdit.map((m, i) =>
+      `<span class="puce-mot">${e(m)}<button data-mot="${i}" title="retirer">×</button></span>`).join("")
+      || `<span class="rien">Aucun mot banni.</span>`}</div>
+    <input class="champ-pilule" id="mot-neuf" style="width:auto;margin-top:10px;text-align:left"
+           placeholder="ajouter un mot…">
+
+    <h3 style="font-size:14px;margin:22px 0 8px">Checks de session</h3>
+    ${tr.checks_session.length ? tr.checks_session.map((c, i) => `<div class="ligne-f">
+        <span class="mono">${e(c.id || "?")}</span>
+        <span class="mot">${e(c.type || "")}${c.motif ? ` · ${e(c.motif)}` : ""}${
+          c.maximum !== undefined ? ` · max ${e(c.maximum)}` : ""}</span>
+        <span style="flex:1"></span>
+        <button class="bascule ${c.inactif ? "inactif" : "exige"}" data-check="${i}"
+          >${c.inactif ? "inactif" : "exigé"}</button>
+        <button class="btn-fantome" data-ret-check="${i}" title="retirer"
+                style="margin-left:8px">×</button>
+      </div>`).join("") : `<p class="rien">Aucun check déclaré.</p>`}
+    <div class="ligne-f" style="flex-wrap:wrap">
+      <input class="champ-pilule" id="check-id" style="width:11rem;text-align:left"
+             placeholder="id — une-question-par-tour">
+      <select class="select-pilule" id="check-type">
+        <option>regex-par-tour</option><option>regex-par-bloc</option><option>interdit</option>
+      </select>
+      <input class="champ-pilule" id="check-motif" style="width:10rem;text-align:left"
+             placeholder="motif (regex, ou mot interdit)">
+      <input class="champ-pilule" id="check-max" style="width:5rem;text-align:left"
+             placeholder="max">
+      <button class="btn-fantome" id="check-ajouter">ajouter le check</button>
+    </div>
+    <p class="diff-val" id="check-dit"></p>
+
+    <h3 style="font-size:14px;margin:22px 0 8px">Grille du judge</h3>
+    <p class="sous-ligne">Les critères qu'un juge applique aux transcripts —
+      descriptifs, jamais agrégés. L'échelle s'écrit « bas-haut ».</p>
+    ${(tr.grille_judge || []).map((c, i) => `<div class="ligne-f">
+        <span class="mono">${e(c.id)}</span>
+        <input class="champ-pilule" data-crit-question="${i}" value="${e(c.question)}"
+               style="flex:1;min-width:14rem;text-align:left">
+        <input class="champ-pilule" data-crit-echelle="${i}" value="${e(c.echelle)}"
+               style="width:4.5rem">
+        <button class="btn-fantome" data-ret-crit="${i}" title="retirer">×</button>
+      </div>`).join("") || `<p class="rien">Aucun critère — le judge refusera de juger.</p>`}
+    <div class="ligne-f" style="flex-wrap:wrap">
+      <input class="champ-pilule" id="crit-id" style="width:9rem;text-align:left"
+             placeholder="id — clarte">
+      <input class="champ-pilule" id="crit-question" style="flex:1;min-width:14rem;text-align:left"
+             placeholder="La question posée au juge, telle quelle">
+      <input class="champ-pilule" id="crit-echelle" style="width:4.5rem" value="1-5">
+      <button class="btn-fantome" id="crit-ajouter">ajouter le critère</button>
+    </div>
+    <p class="diff-val" id="crit-dit"></p>
+
+    <h3 style="font-size:14px;margin:22px 0 8px">Seuils de justesse</h3>
+    <div class="ligne-f">
+      <span class="mot">défaut</span>
+      <input class="champ-pilule" style="width:5rem;background:var(--color-accent-100)"
+             id="just-defaut" value="${tr.justesse?.defaut ?? 0}">
+      <span style="flex:1"></span>
+      <span class="mot">un seuil vide reprend le défaut</span>
+    </div>
+    ${brouillon.kata.map(k => `<div class="ligne-f">
+        <span class="mono">${e(k.id)}</span>
+        <input class="champ-pilule" style="width:5rem" data-seuil="${e(k.id)}"
+               value="${(tr.justesse?.par_kata || {})[k.id] ?? ""}"
+               placeholder="${tr.justesse?.defaut ?? 0}">
+      </div>`).join("")}
+    <p class="regle-f">La trempe dit comment on éprouve ce harness. Elle ne touche jamais un
+      contrat : la modifier ne fait pas passer un kata en version majeure.</p>`;
+
+  $("axe-corps").querySelectorAll("button[data-mot]").forEach(b => {
+    b.onclick = () => { tr.vocabulaire_interdit.splice(Number(b.dataset.mot), 1); retouche(); };
+  });
+  $("mot-neuf").onkeydown = (ev) => {
+    if (ev.key !== "Enter" || !ev.target.value.trim()) return;
+    tr.vocabulaire_interdit.push(ev.target.value.trim()); retouche();
+  };
+  $("axe-corps").querySelectorAll("button[data-check]").forEach(b => {
+    b.onclick = () => {
+      const c = tr.checks_session[Number(b.dataset.check)];
+      c.inactif = !c.inactif; retouche();
+    };
+  });
+  $("axe-corps").querySelectorAll("button[data-ret-check]").forEach(b => {
+    b.onclick = () => { tr.checks_session.splice(Number(b.dataset.retCheck), 1); retouche(); };
+  });
+  $("check-ajouter").onclick = () => {
+    const id = $("check-id").value.trim(), type = $("check-type").value;
+    const motif = $("check-motif").value.trim(), max = $("check-max").value.trim();
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
+      $("check-dit").textContent = "l'id s'écrit en minuscules, chiffres et tirets."; return;
+    }
+    if (!motif) { $("check-dit").textContent = "un check sans motif ne vérifie rien."; return; }
+    if (tr.checks_session.some(c => c.id === id)) {
+      $("check-dit").textContent = `${id} existe déjà.`; return;
+    }
+    // `interdit` prend une liste de formulations ; les regex, un motif.
+    const check = type === "interdit" ? { id, type, motifs: [motif] } : { id, type, motif };
+    if (max) check.maximum = Number(max);
+    tr.checks_session.push(check); retouche();
+  };
+  $("axe-corps").querySelectorAll("input[data-crit-question]").forEach(x => {
+    x.onchange = () => { tr.grille_judge[Number(x.dataset.critQuestion)].question = x.value; retouche(); };
+  });
+  $("axe-corps").querySelectorAll("input[data-crit-echelle]").forEach(x => {
+    x.onchange = () => { tr.grille_judge[Number(x.dataset.critEchelle)].echelle = x.value.trim(); retouche(); };
+  });
+  $("axe-corps").querySelectorAll("button[data-ret-crit]").forEach(b => {
+    b.onclick = () => { tr.grille_judge.splice(Number(b.dataset.retCrit), 1); retouche(); };
+  });
+  $("crit-ajouter").onclick = () => {
+    const id = $("crit-id").value.trim(), question = $("crit-question").value.trim();
+    const echelle = $("crit-echelle").value.trim();
+    if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(id)) {
+      $("crit-dit").textContent = "l'id s'écrit en minuscules, chiffres et tirets."; return;
+    }
+    if (!question) { $("crit-dit").textContent = "un critère est une question."; return; }
+    if (!/^\d+-\d+$/.test(echelle)) {
+      $("crit-dit").textContent = "l'échelle s'écrit « bas-haut », 1-5 par exemple."; return;
+    }
+    if ((tr.grille_judge || []).some(c => c.id === id)) {
+      $("crit-dit").textContent = `${id} existe déjà.`; return;
+    }
+    tr.grille_judge = tr.grille_judge || [];
+    tr.grille_judge.push({ id, question, echelle }); retouche();
+  };
+  $("just-defaut").onchange = (ev) => {
+    tr.justesse = { ...(tr.justesse || {}), defaut: Number(ev.target.value) || 0 }; retouche();
+  };
+  $("axe-corps").querySelectorAll("input[data-seuil]").forEach(x => {
+    x.onchange = () => {
+      const par = { ...((tr.justesse || {}).par_kata || {}) };
+      if (x.value.trim()) par[x.dataset.seuil] = Number(x.value) || 0;
+      else delete par[x.dataset.seuil];
+      tr.justesse = { ...(tr.justesse || {}), par_kata: par }; retouche();
+    };
+  });
+}
+
+// --- la proposition, toujours au bas de la page -----------------------------
+function rendreProposition() {
+  const p = proposition();
+  const vide = !Object.keys(p).length;
+  const changements = epreuve?.changements || [];
+  const contrats = changements.filter(c => c.touche_contrat).length;
+
+  $("proposition").innerHTML = `
+    <div style="display:flex;align-items:baseline;gap:12px">
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);
+                 font-size:20px;margin:0">Proposition</h2>
+      <span class="mot">${vide ? "rien ne change"
+        : `${changements.length || "?"} changement(s)${contrats ? ` · ${contrats} de contrat ♯` : ""}`}</span>
+      <span style="flex:1"></span>
+      ${vide ? "" : `<button class="btn-fantome" id="btn-yaml">${
+        montreYaml ? "masquer" : "voir"} la proposition HDS</button>`}
+    </div>
+    ${vide ? `<p class="rien" style="margin-top:10px">La page montre la définition scellée.</p>` : ""}
+    ${montreYaml && !vide ? `<pre class="hds">${e(versYaml(p))}</pre>` : ""}
+    <div style="margin-top:12px">${changements.map(c => `
+      <div class="diff-ligne ${c.touche_contrat ? "contrat" : ""}">
+        <span class="diff-ou">~ ${e(c.ou)}</span>
+        <span class="diff-val">${e(c.avant)} → ${e(c.apres)}</span>
+        <span style="flex:1"></span>
+        ${c.touche_contrat ? `<span class="tag chip-diese">♯ contrat — version majeure,
+          les certifications tombent</span>` : ""}
+      </div>`).join("")}</div>
+    ${epreuve && Object.keys(epreuve.versions || {}).length ? `<p class="verdict-detail">
+      Sceller déciderait : ${Object.entries(epreuve.versions)
+        .map(([q, v]) => `${e(q)} → v${e(v)}`).join(" · ")} — décidé, jamais choisi à la main.</p>` : ""}
+    ${!vide && !changements.length ? `<p class="verdict-detail">Éprouve pour voir le détail
+      des changements tel que le serveur les lit.</p>` : ""}`;
+
+  if (!vide) $("btn-yaml").onclick = () => { montreYaml = !montreYaml; rendreProposition(); };
+}
+
+async function eprouver() {
+  const p = proposition();
+  if (!Object.keys(p).length) { epreuve = null; rendreDesign(); return; }
+  try {
+    const r = await fetch("/conception/epreuve", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ proposition: p })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    epreuve = await r.json();
+  } catch {
+    epreuve = { tient: false, fautes: ["le middleware n'a pas répondu à l'épreuve"],
+                anomalies: [], changements: [], versions: {} };
+  }
+  rendreDesign();
+}
+
+function ouvrirScellement() {
+  $("voile").hidden = false;
+  $("scel-auteur").value = "";
+  $("scel-motif").value = "";
+  $("scel-valider").disabled = true;
+  // Un arrêt ne fait bouger aucune version : annoncer « v1.0.0 → v1.0.0 »
+  // laisserait croire qu'il se passe quelque chose. On dit ce qui arrive.
+  $("scel-versions").textContent = Object.keys(proposition()).length
+    ? Object.entries(epreuve?.versions || {}).map(([q, v]) => `${q} → v${v}`).join(" · ")
+    : `aucune version ne bouge — v${def.harness.version} est arrêtée telle quelle`;
+}
+
+async function scellerDepuisLaPage() {
+  const auteur = $("scel-auteur").value.trim();
+  if (!auteur) return;
+  try {
+    const r = await fetch("/conception/scellement", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ proposition: proposition(), auteur, motif: $("scel-motif").value.trim() })
+    });
+    if (!r.ok) throw new Error(await r.text());
+    const trace = await r.json();
+    $("voile").hidden = true;
+    await chargerDesign();
+    $("scel-trace").innerHTML = `<div class="journal-scel">
+      scellé par ${e(trace.auteur)} — ${e(String(trace.le).slice(0, 16).replace("T", " "))}
+      ${trace.motif ? "· « " + e(trace.motif) + " »" : ""}<br>
+      ${Object.entries(trace.versions).map(([q, v]) => `${e(q)} v${e(v)}`).join(" · ")}<br>
+      ${trace.coupes && trace.coupes.forgees
+        ? `${trace.coupes.combien} coupe(s) forgée(s) — le chat sert cette version.`
+        : `Coupes non forgées (${e((trace.coupes || {}).motif || "raison inconnue")}) :
+           le chat sert encore la précédente.`}
+      ${CHAT ? `<a href="${e(CHAT)}" target="_blank" rel="noopener">pratiquer ↗</a>` : ""}
+      <br>Les ha déjà capturés peuvent être périmés : \`kokaji regression\`.
+    </div>`;
+  } catch {
+    $("scel-versions").textContent = "le scellement a été refusé — rien n'a été écrit.";
+  }
+}
+
+// Le sélecteur ne s'affiche que s'il y a un choix à faire : proposer une liste
+// d'un seul élément demande de décider là où rien ne se décide.
+let offreHarness = null;
+
+async function chargerHarness() {
+  let offre;
+  try { offre = await lire("/harness"); } catch { return; }
+  offreHarness = offre;
+  // Créer est toujours possible : c'est le sélecteur qui n'a de sens qu'à deux.
+  $("btn-creer-harness").hidden = false;
+  // Montrée à qui l'a : la proposer à tous ferait cliquer vers un refus, et
+  // ne pas la proposer du tout laissait la page inatteignable autrement qu'en
+  // tapant son adresse.
+  $("btn-admin").hidden = !offre.administration;
+  if (!offre.harness || offre.harness.length < 2) return;
+
+  const select = $("harness-courant");
+  select.innerHTML = "";
+  if (!offre.courant) {
+    // Plusieurs harness et aucun choisi : le service refuse de servir tant que
+    // rien n'est choisi, et la page doit le dire au lieu de paraître vide.
+    const o = document.createElement("option");
+    o.value = ""; o.textContent = "— choisir un harness —";
+    select.appendChild(o);
+  }
+  offre.harness.forEach(h => {
+    const o = document.createElement("option");
+    o.value = h.id;
+    o.textContent = h.nom;
+    select.appendChild(o);
+  });
+  select.value = offre.courant || "";
+  $("flanc-harness").hidden = false;
+
+  select.onchange = async () => {
+    if (!select.value) return;
+    const r = await fetch("/harness/courant", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id_harness: select.value })
+    });
+    // Changer de harness change tout ce que la page montre : on la recharge
+    // plutôt que de rafraîchir chaque module et d'en oublier un.
+    if (r.ok) location.reload();
+  };
+}
+
+// Faire naître un harness. Les sources offertes sont celles qu'on a le droit de
+// copier : les siennes, et l'exemple déclaré par le déploiement. En proposer
+// d'autres mènerait à un refus que rien n'aurait annoncé.
+function ouvrirNaissance() {
+  const o = offreHarness || { harness: [], exemple: null };
+  const sources = o.harness.map(h => [h.id, `copier ${h.nom} (le mien)`]);
+  if (o.exemple && !o.harness.some(h => h.id === o.exemple))
+    sources.unshift([o.exemple, "copier l'exemple fourni"]);
+  // Semer est toujours offert, et vient en dernier : on copie quand une méthode
+  // voisine existe, on sème quand la sienne ne ressemble à rien de ce qu'on a.
+  sources.push(["", "partir d'un harness vide"]);
+  // La troisième voie (RFC-008) : des textes faits main, adoptés tels quels.
+  // Le marqueur ne peut pas heurter un id de harness — un slug n'a pas de @.
+  sources.push(["@adopter", "adopter des textes faits main"]);
+  $("ne-source").innerHTML = sources
+    .map(([v, l]) => `<option value="${e(v)}">${e(l)}</option>`).join("");
+  $("ne-id").value = ""; $("ne-nom").value = ""; $("ne-dit").textContent = "";
+  $("ne-provenance").value = "";
+  $("ne-prompts").innerHTML = "";
+  ajouterUnTexte();
+  $("ne-valider").disabled = true;
+  $("ne-source").onchange = basculerAdoption;
+  basculerAdoption();
+  $("voile-naissance").hidden = false;
+}
+
+function basculerAdoption() {
+  $("ne-adoption").hidden = $("ne-source").value !== "@adopter";
+  naissancePrete();
+}
+
+function ajouterUnTexte() {
+  const rang = $("ne-prompts").children.length + 1;
+  const bloc = document.createElement("div");
+  bloc.innerHTML = `
+    <label class="mot">Étape ${rang} — son nom, puis son texte</label>
+    <input class="champ-large" data-prompt-nom style="margin:6px 0 6px"
+           autocomplete="off" placeholder="ouvrir">
+    <textarea class="champ-large" data-prompt-texte rows="5"
+              style="margin:0 0 14px;font-family:ui-monospace,monospace;font-size:12.5px"
+              placeholder="Le prompt, collé tel quel."></textarea>`;
+  $("ne-prompts").appendChild(bloc);
+  bloc.querySelectorAll("input, textarea").forEach(x => { x.oninput = naissancePrete; });
+}
+
+function textesAdoptes() {
+  return [...$("ne-prompts").children].map(bloc => ({
+    nom: bloc.querySelector("[data-prompt-nom]").value.trim(),
+    texte: bloc.querySelector("[data-prompt-texte]").value,
+  }));
+}
+
+function naissancePrete() {
+  const id = $("ne-id").value.trim();
+  // Un identifiant est un slug : le dire ici évite un refus après coup.
+  const bon = /^[a-z0-9]+(-[a-z0-9]+)*$/.test(id);
+  $("ne-dit").textContent = id && !bon
+    ? "l'identifiant s'écrit en minuscules, chiffres et tirets."
+    : "";
+  // La source vide est un choix légitime — semer — et non un champ non rempli.
+  let pret = bon && $("ne-nom").value.trim();
+  if ($("ne-source").value === "@adopter")
+    pret = pret && textesAdoptes().every(p => p.nom && p.texte.trim())
+                && textesAdoptes().length > 0;
+  $("ne-valider").disabled = !pret;
+}
+
+async function creerHarness() {
+  $("ne-valider").disabled = true;
+  const adoption = $("ne-source").value === "@adopter";
+  const r = await fetch(adoption ? "/harness/adoption" : "/harness", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify(adoption ? {
+      id_harness: $("ne-id").value.trim(),
+      nom: $("ne-nom").value.trim(),
+      provenance: $("ne-provenance").value.trim(),
+      prompts: textesAdoptes(),
+    } : {
+      source: $("ne-source").value,
+      id_harness: $("ne-id").value.trim(),
+      nom: $("ne-nom").value.trim(),
+    })
+  });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    $("ne-dit").textContent = d.detail || "la création a été refusée.";
+    $("ne-valider").disabled = false;
+    return;
+  }
+  // Il naît brouillon : on l'ouvre là où on l'arrête ou l'adapte.
+  const ne = await r.json();
+  await fetch("/harness/courant", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ id_harness: ne.id })
+  });
+  location.reload();
+}
+
+(async () => {
+  for (const cle of Object.keys(ONGLETS)) $("onglet-" + cle).onclick = () => montrerOnglet(cle);
+  $("btn-creer-harness").onclick = ouvrirNaissance;
+  $("btn-admin").onclick = () => { location.href = "/admin"; };
+  $("ne-annuler").onclick = () => { $("voile-naissance").hidden = true; };
+  $("ne-id").oninput = naissancePrete;
+  $("ne-nom").oninput = naissancePrete;
+  $("ne-un-texte").onclick = ajouterUnTexte;
+  $("ne-valider").onclick = creerHarness;
+  await chargerHarness();
+  for (const [nom, id] of Object.entries({ partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe" }))
+    $(id).onclick = () => { axe = nom; rendreDesign(); };
+  $("btn-membres").onclick = () => { membresOuverts = !membresOuverts; rendreDesign(); };
+  // Le bouton est reconstruit à chaque rendu de l'axe : on le rebranche là.
+  $("scel-annuler").onclick = () => { $("voile").hidden = true; };
+  $("scel-auteur").oninput = (ev) => { $("scel-valider").disabled = !ev.target.value.trim(); };
+  $("scel-valider").onclick = scellerDepuisLaPage;
+  try {
+    // `CHAT` était déclaré et jamais rempli : le lien « pratiquer » de la barre
+    // et les « reprendre la conversation » des séances ne s'affichaient jamais.
+    // Le service dit où vit le chat ; la page ne le devine pas.
+    const sante = await lire("/sante");
+    CHAT = sante.chat || "";
+    if (CHAT) {
+      $("vers-chat").href = CHAT;
+      $("vers-chat").hidden = false;
+    }
+    const corpus = await lire("/qg/corpus");
+    const select = $("corpus");
+    corpus.forEach(c => {
+      const o = document.createElement("option");
+      o.value = c.nom;
+      o.textContent = `${c.nom} (${c.sujets})`;
+      select.appendChild(o);
+    });
+    corpusChoisi = (corpus.find(c => c.sujets > 0) || corpus[0]).nom;
+    select.value = corpusChoisi;
+    select.onchange = () => { corpusChoisi = select.value; noeudChoisi = null; chargerSujets(); };
+    $("sujets").onchange = () => charger($("sujets").value);
+    await chargerSujets();
+  } catch { panne(); }
+})();
+</script>

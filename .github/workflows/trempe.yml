@@ -1,5 +1,6 @@
-# La trempe du produit, à chaque poussée — un vérificateur qui ne tourne pas
-# finit par ne plus exister.
+# La forge se forge elle-même (SPECS §10, R10.2) — un vérificateur qui ne
+# tourne pas finit par ne plus exister. Dans l'ordre où ils échouent le plus
+# utilement : le dépôt, puis les tests, puis l'Atelier, puis le style.
 name: trempe
 on: [push, pull_request]
 jobs:
@@ -16,5 +17,17 @@ jobs:
           else
             echo "::warning::VOCABULAIRE_INTERDIT absent — seuls les interdits publics sont vérifiés."
           fi
-      - name: la trempe
+      - name: la trempe du produit
         run: ./trempe/check.sh
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install --quiet -e ".[service,dev]"
+      - name: les tests
+        run: python -m pytest -q tests
+      - name: le manifest de l'Atelier, et sa trempe statique
+        run: |
+          python -m kokaji.cli valider atelier kokaji/semence
+          python -m kokaji.cli trempe atelier
+      - name: le style
+        run: python -m ruff check kokaji tests

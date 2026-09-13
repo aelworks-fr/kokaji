@@ -1,0 +1,15 @@
+# Registre canonique — les noms que ce harness s'autorise à citer.
+#
+# La trempe vérifie que tout nom cité dans une coupe existe ici : c'est ce qui
+# empêche une coupe de parler d'une étape qui n'existe pas.
+
+kata:
+  premiere-etape: Première étape
+
+livrables:
+  - Un premier livrable
+
+jalons: {}
+
+champs:
+  sujet: Ce sur quoi porte le travail

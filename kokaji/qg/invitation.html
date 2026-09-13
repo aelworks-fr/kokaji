@@ -1,0 +1,87 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kokaji · créer son compte</title>
+<link rel="stylesheet" href="/qg/organic-styles.css">
+<style>
+  body { background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); margin: 0; }
+  [hidden] { display: none !important; }
+  .page { max-width: 520px; margin: 0 auto; padding: 64px 24px; }
+  @media (max-width: 760px) { .page { padding: 32px 16px; } h1 { font-size: 24px; } }
+  h1 { font-family: var(--font-heading); font-weight: var(--font-heading-weight); font-size: 30px; margin: 0 0 8px; }
+  .sous { font-size: 13px; color: var(--color-neutral-600); margin: 0 0 22px; }
+  label { display: block; font-size: 12px; color: var(--color-neutral-600); margin: 14px 0 6px; }
+  input { width: 100%; border-radius: var(--radius-md); padding: 10px 13px; font: inherit; font-size: 13px;
+          background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300); color: var(--color-text); }
+  button { border-radius: 999px; padding: 9px 18px; font: inherit; font-size: 13px; cursor: pointer; margin-top: 20px;
+           background: var(--color-accent-500); border: 1px solid var(--color-accent-600); color: var(--color-neutral-100); }
+  button[disabled] { opacity: .45; cursor: not-allowed; }
+  .dit { font-size: 13px; margin-top: 16px; }
+</style>
+
+<div class="page">
+  <div id="ouverte" hidden>
+    <h1>Créer ton compte</h1>
+    <p class="sous" id="pour"></p>
+    <div class="card elev-sm" style="padding:24px">
+      <label for="nom">Ton nom — celui qu'on affichera</label>
+      <input id="nom" autocomplete="name">
+      <p class="dit" id="identifiant"></p>
+      <label for="mdp">Ton mot de passe — douze caractères au moins</label>
+      <input id="mdp" type="password" autocomplete="new-password">
+      <label for="bis">Confirme-le</label>
+      <input id="bis" type="password" autocomplete="new-password">
+      <button id="creer" disabled>Créer le compte</button>
+      <p class="dit" id="dit"></p>
+    </div>
+    <p class="sous" style="margin-top:18px">Ce mot de passe n'est connu que de toi : il n'a
+      jamais transité, et personne ne peut le relire.</p>
+  </div>
+
+  <div id="fermee" hidden>
+    <h1>Cette porte est fermée</h1>
+    <p class="sous">L'invitation est inconnue, déjà utilisée ou périmée. Demande-en une autre.</p>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const jeton = location.pathname.split("/").filter(Boolean).pop();
+
+function valide() {
+  const mdp = $("mdp").value, bis = $("bis").value;
+  $("creer").disabled = !($("nom").value.trim() && mdp.length >= 12 && mdp === bis);
+  $("dit").textContent = mdp && bis && mdp !== bis ? "les deux saisies diffèrent" : "";
+}
+["nom", "mdp", "bis"].forEach(i => { $(i).oninput = valide; });
+
+(async () => {
+  const r = await fetch(`/invitation/${encodeURIComponent(jeton)}/etat`);
+  if (!r.ok) { $("fermee").hidden = false; return; }
+  const d = await r.json();
+  $("ouverte").hidden = false;
+  $("pour").textContent = `Invitation pour ${d.email}.`;
+  // Dit **avant** l'inscription, et à l'endroit qui prête à confusion : le
+  // champ juste au-dessus se lit comme un identifiant, et le premier invité
+  // réel a essayé de se connecter avec son nom. Le dire seulement sur l'écran
+  // de confirmation, c'est le dire une fois l'écran passé.
+  $("identifiant").textContent =
+    `Ce n'est pas ton identifiant : tu te connecteras avec ${d.email}.`;
+})();
+
+$("creer").onclick = async () => {
+  const r = await fetch(`/invitation/${encodeURIComponent(jeton)}`, {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ nom: $("nom").value.trim(), mot_de_passe: $("mdp").value })
+  });
+  const d = await r.json();
+  if (!r.ok) { $("dit").textContent = d.detail || "refusé"; return; }
+  $("ouverte").innerHTML = `<h1>Compte créé</h1>
+    <p class="sous">Bienvenue, ${d.nom}.</p>
+    <div class="card elev-sm" style="padding:20px;margin-top:14px">
+      <p class="sous" style="margin:0">Pour te connecter, saisis <strong>${d.email}</strong>
+      — la porte demande « nom d'utilisateur », c'est bien l'adresse qu'elle attend.
+      Ton nom ne sert qu'à l'affichage.</p>
+    </div>`;
+};
+</script>
