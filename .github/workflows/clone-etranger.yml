@@ -8,6 +8,15 @@
 name: clone-etranger
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - dojo/**
+      - Dockerfile
+      - kokaji/**
+      - pyproject.toml
+      - atelier/**
+      - README.md
+      - .github/workflows/clone-etranger.yml
   push:
     branches: [main]
     paths:
