@@ -1,0 +1,5 @@
+# Le proxy de l'instance. `localhost` sert en HTTP simple ; un vrai domaine
+# obtient son TLS tout seul (Let's Encrypt).
+{$DOMAINE:localhost} {
+	reverse_proxy open-webui:8080
+}

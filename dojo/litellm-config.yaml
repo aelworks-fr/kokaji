@@ -1,0 +1,19 @@
+# La liste des modèles que la passerelle sert. Un modèle = un nom virtuel et
+# son incarnation — changer le moteur sous un nom reste une ligne.
+model_list:
+  - model_name: demo/moteur
+    litellm_params:
+      # Exemple IONOS AI Model Hub. Tout fournisseur compatible OpenAI convient.
+      model: openai/meta-llama/Llama-3.3-70B-Instruct
+      api_key: os.environ/IONOS_API_KEY
+      api_base: os.environ/IONOS_API_BASE
+
+litellm_settings:
+  drop_params: true
+  # Un refus passager du fournisseur n'est pas une panne de l'instance.
+  num_retries: 3
+  retry_after: 2
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  database_url: os.environ/DATABASE_URL

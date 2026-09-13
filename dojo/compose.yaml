@@ -1,0 +1,77 @@
+# Le dojo d'une instance Kokaji — RFC-007, pas 1.
+#
+# Quatre pièces, aucune n'émet vers l'extérieur hors des appels moteurs
+# configurés (D7.4) : la passerelle (litellm) route vers le fournisseur du
+# `.env`, la base porte ses comptes de passerelle, le chat (open-webui) parle
+# à la passerelle, le proxy (caddy) sert le tout.
+#
+# Démarrage : `cp .env.example .env`, renseigner, `docker compose up -d`.
+
+services:
+  litellm:
+    image: ghcr.io/berriai/litellm:main-v1.80.4-stable
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      LITELLM_MASTER_KEY: ${LITELLM_MASTER_KEY:?LITELLM_MASTER_KEY manquant — voir .env.example}
+      DATABASE_URL: postgresql://litellm:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant}@postgres:5432/litellm
+      IONOS_API_KEY: ${IONOS_API_KEY:-}
+      IONOS_API_BASE: ${IONOS_API_BASE:-}
+    volumes:
+      - ./litellm-config.yaml:/app/config.yaml:ro
+    command: ["--config", "/app/config.yaml", "--port", "4000"]
+    ports:
+      - "127.0.0.1:4000:4000"
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: litellm
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant}
+      POSTGRES_DB: litellm
+    volumes:
+      - donnees-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U litellm"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    restart: unless-stopped
+    depends_on:
+      - litellm
+    environment:
+      OPENAI_API_BASE_URL: http://litellm:4000/v1
+      OPENAI_API_KEY: ${LITELLM_MASTER_KEY}
+      WEBUI_NAME: Kokaji
+      # Aucune émission sortante du chat lui-même (D7.4).
+      ENABLE_OPENAI_API: "true"
+      ENABLE_OLLAMA_API: "false"
+    volumes:
+      - donnees-chat:/app/backend/data
+    ports:
+      - "127.0.0.1:3000:8080"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - open-webui
+    environment:
+      DOMAINE: ${DOMAINE:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - donnees-caddy:/data
+    ports:
+      - "80:80"
+      - "443:443"
+
+volumes:
+  donnees-postgres:
+  donnees-chat:
+  donnees-caddy:
