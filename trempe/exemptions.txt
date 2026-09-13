@@ -6,3 +6,4 @@ docs/rfc-003-diagnostic-de-nature.md  # nomme son inspiration, pour la bannir
 trempe/check.sh          # le vérificateur code l'interdit en dur
 trempe/vocabulaire-interdit.local.txt.example  # le gabarit l'explique
 CLAUDE.md                # la discipline nomme l'interdit pour l'interdire
+trempe/exemptions.txt    # ses justifications citent ce qu'elles exemptent
