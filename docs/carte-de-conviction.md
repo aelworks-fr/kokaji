@@ -7,9 +7,19 @@ sabotage est une opinion : chaque vérificateur d'ici a été **vu refuser**
 ## A — Le clone étranger (nominal)
 
 `git clone` + `docker compose up` sur une machine neutre ⇒ instance vide
-fonctionnelle. **Fait sur le poste de naissance** (voir C, boot de
-référence) ; à rejouer sur une machine qui n'a jamais vu Kokaji — la coche
-restera ouverte jusque-là.
+fonctionnelle. **Fait, et rejoué à chaque changement de la pile** : le
+workflow `clone-etranger` clone le dépôt sur un runner GitHub qui n'a jamais
+vu Kokaji, suit le README ligne à ligne avec des clés factices, tient les
+quatre coches, puis vérifie qu'aucun conteneur ne redémarre. Il ne prouve pas
+la conversation — le banc s'en charge avec de vraies clés.
+
+Sa première exécution, le 13 septembre 2026, a refusé trois fois, et chaque
+refus était un défaut que le poste de naissance cachait : `kokaji passerelle
+--config` appelait une passerelle pas encore levée (`--url` avait un défaut,
+la branche « écrire et s'arrêter » était morte) ; les veilles tentaient de
+tirer au registre l'image que `kokaji` construisait ; le dossier des comptes
+n'existait pas dans un clone neuf, Docker le créait à root et le service ne
+pouvait pas y ouvrir sa base. Trois corrections, puis vert.
 
 ## B — La première instance (nominal)
 
