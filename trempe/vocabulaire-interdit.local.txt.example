@@ -1,0 +1,9 @@
+# La part de la trempe qu'on ne publie pas sans désigner ce qu'elle tait.
+#
+# Copier en `vocabulaire-interdit.local.txt` (jamais versionné — .gitignore),
+# un terme par ligne, insensible à la casse. Le lint échoue si un fichier
+# versionné en contient un. « mode guidé » est vérifié en dur, lui : il est
+# banni publiquement par les SPECS §1.2.
+#
+# terme-a-taire
+# nom-d-un-client

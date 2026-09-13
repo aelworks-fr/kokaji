@@ -1,0 +1,8 @@
+# Les fichiers qui NOMMENT un interdit pour l'établir. Une exemption se
+# justifie en une ligne, ou elle n'a rien à faire ici. Les chemins seuls sont
+# publiés — jamais les termes.
+docs/SPECS.md            # §1.2 bannit « mode guidé », donc le cite
+docs/rfc-003-diagnostic-de-nature.md  # nomme son inspiration, pour la bannir
+trempe/check.sh          # le vérificateur code l'interdit en dur
+trempe/vocabulaire-interdit.local.txt.example  # le gabarit l'explique
+CLAUDE.md                # la discipline nomme l'interdit pour l'interdire
