@@ -9,7 +9,7 @@
 
 services:
   litellm:
-    image: ghcr.io/berriai/litellm:main-v1.80.4-stable
+    image: ghcr.io/berriai/litellm:main-stable
     restart: unless-stopped
     depends_on:
       postgres:
