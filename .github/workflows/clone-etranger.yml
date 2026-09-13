@@ -44,7 +44,7 @@ jobs:
       # Un vrai clone, pas un checkout : c'est le geste du README.
       - name: git clone
         run: |
-          git clone --quiet https://github.com/${{ github.repository }} etranger
+          git clone --quiet ${{ github.server_url }}/${{ github.repository }} etranger
           cd etranger && git checkout --quiet ${{ github.event.pull_request.head.sha || github.sha }}
 
       - name: le README, ligne à ligne

@@ -9,7 +9,10 @@ dist/
 dojo/harness/
 dojo/journal/*
 !dojo/journal/.gitkeep
-dojo/comptes/
+# Le dossier des comptes doit exister avant le premier `up` : monté absent,
+# Docker le crée à root et le service ne peut pas y ouvrir sa base.
+dojo/comptes/*
+!dojo/comptes/.gitkeep
 *.sqlite3
 *.sqlite3-journal
 # Python

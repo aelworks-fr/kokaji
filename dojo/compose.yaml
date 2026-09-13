@@ -218,6 +218,10 @@ services:
   # --- La veille : du journal aux ha (§7) ----------------------------------------
   veille:
     image: kokaji:local
+    # L'image est celle que `kokaji` construit : ne pas la chercher au
+    # registre. Sans ça, `up --build` tente de la tirer pendant qu'elle se
+    # construit, et refuse — le clone étranger l'a vu.
+    pull_policy: never
     user: "${KOKAJI_UID:-1000}:${KOKAJI_GID:-1000}"
     depends_on:
       kokaji:
@@ -251,6 +255,7 @@ services:
 
   veille-essai:
     image: kokaji:local
+    pull_policy: never
     user: "${KOKAJI_UID:-1000}:${KOKAJI_GID:-1000}"
     depends_on:
       kokaji:
