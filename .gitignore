@@ -1,0 +1,6 @@
+# Les secrets d'une instance ne vivent dans aucun repo (RFC-007 D7.4).
+.env
+# La part de la trempe qu'on ne publie pas sans désigner ce qu'elle tait.
+*.local.txt
+# Une coupe est un dérivé : régénérée, jamais commitée (RFC-007 D7.1).
+dist/
