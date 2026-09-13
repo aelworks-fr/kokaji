@@ -1,0 +1,155 @@
+# Atelier — harness d'exemple de Kokaji (SPECS §9)
+# Domaine fictif et volontairement personnel : il n'existe que pour éprouver la
+# forge. Tout son contenu est écrit pour ce projet.
+
+harness:
+  id: atelier
+  nom: Atelier
+  version: 1.0.0
+  langue: fr
+  domaine: >-
+    Accompagner un porteur de projet personnel de l'idée initiale
+    jusqu'à une feuille de route découpée en étapes réalisables.
+
+kata:
+  - id: idee
+    nom: Clarifier l'idée
+    source: kata/idee.yaml
+    livrable: Idée
+    amont: []
+    herite: []
+    produit:
+      - idee.besoin: fait_etabli
+      - idee.beneficiaire: fait_etabli
+      - idee.valeur_visee: hypothese
+      - idee.existant: hypothese
+
+  - id: cadrage
+    nom: Cadrer le projet
+    source: kata/cadrage.yaml
+    livrable: Projet cadré
+    amont: [idee]
+    # Les seuils sont explicites là où le kata en dépend vraiment (RFC-002
+    # §6.2) : cadrer suppose que le besoin et le bénéficiaire soient établis,
+    # pas seulement mentionnés. La valeur visée et l'existant sont hérités nus —
+    # leur présence suffit.
+    herite:
+      - idee.besoin: fait_etabli
+      - idee.beneficiaire: fait_etabli
+      - idee.valeur_visee
+      - idee.existant
+    produit:
+      - cadrage.hypotheses_de_valeur: hypothese
+      - cadrage.premier_increment: fait_etabli
+      - cadrage.criteres_de_reussite: fait_etabli
+    # RFC-001 §6 : les hypothèses de valeur non retenues et les variantes de
+    # premier incrément sont les options de démonstration.
+    emet_options: true
+
+  - id: decoupage
+    nom: Découper le premier incrément
+    source: kata/decoupage.yaml
+    livrable: Feuille de route
+    amont: [cadrage]
+    herite:
+      # Découper suppose un premier incrément arrêté ; les hypothèses de valeur,
+      # elles, restent des hypothèses — c'est leur nature, et exiger mieux
+      # rendrait le contrat de l'amont intenable.
+      - cadrage.premier_increment: fait_etabli
+      - cadrage.hypotheses_de_valeur
+      - cadrage.criteres_de_reussite
+    produit:
+      - decoupage.etapes: fait_etabli
+    # RFC-001 §6 : ce kata déclare ses décisions — le delta fermé / ouvert sur le
+    # choix des étapes. `decision` appartenant au même bloc facultatif que
+    # `options`, il lui faut le même drapeau.
+    emet_options: true
+
+chaine:
+  noeuds:
+    - { id: idee, type: kata, nom: Idée }
+    - { id: cadrage, type: kata, nom: Projet cadré }
+    - { id: decoupage, type: kata, nom: Feuille de route }
+    - { id: mise-en-oeuvre, type: externe, nom: Mise en œuvre }
+  aretes:
+    - { de: idee, vers: cadrage, label: l'idée tient debout }
+    - { de: cadrage, vers: decoupage, label: le premier incrément est choisi }
+    - { de: decoupage, vers: mise-en-oeuvre, label: les étapes sont testables }
+
+template: template.md
+
+cibles:
+  - id: sobre
+    etat_structure: false
+    en_tete: Atelier
+    packaging: dossier
+
+  - id: instrumentee
+    etat_structure: true
+    en_tete: Atelier — instrumenté
+    packaging: dossier
+
+trempe:
+  # Le seuil de justesse du diagnostic de nature (RFC-003 §5.4, carnet #9).
+  # Écrit ici, donc avant toute campagne : un seuil ajusté après lecture des
+  # résultats ne mesure plus le kata, il mesure l'envie de le déclarer bon.
+  #
+  # Trois sur quatre, c'est le critère que le RFC se donne à lui-même. Le kin
+  # piège ne se moyenne pas : il est exigé en plus, séparément.
+  justesse:
+    defaut: 0.75
+  # Cette liste ne porte que les termes propres au domaine de l'Atelier. Ceux
+  # que Kokaji bannit de tout le dépôt (R10.2) sont déclarés une seule fois,
+  # dans `.trempe-kokaji.yaml` — un harness n'a pas à les redéclarer.
+  vocabulaire_interdit:
+    - coach
+    - meilleure pratique
+    - clé en main
+  registre: registre.yaml
+  checks_session:
+    # Compté par paragraphe, pas par symbole : une question qui propose ses
+    # options en ligne reste une question, et une question citée n'en est pas
+    # une de plus. Compter les « ? » signalait 34 % des tours, dont la plupart à
+    # tort — jusqu'à 8 pour un tour qui en posait deux (voir CAS-0001, CAS-0007).
+    - id: une-question-par-tour
+      type: regex-par-bloc
+      motif: "\\?"
+      maximum: 1
+      message: un tour ne pose qu'une question
+    - id: pas-de-solution-non-sollicitee
+      type: interdit
+      motifs: ["je te conseille", "tu devrais", "la solution est"]
+      message: le kata fait préciser, il ne prescrit pas
+
+etat:
+  # Du plus fort au plus faible : l'ordre est celui de la déclaration (RFC-002).
+  # `non_requis` ferme la marche — c'est le plus faible, et c'est voulu. Quand la
+  # nature du sujet rend un champ sans objet (RFC-003 §3, conduite « rien à
+  # explorer »), le kata le marque ainsi plutôt que de le déduire. Un kata qui
+  # promet mieux et livre `non_requis` est donc en sur-promesse, et le carré le
+  # dit : le raccourci ne fait pas disparaître le contrat, il le laisse
+  # visiblement non tenu.
+  # `en_chantier` comble un manque mesuré, il ne renomme rien. La pratique a
+  # écrit 91 fois `en_cours` dans `champs` — une valeur de `statuts_hypothese` —
+  # parce qu'aucune valeur d'ici ne disait « on y travaille » : `fait_etabli` est
+  # trop, `hypothese` est autre chose, `en_pause` est faux. La coupe interdit
+  # d'emprunter à la liste voisine « même quand aucune de la bonne liste ne te
+  # satisfait » ; encore fallait-il qu'une valeur satisfasse.
+  #
+  # Sa place — sous `hypothese`, sur `en_pause` — conserve l'ordre relatif de
+  # toutes les autres : les 50 ha qui portent des blocs ont été recalculés, aucun
+  # verdict de carré ne change. Ajouter ne périme pas ; renommer aurait périmé.
+  statuts_champ: [fait_etabli, hypothese, en_chantier, en_pause, non_requis]
+  statuts_hypothese: [en_cours, validee, infirmee, en_pause]
+
+personas: personas/
+
+# Deux corpus (HDS v0.2). Les cas réels ne se mélangent pas aux essais : un
+# banc rejoué des dizaines de fois noierait la poignée de sessions vécues.
+# Le premier déclaré est celui qu'on lit par défaut.
+corpus:
+  reel:
+    chemin: corpus/reel/
+    cles: [chat-public]      # les conversations vécues, depuis le chat
+  essai:
+    chemin: corpus/essai/    # tout le reste : banc, sondes, rejeux

@@ -1,0 +1,28 @@
+# Kin de banc — fil rouge « Se former à l'asso », variante 1 sur 4 (RFC-003 §6.1).
+#
+# Quatre kin, un seul univers, quatre natures. Le vocabulaire est volontairement
+# proche d'un kin à l'autre : la seule variable isolée est la nature du problème.
+
+id: asso-supports-en-ligne
+nom: Responsable formation — les supports en ligne
+
+# La nature réelle du sujet, déclarée par l'auteur du kin. C'est elle que le banc
+# comparera un jour au diagnostic émis par le kata (RFC-003 §4).
+typologie: evident
+
+sujet: >-
+  On a 10 PDF de formation, les bénévoles les réclament par mail. Je veux les
+  mettre en ligne pour qu'ils se servent.
+
+posture: >-
+  Tu sais exactement ce que tu veux et tu l'as déjà vu faire ailleurs. Tu
+  réponds court et concret. Si on te propose d'explorer des options ou de
+  réfléchir à la valeur de la chose, tu t'impatientes : « c'est juste des PDF à
+  poser quelque part ». Tu ne caches rien, il n'y a simplement rien de caché.
+
+pieges:
+  - Tu ne demandes jamais d'aide pour décider — tu demandes de l'aide pour faire.
+  - Si on te pose plus de cinq questions, tu le fais remarquer.
+
+design_exerce: [refus-de-prescrire, separation-etabli-suppose]
+tours_max: 8

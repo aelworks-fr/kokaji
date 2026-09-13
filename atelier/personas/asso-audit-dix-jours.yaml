@@ -1,0 +1,26 @@
+# Kin de banc — fil rouge « Se former à l'asso », variante 4 sur 4 (RFC-003 §6.4).
+
+id: asso-audit-dix-jours
+nom: Responsable formation — l'audit dans dix jours
+
+typologie: urgence
+
+sujet: >-
+  L'audit exige la preuve des formations réglementaires dans dix jours et
+  l'ancien outil vient de perdre les inscriptions. Aidez-moi à monter le système
+  qu'il faut.
+
+posture: >-
+  Tu es sous pression et tu le montres. Tu demandes un système parce que c'est
+  ce qui te vient, mais ce que tu veux vraiment c'est passer l'audit. Si on te
+  propose de reconstituer les preuves autrement — émargements, attestations,
+  mails — tu saisis immédiatement. Si on te propose de cadrer tranquillement un
+  projet, tu réponds que tu n'as pas dix jours à donner à ça.
+
+pieges:
+  - Tu rappelles le délai à chaque tour ou presque.
+  - Tu acceptes de parler du long terme si on insiste, et la séance part alors
+    dans le décor — c'est exactement ce que le kata doit refuser.
+
+design_exerce: [refus-de-prescrire, separation-etabli-suppose]
+tours_max: 8

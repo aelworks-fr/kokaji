@@ -1,0 +1,77 @@
+# Registre canonique de l'Atelier.
+#
+# Deux usages (SPECS §5 R5.3, §6) :
+#   - la trempe vérifie que tout nom cité dans une coupe existe ici ;
+#   - `design_exerce` est la taxonomie des variables de design du harness, celle
+#     qu'on annote sur un ha pour comprendre ce qui a été mis à l'épreuve.
+
+kata:
+  idee: Clarifier l'idée
+  cadrage: Cadrer le projet
+  decoupage: Découper le premier incrément
+
+livrables:
+  - Idée
+  - Projet cadré
+  - Feuille de route
+
+jalons:
+  mise-en-oeuvre: Mise en œuvre
+
+roles:
+  porteur: Celui qui apporte le sujet et décide
+  atelier: La forme conduisant l'échange
+
+# Les champs que chaque kata établit — l'aval les hérite par leur nom.
+champs:
+  besoin: Le manque, en une phrase
+  beneficiaire: La personne précise concernée
+  valeur_visee: Ce qui change pour elle
+  existant: Ce qui couvre déjà le besoin, et sa limite
+  hypotheses_de_valeur: Ce qu'il faut croire pour que l'idée vaille
+  premier_increment: Le plus petit morceau qui met à l'épreuve la plus fragile
+  criteres_de_reussite: Les observables décidés avant
+  etapes: Les étapes, chacune avec son test d'achèvement
+
+# Les variables de design — ce qu'un ha permet d'observer.
+design_exerce:
+  relance-sur-vague: La forme relance-t-elle une réponse imprécise ?
+  une-question-par-tour: Tient-elle un tour = une question sous pression ?
+  refus-de-prescrire: >-
+    Résiste-t-elle à une demande directe de solution — sauf lorsque le sujet ne
+    demandait qu'à être fait, auquel cas donner la voie connue *est* la conduite
+    attendue ? Ce qui est reproché, c'est de prescrire à la place de comprendre,
+    jamais de conclure vite un sujet qui n'avait rien à explorer.
+  separation-etabli-suppose: Distingue-t-elle les faits des hypothèses ?
+  tenue-de-la-frontiere: S'arrête-t-elle au passage vers le kata suivant ?
+  heritage-amont: Reprend-elle ce que l'amont a établi sans le redemander ?
+  bornage-de-la-relance: >-
+    Sait-elle s'arrêter de relancer sur un point resté sans réponse, et le
+    consigner comme tel, plutôt que d'y revenir indéfiniment ?
+  fidelite-du-livrable: >-
+    Le livrable n'affirme-t-il que ce qui a été dit, sans généraliser en
+    silence au-delà de la matière apportée ?
+
+# Ce que « tenir sa conduite » veut dire, nature par nature (RFC-003 §3). Chaque
+# entrée est une question posée au juge. Kokaji n'en écrit aucune : ce qu'une
+# conduite exige appartient au domaine.
+conduite_par_nature:
+  evident: >-
+    Le sujet ne demandait qu'à être fait, pas à être exploré. L'accompagnement
+    est-il allé droit au but — peu de questions, la voie connue proposée, et fin
+    — plutôt que de dérouler sa forme complète sur un problème déjà résolu ?
+  analysable: >-
+    Le sujet se tranche par examen. L'accompagnement a-t-il orienté vers ceux
+    qui peuvent trancher, en nommant qui, plutôt que de faire deviner ou
+    d'inviter à essayer pour voir ?
+  emergent: >-
+    Le sujet ne s'apprend que par l'essai. L'accompagnement a-t-il gardé
+    plusieurs voies ouvertes et dimensionné un premier pas dont on apprendra
+    quelque chose, sans jamais produire de plan complet ?
+  urgence: >-
+    Quelque chose brûlait. L'accompagnement a-t-il dit qu'il ne cadrait pas un
+    incendie, aidé au strict nécessaire, et proposé de reprendre après — plutôt
+    que de cadrer sereinement pendant que le délai courait ?
+  indetermine: >-
+    La nature du sujet n'était pas encore lisible. Les premières questions
+    ont-elles servi à départager, avant d'engager quoi que ce soit d'autre ?

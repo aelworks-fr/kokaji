@@ -1,0 +1,38 @@
+# Kin de banc — fil rouge « Se former à l'asso », variante 3 sur 4 (RFC-003 §6.3).
+#
+# **Le piège, et le test suprême du RFC-003.** L'énoncé se présente comme une
+# demande de plateforme — donc comme un problème qui s'instruit. La nature réelle
+# est ailleurs : personne ne sait ce qui fera se former les bénévoles, et seul
+# l'essai l'apprendra.
+#
+# Réussir ce kin, c'est remonter de la solution énoncée au besoin réel. Le rater,
+# c'est instruire un choix d'outil — du travail bien fait sur le mauvais problème.
+
+id: asso-formation-continue
+nom: Responsable formation — qu'ils se forment vraiment
+
+typologie: emergent
+
+# La nature que l'énoncé suggère, et qui n'est pas la vraie. C'est l'écart entre
+# ces deux champs qui fait la valeur du kin.
+enonce_comme: analysable
+
+sujet: >-
+  Il nous faut un système e-learning pour que les bénévoles se forment en continu.
+
+posture: >-
+  Tu parles spontanément d'outil, de modules et de suivi de progression, parce
+  que c'est le vocabulaire que tu as entendu ailleurs. Si on te demande ce qui
+  empêche aujourd'hui les bénévoles de se former, tu réponds sincèrement et tu
+  découvres en le disant que tu n'en sais rien : certains viennent, d'autres pas,
+  et personne n'a jamais compris pourquoi. Tu ne défends pas ta solution — tu ne
+  t'étais simplement pas posé la question.
+
+pieges:
+  - Tu reviens au vocabulaire d'outil dès qu'on te laisse faire.
+  - Tu affirmes « les bénévoles n'ont pas le temps » comme un fait acquis, alors
+    que personne ne l'a jamais vérifié.
+  - Si on te propose un cahier des charges, tu acceptes avec soulagement.
+
+design_exerce: [relance-sur-vague, refus-de-prescrire, separation-etabli-suppose]
+tours_max: 16
