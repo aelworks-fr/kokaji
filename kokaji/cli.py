@@ -322,9 +322,10 @@ def _passerelle(args) -> int:
         print(f"✓ {len(entrees)} modèle(s) posés dans {args.config}")
         if not args.url:
             return 0
+    url = args.url or "http://127.0.0.1:4000"
 
     try:
-        autorises = autorisation_de_la_cle(args.url, args.admin, args.cle)
+        autorises = autorisation_de_la_cle(url, args.admin, args.cle)
     except PasserelleInjoignable as err:
         print(f"✗ passerelle : {err}", file=sys.stderr)
         return 1
@@ -343,7 +344,7 @@ def _passerelle(args) -> int:
         return 1
 
     try:
-        publier_autorisation(args.url, args.admin, args.cle, attendus)
+        publier_autorisation(url, args.admin, args.cle, attendus)
     except PasserelleInjoignable as err:
         print(f"✗ publication refusée : {err}", file=sys.stderr)
         return 1
@@ -1322,7 +1323,13 @@ def main(argv: list[str] | None = None) -> int:
     passerelle.add_argument(
         "harness", type=Path, help="dossier d'un harness, ou dossier qui en contient"
     )
-    passerelle.add_argument("--url", default="http://127.0.0.1:4000", help="racine de la passerelle")
+    # Sans `--url`, `--config` écrit et s'arrête : la passerelle n'existe pas
+    # encore au premier démarrage (le clone étranger l'a montré). Avec, ou sans
+    # `--config`, on confronte — à l'adresse donnée ou à celle du Dojo local.
+    passerelle.add_argument(
+        "--url", default=None,
+        help="racine de la passerelle (défaut : http://127.0.0.1:4000, sauf avec --config seul)",
+    )
     passerelle.add_argument(
         "--admin", default=os.environ.get("LITELLM_MASTER_KEY", ""),
         help="clé d'administration de la passerelle (défaut : $LITELLM_MASTER_KEY)",
