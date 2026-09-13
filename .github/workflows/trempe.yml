@@ -2,7 +2,7 @@
 # tourne pas finit par ne plus exister. Dans l'ordre où ils échouent le plus
 # utilement : le dépôt, puis les tests, puis l'Atelier, puis le style.
 name: trempe
-on: [push, pull_request]
+on: [push, pull_request, workflow_dispatch]
 jobs:
   trempe:
     runs-on: ubuntu-latest
