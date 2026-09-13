@@ -32,6 +32,12 @@ docker compose up -d --build
 docker compose ps                    # puis `docker stats` une minute : rien ne doit boucler
 ```
 
+Le `--build` construit les deux images depuis le dépôt. Elles sont aussi
+publiées à chaque commit sur `main` — `ghcr.io/aelworks-fr/kokaji` et
+`ghcr.io/aelworks-fr/kokaji-vigie`, étiquettes `latest` et `sha-<commit>` —
+pour qu'une instance puisse tourner sans cloner le produit : dans son compose,
+`image:` remplace `build:`.
+
 Les services sont en `restart: on-failure:5` et plafonnés en mémoire et CPU
 (voir l'en-tête de `compose.yaml`). Un conteneur qui plante au démarrage
 finit en `Exited` au lieu de redémarrer sans fin : le lire dans
