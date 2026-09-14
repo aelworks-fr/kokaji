@@ -34,8 +34,9 @@ INVITATION = (racine_html().parent / "invitation.html").read_text(encoding="utf-
 
 
 class Coque(unittest.TestCase):
-    def test_les_quatre_modules_existent(self):
-        for module in ("module-decouvrir", "module-profil", "module-qg", "module-design"):
+    def test_les_six_modules_existent(self):
+        for module in ("module-decouvrir", "module-profil", "module-qg", "module-design",
+                       "module-vigie", "module-comptes"):
             self.assertIn(f'id="{module}"', PAGE, module)
 
     def test_seul_le_qg_est_visible_au_chargement(self):
@@ -43,6 +44,7 @@ class Coque(unittest.TestCase):
         for module, cache in (
             ("module-decouvrir", True), ("module-profil", True),
             ("module-design", True), ("module-qg", False),
+            ("module-vigie", True), ("module-comptes", True),
         ):
             balise = re.search(rf'<section id="{module}"([^>]*)>', PAGE)
             self.assertIsNotNone(balise, module)
@@ -64,6 +66,69 @@ class Coque(unittest.TestCase):
     def test_ce_qui_est_appele_est_defini(self):
         for fonction in ("rendreProfil", "chargerDesign", "rendreDesign", "eprouver"):
             self.assertIn(f"function {fonction}(", PAGE, fonction)
+
+
+class LesTroisTerritoires(unittest.TestCase):
+    """RFC-013 D13.1, remarque 1 — un menu en trois territoires, pas une liste plate."""
+
+    def test_les_territoires_sont_nommes_dans_l_ordre(self):
+        aside = PAGE[PAGE.index('<aside class="flanc"'):PAGE.index("</aside>")]
+        i = [aside.index(f'<span class="flanc-groupe{s}">{n}</span>')
+             for s, n in (("", "Harness"), (" flanc-groupe-suite", "Moi"), ("", "Kokaji"))]
+        self.assertEqual(i, sorted(i))
+
+    def test_les_onglets_sont_des_liens_avec_une_adresse(self):
+        """K-07 : un onglet a une adresse, le bouton précédent le connaît."""
+        for onglet, href in (("design", "#/design"), ("qg", "#/qg"), ("profil", "#/moi/profil"),
+                             ("decouvrir", "#/kokaji/decouvrir"), ("vigie", "#/kokaji/vigie"),
+                             ("comptes", "#/kokaji/comptes")):
+            self.assertRegex(RENDU, rf'<a class="onglet[^"]*" id="onglet-{onglet}" href="{re.escape(href)}"')
+        self.assertNotIn('<button class="onglet"', RENDU)
+
+    def test_le_selecteur_commande_ses_deux_sous_vues(self):
+        aside = PAGE[PAGE.index('<aside class="flanc"'):PAGE.index("</aside>")]
+        self.assertLess(aside.index('id="flanc-harness"'), aside.index('id="onglet-design"'))
+        self.assertLess(aside.index('id="onglet-design"'), aside.index('id="btn-creer-harness"'))
+        self.assertIn('class="onglet onglet-sous" id="onglet-design"', aside)
+
+    def test_le_territoire_kokaji_est_en_pied_et_discret(self):
+        aside = PAGE[PAGE.index('<aside class="flanc"'):PAGE.index("</aside>")]
+        self.assertLess(aside.index('class="flanc-espace"'), aside.index(">Kokaji</span>"))
+        self.assertIn(".onglet-kokaji { padding: 8px 14px; font-size: 13px; }", PAGE)
+
+    def test_le_nom_du_harness_entre_au_titre_des_deux_sous_vues(self):
+        self.assertIn('$("qg-marque").textContent = `${h} — QG`', PAGE)
+        self.assertIn('$("design-titre").textContent = `${h} — Design`', PAGE)
+
+    def test_l_administration_n_est_plus_un_cul_de_sac(self):
+        """K-04 : la vigie et les comptes vivent dans la page, avec la navigation ; /admin renvoie."""
+        self.assertNotIn('btn-admin', PAGE)
+        self.assertIn('url=/#/kokaji/comptes', ADMIN)
+        self.assertIn('id="vigie-resume"', PAGE)
+        self.assertIn("remonté(s) en premier", PAGE)
+        self.assertIn('identifiants techniques', PAGE)
+
+
+class LeRoutage(unittest.TestCase):
+    """K-07, K-17 — chaque vue a une adresse et un titre."""
+
+    def test_l_adresse_se_lit_et_s_ecrit(self):
+        for fonction in ("lireRoute", "routeDe", "aller", "appliquerRoute", "titrer"):
+            self.assertIn(f"function {fonction}(", PAGE, fonction)
+        self.assertIn('window.addEventListener("hashchange", appliquerRoute);', PAGE)
+
+    def test_le_titre_dit_le_harness_la_vue_et_l_axe(self):
+        self.assertIn('document.title = morceaux.filter(Boolean).join(" · ") + " — Kokaji";', PAGE)
+        self.assertIn('if (vue === "design") morceaux.push(NOMS_D_AXE[axe] || "");', PAGE)
+
+    def test_un_axe_change_l_adresse(self):
+        self.assertIn('$(id).onclick = () => { axe = nom; aller(routeDe("design", { axe: nom })); };', PAGE)
+
+    def test_un_lien_vers_un_autre_harness_le_prend(self):
+        self.assertIn("r.harness !== offreHarness.courant", PAGE)
+
+    def test_la_vue_vient_de_l_adresse_au_chargement(self):
+        self.assertIn("  appliquerRoute();\n", PAGE)
 
 
 class LaPageNeMentPas(unittest.TestCase):
@@ -294,9 +359,9 @@ class LaPasseUn(unittest.TestCase):
         self.assertIn(".flanc-harness { flex: none; padding: 0; min-width: 11rem; }", PAGE)
 
     def test_l_administration_a_un_retour_et_un_resume(self):
-        self.assertIn('href="/" class="mono"', ADMIN)
-        self.assertIn('id="vigie-resume"', ADMIN)
-        self.assertIn("remonté(s) en premier", ADMIN)
+        self.assertIn('href="/#/kokaji/vigie"', ADMIN)
+        self.assertIn('id="vigie-resume"', PAGE)
+        self.assertIn("remonté(s) en premier", PAGE)
 
 
 class LesCoupes(unittest.TestCase):
@@ -432,27 +497,31 @@ class PageD_Invitation(unittest.TestCase):
 
 
 class VersL_Administration(unittest.TestCase):
-    """Une page qu'on n'atteint qu'en tapant son adresse n'existe pas."""
+    """Une vue qu'on n'atteint qu'en tapant son adresse n'existe pas — et depuis
+    la RFC-013 elle vit dans la page, territoire Kokaji."""
 
-    def test_le_qg_mene_a_la_page_d_administration(self):
-        self.assertIn('id="btn-admin"', RENDU)
-        self.assertIn('location.href = "/admin"', RENDU)
+    def test_le_menu_mene_aux_comptes(self):
+        self.assertIn('id="onglet-comptes" href="#/kokaji/comptes"', RENDU)
+        self.assertIn('if (nom === "comptes") chargerComptes();', RENDU)
 
     def test_elle_n_est_montree_qu_a_qui_l_a(self):
         """La proposer à tous ferait cliquer vers un refus."""
-        self.assertIn('$("btn-admin").hidden = !offre.administration', RENDU)
+        self.assertIn('$("onglet-comptes").hidden = !offre.administration', RENDU)
+
+    def test_la_vigie_se_lit_sans_administration(self):
+        self.assertIn('d = { vigie: await lire("/vigie") }', RENDU)
 
 
 class L_AdministrationRejoint(unittest.TestCase):
     """Deux vues qui disent chacune la vérité doivent s'expliquer l'une l'autre."""
 
     def test_l_absence_du_selecteur_est_dite_et_le_geste_offert(self):
-        self.assertIn("il n'apparaît pas dans ton sélecteur", ADMIN)
-        self.assertIn('data-rejoindre="${e(h.id)}"', ADMIN)
-        self.assertIn("/rejoindre", ADMIN)
+        self.assertIn("il n'apparaît pas dans ton sélecteur", RENDU)
+        self.assertIn('data-rejoindre="${e(h.id)}"', RENDU)
+        self.assertIn("/rejoindre", RENDU)
 
     def test_l_autorat_se_lit_a_son_nom(self):
-        self.assertIn("quiEstCe(h.autorat.proprietaire)", ADMIN)
+        self.assertIn("quiEstCe(h.autorat.proprietaire)", RENDU)
 
 
 class NomsDeClasse(unittest.TestCase):

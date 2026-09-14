@@ -137,7 +137,7 @@ MODALE_DEVANT_TOUT = """() => {
 # Les axes du module design, dans l'ordre de la page.
 AXES_DU_DESIGN = ("partition", "contrats", "trempe", "coupes")
 
-MODULES_VISIBLES = """() => ['module-decouvrir','module-profil','module-qg','module-design']
+MODULES_VISIBLES = """() => ['module-decouvrir','module-profil','module-qg','module-design','module-vigie','module-comptes']
     .filter(id => document.getElementById(id).getBoundingClientRect().height > 0)"""
 
 
@@ -235,6 +235,7 @@ def regarder(url: str) -> list[Verdict]:
                 for onglet, module in (
                     ("#onglet-decouvrir", "#module-decouvrir"),
                     ("#onglet-profil", "#module-profil"),
+                    ("#onglet-vigie", "#module-vigie"),
                     ("#onglet-design", "#module-design"),
                 ):
                     page.click(onglet)

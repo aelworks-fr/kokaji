@@ -98,7 +98,7 @@ class Rendu(unittest.TestCase):
         serait passé au vert sans rien regarder — c'est « Découvrir » qui
         était collé au flanc."""
         quoi = [v.quoi for v in self.verdicts]
-        for module in ("decouvrir", "profil", "design"):
+        for module in ("decouvrir", "profil", "vigie", "design"):
             self.assertIn(f"la colonne de {module} est centrée (2560 px)", quoi)
         # Centrer ne suffisait pas : il restait une colonne de bureau posée au
         # milieu d'un mur. La prose garde sa mesure, les surfaces tabulaires

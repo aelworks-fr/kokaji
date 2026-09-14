@@ -621,6 +621,12 @@ class SurfaceHttp(Bac):
         self.assertEqual([c["ou"] for c in v["changements"]], ["template"])
         self.assertEqual(v["versions"], {"h": "1.3.0"})
 
+    def test_la_vigie_se_lit_depuis_la_page(self):
+        """RFC-013, remarque 2 : la vigie est l'état du produit, pas un secret."""
+        d = self.client.get("/vigie").json()
+        self.assertIn("verdicts", d)
+        self.assertIn("tient", d)
+
     def test_l_etat_du_depot_se_lit(self):
         """RFC-012 lot A : sans dépôt, la surface le dit ; avec, elle le décrit."""
         d = self.client.get("/depot").json()
@@ -737,6 +743,9 @@ class SurfaceGardee(Bac):
 
         self.assertEqual(self.client.get("/conception", headers=cle).status_code, 403)
         self.assertEqual(self.client.get("/depot", headers=cle).status_code, 403)
+        # La vigie, elle, se lit par tout compte connecté — mais pas sans session.
+        self.assertEqual(self.client.get("/vigie", headers=cle).status_code, 200)
+        self.assertEqual(self.client.get("/vigie").status_code, 401)
         # Sabotage 5 du RFC-010 : la coupe se refuse comme le reste.
         self.assertEqual(
             self.client.post(

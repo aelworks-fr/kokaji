@@ -36,14 +36,14 @@
      écran plus grand que tous ceux qu'on regardait.
      Le conteneur, lui, prenait déjà la place : ce qui manquait était de centrer
      la colonne dedans. */
-  .decouvrir, .profil, .design { width: 100%; margin-inline: auto; }
+  .decouvrir, .profil, .design, .vigie, .comptes { width: 100%; margin-inline: auto; }
   .flanc { width: 224px; flex: none; padding: 24px 16px; display: flex; flex-direction: column;
            gap: 4px; border-right: 1px solid var(--color-neutral-200); }
   .flanc-marque { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
                   font-size: 22px; padding: 0 12px 18px; }
   .onglet { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 999px;
             border: none; font: inherit; font-size: 14px; background: transparent; cursor: pointer;
-            color: var(--color-neutral-700); text-align: left; }
+            color: var(--color-neutral-700); text-align: left; text-decoration: none; }
   .onglet:hover { background: var(--color-neutral-200); }
   .onglet[aria-current="page"] { background: var(--color-accent-200); color: var(--color-accent-900);
                                  font-weight: 600; }
@@ -62,6 +62,22 @@
                           background: var(--color-bg); color: var(--color-text); }
   .flanc-espace { flex: 1; }
   .contenu { flex: 1; min-width: 0; }
+  /* Les trois territoires (RFC-013 D13.1) : un intitulé de groupe lisible
+     (contraste relevé, K-14), les sous-vues du harness indentées, le
+     territoire Kokaji en pied et plus discret. Un onglet est un lien : il a
+     une adresse, un titre, et le bouton « précédent » le connaît (K-07). */
+  .flanc-groupe { font-size: 12.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+                  color: var(--color-neutral-700); padding: 6px 12px; }
+  .flanc-groupe-suite { padding-top: 20px; }
+  .onglet-sous { margin-left: 8px; }
+  .onglet-kokaji { padding: 8px 14px; font-size: 13px; }
+  .onglet-kokaji .point-onglet { width: 7px; height: 7px; }
+  .onglet .badge-encre { margin-left: auto; }
+  .flanc-action { display: flex; align-items: center; gap: 10px; padding: 8px 14px; margin: 6px 4px 0;
+                  border-radius: 999px; border: none; font: inherit; font-size: 12.5px; cursor: pointer;
+                  background: transparent; color: var(--color-accent-800); text-align: left; }
+  .flanc-action:hover { background: var(--color-neutral-200); }
+  .vigie, .comptes { width: 100%; margin-inline: auto; }
 
   /* 0 bis · le module Découvrir — la seule page qui s'adresse à quelqu'un qui
      arrive. Elle explique le cycle, pas la mécanique : ce qu'on peut faire ici,
@@ -382,8 +398,10 @@
     /* La puce « miroir en lecture » et le « à faire » disent la même chose que
        l'onglet actif : sur un rang qui défile, elles ne font que pousser le
        reste hors de vue. */
-    .flanc > .tag-outline, .onglet .tag { display: none; }
+    .onglet .tag, .flanc-groupe { display: none; }
     .flanc-espace { display: none; }
+    .onglet-sous { margin-left: 0; }
+    .flanc-action { margin: 0; white-space: nowrap; flex: none; }
 
     .page { padding: var(--space-4) var(--space-3) var(--space-6); }
     .profil, .design { padding: 20px 16px 48px; gap: 18px; }
@@ -470,27 +488,39 @@
 
 <a class="evitement" href="#contenu">Aller au contenu</a>
 <div class="coque">
-<aside class="flanc">
+<aside class="flanc" aria-label="Navigation principale">
   <div class="flanc-marque">Kokaji</div>
+
+  <!-- Territoire HARNESS : le sélecteur, puis ses deux sous-vues, puis créer.
+       Le sélecteur commande Design et QG — et rien d'autre : c'est ce que sa
+       place dit (RFC-013 D13.1, remarque 1). -->
+  <span class="flanc-groupe">Harness</span>
   <div class="flanc-harness" id="flanc-harness" hidden>
     <label for="harness-courant">Harness</label>
-    <select id="harness-courant"></select>
+    <select id="harness-courant" aria-label="Harness actif"></select>
   </div>
-  <button class="onglet" id="btn-creer-harness" hidden
-          style="font-size:13px;color:var(--color-neutral-600)">＋ Créer un harness</button>
-  <button class="onglet" id="btn-admin" hidden
-          style="font-size:13px;color:var(--color-neutral-600)">⚙ Administration</button>
-  <button class="onglet" id="onglet-decouvrir" aria-current="false">
-    <span class="point-onglet"></span>Découvrir</button>
-  <button class="onglet" id="onglet-profil" aria-current="false">
-    <span class="point-onglet"></span>Profil</button>
-  <button class="onglet" id="onglet-qg" aria-current="page">
-    <span class="point-onglet"></span>QG — observer</button>
-  <button class="onglet" id="onglet-design" aria-current="false">
-    <span class="point-onglet"></span>Design du harness
-    <span class="tag tag-outline" style="font-size:10px">à faire</span></button>
+  <a class="onglet onglet-sous" id="onglet-design" href="#/design" aria-current="false">
+    <span class="point-onglet"></span>Design</a>
+  <a class="onglet onglet-sous" id="onglet-qg" href="#/qg" aria-current="page">
+    <span class="point-onglet"></span>QG</a>
+  <button class="flanc-action" id="btn-creer-harness" hidden>＋ Créer un harness</button>
+
+  <!-- Territoire MOI -->
+  <span class="flanc-groupe flanc-groupe-suite">Moi</span>
+  <a class="onglet" id="onglet-profil" href="#/moi/profil" aria-current="false">
+    <span class="point-onglet"></span>Profil</a>
+  <button class="flanc-action" id="btn-deconnexion" hidden>Se déconnecter</button>
+
   <div class="flanc-espace"></div>
-  <span class="tag tag-outline" style="font-size:11px">miroir en lecture</span>
+
+  <!-- Territoire KOKAJI : le produit lui-même — en pied, ton discret. -->
+  <span class="flanc-groupe">Kokaji</span>
+  <a class="onglet onglet-kokaji" id="onglet-decouvrir" href="#/kokaji/decouvrir" aria-current="false">
+    <span class="point-onglet"></span>Découvrir</a>
+  <a class="onglet onglet-kokaji" id="onglet-vigie" href="#/kokaji/vigie" aria-current="false">
+    <span class="point-onglet"></span>Vigie<span class="badge-encre" id="badge-vigie" hidden></span></a>
+  <a class="onglet onglet-kokaji" id="onglet-comptes" href="#/kokaji/comptes" aria-current="false" hidden>
+    <span class="point-onglet"></span>Comptes &amp; invitations</a>
 </aside>
 
 <main class="contenu" id="contenu">
@@ -601,7 +631,7 @@
 <section id="module-design" hidden class="design">
   <div class="design-tete">
     <div style="flex:1">
-      <h1 class="profil-nom">Design du harness</h1>
+      <h1 class="profil-nom" id="design-titre">Design du harness</h1>
       <p class="design-sous" id="design-sous"></p>
     </div>
     <button class="btn-fantome" id="btn-membres">qui forge avec moi</button>
@@ -692,9 +722,60 @@
   </div>
 </dialog>
 
+<!-- La Vigie et les Comptes quittent /admin (RFC-013 D13.1, remarque 2) : ils
+     gardent la navigation principale, et plus aucune page n'est un cul-de-sac. -->
+<section id="module-vigie" hidden class="vigie">
+  <div class="page">
+    <h1 class="profil-nom" style="margin:0">Vigie</h1>
+    <p class="design-sous" id="vigie-sous">Ce que les vérifications constatent d'elles-mêmes, toutes
+      les cinq minutes. Un verdict qui cesse d'être rafraîchi est un échec, pas un silence.</p>
+    <p class="verdict-detail" id="vigie-resume" style="font-size:14px;margin:14px 0 18px"></p>
+    <div id="vigie-ecarts"></div>
+    <div id="vigie-familles"></div>
+  </div>
+</section>
+
+<section id="module-comptes" hidden class="comptes">
+  <div class="page">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <h1 class="profil-nom" style="margin:0;flex:1 1 auto">Comptes &amp; invitations</h1>
+      <button class="btn-plein" id="btn-inviter">Ouvrir une invitation</button>
+    </div>
+    <p class="design-sous">Ce que le magasin contient. Aucun mot de passe n'en sort, même haché.</p>
+    <div id="comptes-refus" hidden class="card elev-md" style="padding:24px;margin-top:16px">
+      <p class="rien">Cette vue est réservée aux comptes qui portent l'administration. Elle ne donne
+        d'ailleurs accès à aucune pratique : les ha non versés d'autrui restent fermés, y compris ici.</p>
+    </div>
+    <div id="comptes-corps" hidden>
+      <div class="card elev-sm" id="comptes-inviter" hidden style="padding:20px 24px;margin-top:16px">
+        <label class="mot" for="inviter-email">Courriel de la personne invitée</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px">
+          <input class="champ-large" id="inviter-email" style="flex:1;min-width:14rem" autocomplete="off"
+                 placeholder="quelqu'un@exemple.test">
+          <button class="btn-fantome" id="inviter-envoyer">ouvrir</button>
+        </div>
+        <div class="journal-scel" id="inviter-lien" hidden style="margin-top:12px"></div>
+      </div>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:26px 0 8px">Comptes</h2>
+      <div id="comptes-liste"></div>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:26px 0 8px">Invitations</h2>
+      <div id="comptes-invitations"></div>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:26px 0 8px">Autorat des harness servis</h2>
+      <p class="rien" style="margin:0 0 10px">Qui possède et qui co-forge chaque harness — l'autorat se travaille
+        dans le harness (« qui forge avec moi ») ; ici, l'administration voit le service entier, et un
+        harness où elle n'a aucun rôle se dit au lieu de disparaître.</p>
+      <div id="comptes-autorat"></div>
+      <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:26px 0 8px">Comptes du chat en attente</h2>
+      <p class="rien" style="margin:0 0 10px">Une invitation crée déjà un compte actif : qui figure ici est
+        arrivé sans invitation. Activer est une décision.</p>
+      <div id="comptes-chat"></div>
+    </div>
+  </div>
+</section>
+
 <section id="module-qg">
 <nav class="nav nav-qg" aria-label="Sujet observé">
-  <span class="nav-brand">QG</span>
+  <span class="nav-brand" id="qg-marque">QG</span>
   <span class="tag tag-outline nav-tag" title="L'état vient de la pratique : rien ne s'écrit ici."
         >miroir en lecture</span>
   <span class="nav-spacer"></span>
@@ -1027,7 +1108,81 @@ function rendreDecisions() {
 }
 
 const ONGLETS = { decouvrir: "module-decouvrir", profil: "module-profil",
-                  qg: "module-qg", design: "module-design" };
+                  qg: "module-qg", design: "module-design",
+                  vigie: "module-vigie", comptes: "module-comptes" };
+const NOMS_DE_VUE = { qg: "QG", design: "Design", profil: "Profil", decouvrir: "Découvrir",
+                      vigie: "Vigie", comptes: "Comptes & invitations" };
+const NOMS_D_AXE = { partition: "Partitionnement", contrats: "Contrats f♯", trempe: "Trempe", coupes: "Coupes" };
+
+// ---------------------------------------------------------------------------
+// Le routage (K-07, K-17). Chaque vue a une adresse — dans le fragment, pour
+// que la page reste un seul fichier servi à la racine — et un titre :
+//   #/h/<harness>/qg?sujet=<id>   #/h/<harness>/design/<axe>?noeud=<id>
+//   #/moi/profil                  #/kokaji/decouvrir | vigie | comptes
+// Le bouton « précédent » marche, un lien se partage, un rechargement revient
+// où l'on était. Sans harness dans l'adresse (#/qg), c'est le courant.
+// ---------------------------------------------------------------------------
+function lireRoute(hash) {
+  const brut = (hash || location.hash || "").replace(/^#/, "") || "/qg";
+  const [chemin, question = ""] = brut.split("?");
+  const q = Object.fromEntries(new URLSearchParams(question));
+  const parts = chemin.split("/").filter(Boolean);
+  let harness = null, vue, axe = null;
+  if (parts[0] === "h") { harness = parts[1] || null; parts.splice(0, 2); }
+  if (parts[0] === "moi") { vue = parts[1] || "profil"; }
+  else if (parts[0] === "kokaji") { vue = parts[1] || "decouvrir"; }
+  else { vue = parts[0] || "qg"; if (vue === "design") axe = parts[1] || null; }
+  if (!ONGLETS[vue]) vue = "qg";
+  return { harness, vue, axe, sujet: q.sujet || null, noeud: q.noeud || null };
+}
+
+function routeDe(vue, extra = {}) {
+  const h = offreHarness && offreHarness.courant ? `/h/${encodeURIComponent(offreHarness.courant)}` : "";
+  if (vue === "qg") return `#${h}/qg` + (extra.sujet ? `?sujet=${encodeURIComponent(extra.sujet)}` : "");
+  if (vue === "design") return `#${h}/design/${extra.axe || axe || "partition"}`
+    + (extra.noeud || kataChoisi ? `?noeud=${encodeURIComponent(extra.noeud || kataChoisi)}` : "");
+  if (vue === "profil") return "#/moi/profil";
+  return `#/kokaji/${vue}`;
+}
+
+function aller(route) {
+  if (location.hash === route) { appliquerRoute(); return; }
+  location.hash = route;   // `hashchange` applique
+}
+
+function nomDuHarness() {
+  const o = offreHarness;
+  if (!o || !o.courant) return "";
+  const h = (o.harness || []).find(x => x.id === o.courant);
+  return h ? h.nom : o.courant;
+}
+
+function titrer(vue) {
+  const h = nomDuHarness();
+  if (h) { $("qg-marque").textContent = `${h} — QG`; $("design-titre").textContent = `${h} — Design`; }
+  const morceaux = [];
+  if ((vue === "qg" || vue === "design") && h) morceaux.push(h);
+  morceaux.push(NOMS_DE_VUE[vue]);
+  if (vue === "design") morceaux.push(NOMS_D_AXE[axe] || "");
+  document.title = morceaux.filter(Boolean).join(" · ") + " — Kokaji";
+}
+
+function appliquerRoute() {
+  const r = lireRoute();
+  // Un lien vers un autre harness que le courant : on le prend, puis on
+  // recharge — changer de harness change tout ce que la page montre.
+  if (r.harness && offreHarness && offreHarness.courant && r.harness !== offreHarness.courant
+      && (offreHarness.harness || []).some(h => h.id === r.harness)) {
+    fetch("/harness/courant", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id_harness: r.harness }) }).then(() => location.reload());
+    return;
+  }
+  if (r.vue === "design" && r.axe && AXES[r.axe]) axe = r.axe;
+  if (r.vue === "design" && r.noeud) kataChoisi = r.noeud;
+  if (r.vue === "qg" && r.sujet && $("sujets").querySelector(`option[value="${CSS.escape(r.sujet)}"]`)
+      && $("sujets").value !== r.sujet) { $("sujets").value = r.sujet; charger(r.sujet); }
+  montrerOnglet(r.vue);
+}
 
 function montrerOnglet(nom) {
   ongletChoisi = nom;
@@ -1035,10 +1190,174 @@ function montrerOnglet(nom) {
     $(id).hidden = cle !== nom;
     $("onglet-" + cle).setAttribute("aria-current", cle === nom ? "page" : "false");
   }
+  titrer(nom);
   if (nom === "profil") rendreProfil();
   // Le module 3 lit sa définition à la première ouverture. Sans cette ligne il
   // affichait sa coque et trois cartes vides : la page était là, la donnée non.
   if (nom === "design" && !def) { chargerDesign(); chargerDepense(); }
+  else if (nom === "design") rendreDesign();
+  if (nom === "vigie") chargerVigie();
+  if (nom === "comptes") chargerComptes();
+}
+
+// ---------------------------------------------------------------------------
+// La Vigie (RFC-013, remarque 2) : le signal utile d'abord — combien tiennent,
+// les écarts en tête — puis les familles conformes, repliées. Lire quarante
+// « tient » pour apprendre que tout va bien est ce que l'audit reprochait.
+// ---------------------------------------------------------------------------
+let vigieOuvertes = {};
+function familleDe(quoi) {
+  const m = /\((\d+) px\)/.exec(quoi);
+  if (m) return m[1] === "800" ? "Tenue à 800–1024 px" : `Tenue à ${m[1]} px`;
+  if (/harness/i.test(quoi)) return "Chargement";
+  if (/passerelle/i.test(quoi)) return "Passerelle";
+  if (/contraste/i.test(quoi)) return "Contrastes";
+  return "Autres vérifications";
+}
+function ilYA(iso) {
+  if (!iso) return "jamais";
+  const min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  return min < 1 ? "à l'instant" : min < 60 ? `il y a ${min} min` : `il y a ${Math.round(min / 60)} h`;
+}
+async function chargerVigie() {
+  let d;
+  try { d = await lire("/admin/donnees"); }
+  catch {
+    // Sans droit d'administration, la vigie se lit quand même : c'est l'état
+    // du produit, pas un secret. Le service expose ses verdicts à part.
+    try { d = { vigie: await lire("/vigie") }; } catch { $("vigie-resume").textContent = "La vigie n'a pas pu être lue."; return; }
+  }
+  rendreVigie(d.vigie || { verdicts: [], le: null });
+}
+function rendreVigie(v) {
+  const tous = v.verdicts || [];
+  const ecarts = tous.filter(x => !x.tient), tiennent = tous.length - ecarts.length;
+  $("badge-vigie").hidden = ecarts.length === 0;
+  $("badge-vigie").textContent = ecarts.length;
+  $("vigie-resume").textContent = tous.length
+    ? `${tiennent} sur ${tous.length} verdicts tiennent · dernier tour ${ilYA(v.le)}`
+      + (ecarts.length ? ` · ${ecarts.length} écart(s), remonté(s) en premier` : "")
+    : "Aucun verdict : la vigie ne tourne pas, ou n'a pas encore écrit.";
+  $("vigie-ecarts").innerHTML = ecarts.map(x => `<div class="card elev-md" style="padding:18px 22px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start">
+      <span aria-hidden="true" style="width:24px;height:24px;border-radius:999px;background:var(--color-neutral-900);color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none">✕</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700">${e(x.quoi)}</div>
+        ${x.detail ? `<div class="mono" style="font-size:11.5px;margin-top:6px;overflow-wrap:anywhere">${e(x.detail)}</div>` : ""}
+        <div class="mot" style="margin-top:6px">vu le ${e(String(x.le || "").replace("T", " ").slice(0, 16))}</div>
+      </div>
+    </div>`).join("");
+  const familles = {};
+  tous.filter(x => x.tient).forEach(x => (familles[familleDe(x.quoi)] = familles[familleDe(x.quoi)] || []).push(x));
+  $("vigie-familles").innerHTML = Object.entries(familles).map(([nom, liste]) => `<div class="card elev-sm" style="padding:14px 20px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-size:14px;font-weight:600;flex:1">${e(nom)}</span>
+        <span class="tag tag-accent-2">${liste.length} sur ${liste.length} tiennent</span>
+        <button class="btn-fantome" data-famille="${e(nom)}">${vigieOuvertes[nom] ? "replier" : "détailler"}</button>
+      </div>
+      ${vigieOuvertes[nom] ? `<div style="margin-top:10px">${liste.map(x => `<div class="mot" style="padding:4px 0">
+        <span style="color:var(--color-accent-2-700)">✓</span> ${e(x.quoi)}</div>`).join("")}</div>` : ""}
+    </div>`).join("");
+  $("vigie-familles").querySelectorAll("button[data-famille]").forEach(b => {
+    b.onclick = () => { vigieOuvertes[b.dataset.famille] = !vigieOuvertes[b.dataset.famille]; rendreVigie(v); };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Les Comptes & invitations — réservés à l'administration (K-23 : les
+// identifiants techniques repliés par défaut).
+// ---------------------------------------------------------------------------
+let comptesOuverts = {};
+async function chargerComptes() {
+  let d;
+  try { d = await lire("/admin/donnees"); }
+  catch { $("comptes-refus").hidden = false; $("comptes-corps").hidden = true; return; }
+  $("comptes-refus").hidden = true; $("comptes-corps").hidden = false;
+  rendreComptes(d);
+}
+function rendreComptes(d) {
+  const jour = (iso) => String(iso || "").slice(0, 10);
+  $("comptes-liste").innerHTML = d.comptes.map(c => `<div class="rangee">
+      <div style="flex:1;min-width:0"><div class="rangee-nom">${e(c.nom)}</div>
+        <div class="rangee-meta">créé le ${e(jour(c.cree_le))}</div>
+        ${comptesOuverts[c.id] ? `<div class="mono" style="margin-top:8px;padding:8px 10px;border-radius:var(--radius-md);background:var(--color-neutral-200);font-size:11.5px;overflow-wrap:anywhere">${e(c.email)}<br>${e(c.id)}</div>` : ""}
+      </div>
+      ${c.admin ? `<span class="tag tag-accent">administration</span>` : ""}
+      <button class="btn-fantome" data-compte="${e(c.id)}">${comptesOuverts[c.id] ? "masquer" : "identifiants techniques"}</button>
+    </div>`).join("");
+  $("comptes-liste").querySelectorAll("button[data-compte]").forEach(b => {
+    b.onclick = () => { comptesOuverts[b.dataset.compte] = !comptesOuverts[b.dataset.compte]; rendreComptes(d); };
+  });
+  $("comptes-invitations").innerHTML = d.invitations.length ? d.invitations.map(i => `<div class="rangee">
+      <div style="flex:1"><div class="rangee-nom">${e(i.email)}</div>
+        <div class="rangee-meta">ouverte le ${e(jour(i.cree_le))} · ${
+          i.consomme_le ? "utilisée le " + e(jour(i.consomme_le))
+          : i.vivante ? "valable jusqu'au " + e(jour(i.expire_le)) : "périmée"}</div></div>
+      ${i.vivante ? `<button class="btn-fantome" data-revoquer="${e(i.jeton)}">révoquer</button>` : ""}
+    </div>`).join("") : `<p class="rien">Aucune invitation ouverte.</p>`;
+  $("comptes-invitations").querySelectorAll("button[data-revoquer]").forEach(b => {
+    b.onclick = async () => {
+      await fetch("/admin/invitations/" + encodeURIComponent(b.dataset.revoquer), { method: "DELETE" });
+      chargerComptes();
+    };
+  });
+  // Un harness par bloc. Un compte se lit à son nom ; l'identifiant ne sert
+  // qu'à comparer. Un harness où l'on n'a aucun rôle est absent de son
+  // sélecteur : on le dit, et on offre de s'ajouter — soi seulement, à découvert.
+  const noms = Object.fromEntries(d.comptes.map(c => [c.id, c.nom + " — " + c.email]));
+  const quiEstCe = (id) => noms[id] || id;
+  $("comptes-autorat").innerHTML = (d.harness || []).map(h => {
+    const membres = h.autorat ? [h.autorat.proprietaire, ...h.autorat.contributeurs] : [];
+    const dehors = h.autorat && !membres.includes(d.moi);
+    return `<div class="card elev-sm" style="padding:14px 20px;margin-bottom:8px">
+      <div style="font-size:14px;font-weight:600">${e(h.nom)} <span class="mot">v${e(h.version)}</span></div>
+      ${h.autorat ? `<div class="mot" style="margin-top:6px">${e(quiEstCe(h.autorat.proprietaire))}
+          <span class="tag tag-accent" style="margin-left:6px">propriétaire</span></div>`
+        + h.autorat.contributeurs.map(c => `<div class="mot" style="margin-top:4px">${e(quiEstCe(c))}
+          <span class="tag tag-neutral" style="margin-left:6px">co-auteur</span></div>`).join("")
+        + (dehors ? `<div style="display:flex;gap:10px;align-items:center;margin-top:8px;flex-wrap:wrap">
+            <span class="mot">Tu n'y as aucun rôle : il n'apparaît pas dans ton sélecteur.</span>
+            <button class="btn-fantome" data-rejoindre="${e(h.id)}">m'ajouter co-auteur</button>
+          </div>` : "")
+        : `<p class="rien" style="margin:6px 0 0">Ce harness n'est rattaché à aucun compte.</p>`}
+    </div>`;
+  }).join("");
+  $("comptes-autorat").querySelectorAll("button[data-rejoindre]").forEach(b => {
+    b.onclick = async () => {
+      const r = await fetch("/admin/harness/" + encodeURIComponent(b.dataset.rejoindre) + "/rejoindre", { method: "POST" });
+      if (!r.ok) { b.textContent = (await r.json().catch(() => ({}))).detail || "refusé"; return; }
+      chargerComptes();
+    };
+  });
+  const chat = d.chat || { administrable: false, motif: "inconnu" };
+  $("comptes-chat").innerHTML = !chat.administrable
+    ? `<p class="rien">Kokaji n'administre pas les comptes du chat : ${e(chat.motif)}.</p>`
+    : (chat.en_attente || []).length
+      ? chat.en_attente.map(c => `<div class="rangee">
+          <div style="flex:1"><div class="rangee-nom">${e(c.nom || "(sans nom)")}</div>
+            <div class="rangee-meta">${e(c.email)}</div></div>
+          <button class="btn-fantome" data-activer="${e(c.id)}">activer</button>
+        </div>`).join("")
+      : `<p class="rien">Personne n'attend.</p>`;
+  $("comptes-chat").querySelectorAll("button[data-activer]").forEach(b => {
+    b.onclick = async () => {
+      await fetch("/admin/chat/activer", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id_compte: b.dataset.activer }) });
+      chargerComptes();
+    };
+  });
+}
+async function ouvrirUneInvitation() {
+  const email = $("inviter-email").value.trim();
+  if (!email) return;
+  const r = await fetch("/admin/invitations", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ email }) });
+  const d = await r.json().catch(() => ({}));
+  $("inviter-lien").hidden = false;
+  $("inviter-lien").innerHTML = r.ok
+    ? `<div class="mot">à envoyer à ${e(email)} — valable sept jours, une seule fois</div>
+       <div class="mono" style="overflow-wrap:anywhere">${e(location.origin + d.chemin)}</div>`
+    : e(d.detail || "refusé");
+  if (r.ok) chargerComptes();
 }
 
 function jours(depuis) {
@@ -1093,7 +1412,7 @@ async function rendreProfil() {
     b.onclick = () => {
       const a = profil.activites[Number(b.dataset.sujet)];
       noeudChoisi = null; seanceOuverte = null;
-      montrerOnglet("qg");
+      aller(routeDe("qg", { sujet: $("sujets").value }));
       $("sujets").value = a.sujet;
       charger(a.sujet);
     };
@@ -1113,7 +1432,7 @@ async function rendreProfil() {
   // Le pendant de « ouvrir au QG » : depuis une activité on va voir un sujet
   // qui court, depuis un harness on va voir la forme qui le porte.
   $("profil-harness").querySelectorAll("button[data-design]").forEach(b => {
-    b.onclick = () => montrerOnglet("design");
+    b.onclick = () => aller(routeDe("design"));
   });
 }
 
@@ -2137,10 +2456,16 @@ async function chargerHarness() {
   offreHarness = offre;
   // Créer est toujours possible : c'est le sélecteur qui n'a de sens qu'à deux.
   $("btn-creer-harness").hidden = false;
-  // Montrée à qui l'a : la proposer à tous ferait cliquer vers un refus, et
-  // ne pas la proposer du tout laissait la page inatteignable autrement qu'en
-  // tapant son adresse.
-  $("btn-admin").hidden = !offre.administration;
+  // Montré à qui l'a : proposer les comptes à tous ferait cliquer vers un
+  // refus, et ne pas les proposer du tout laissait la vue inatteignable
+  // autrement qu'en tapant son adresse.
+  $("onglet-comptes").hidden = !offre.administration;
+  $("btn-deconnexion").hidden = !offre.connecte;
+  // Les sous-vues du harness portent son adresse (K-07).
+  if (offre.courant) {
+    $("onglet-qg").href = `#/h/${encodeURIComponent(offre.courant)}/qg`;
+    $("onglet-design").href = `#/h/${encodeURIComponent(offre.courant)}/design/${axe}`;
+  }
   if (!offre.harness || offre.harness.length < 2) return;
 
   const select = $("harness-courant");
@@ -2155,7 +2480,8 @@ async function chargerHarness() {
   offre.harness.forEach(h => {
     const o = document.createElement("option");
     o.value = h.id;
-    o.textContent = h.nom;
+    // Le nom complet et la version — jamais réduit à une lettre (K-03).
+    o.textContent = `${h.nom}${h.version ? " · v" + h.version : ""}${h.archive_le ? " · archivé" : ""}`;
     select.appendChild(o);
   });
   select.value = offre.courant || "";
@@ -2272,9 +2598,15 @@ async function creerHarness() {
 }
 
 (async () => {
-  for (const cle of Object.keys(ONGLETS)) $("onglet-" + cle).onclick = () => montrerOnglet(cle);
+  // Les onglets sont des liens : le fragment change, `hashchange` applique.
+  window.addEventListener("hashchange", appliquerRoute);
   $("btn-creer-harness").onclick = ouvrirNaissance;
-  $("btn-admin").onclick = () => { location.href = "/admin"; };
+  $("btn-deconnexion").onclick = async () => {
+    await fetch("/session", { method: "DELETE" }).catch(() => {});
+    location.href = "/";
+  };
+  $("btn-inviter").onclick = () => { $("comptes-inviter").hidden = !$("comptes-inviter").hidden; $("inviter-email").focus(); };
+  $("inviter-envoyer").onclick = ouvrirUneInvitation;
   $("ne-annuler").onclick = () => { $("voile-naissance").close(); };
   $("ne-id").oninput = naissancePrete;
   $("ne-nom").oninput = naissancePrete;
@@ -2282,7 +2614,7 @@ async function creerHarness() {
   $("ne-valider").onclick = creerHarness;
   await chargerHarness();
   for (const [nom, id] of Object.entries(AXES))
-    $(id).onclick = () => { axe = nom; rendreDesign(); };
+    $(id).onclick = () => { axe = nom; aller(routeDe("design", { axe: nom })); };
   $("btn-membres").onclick = () => { membresOuverts = !membresOuverts; rendreDesign(); };
   // Le bouton est reconstruit à chaque rendu de l'axe : on le rebranche là.
   $("scel-annuler").onclick = () => { $("voile").close(); };
@@ -2309,8 +2641,11 @@ async function creerHarness() {
     corpusChoisi = (corpus.find(c => c.sujets > 0) || corpus[0]).nom;
     select.value = corpusChoisi;
     select.onchange = () => { corpusChoisi = select.value; noeudChoisi = null; chargerSujets(); };
-    $("sujets").onchange = () => charger($("sujets").value);
+    $("sujets").onchange = () => { charger($("sujets").value); history.replaceState(null, "", routeDe("qg", { sujet: $("sujets").value })); };
     await chargerSujets();
   } catch { panne(); }
+  // La vue vient de l'adresse (K-07) : un rechargement revient où l'on était.
+  appliquerRoute();
+  chargerVigie();   // pour le badge des écarts, dès l'arrivée
 })();
 </script>
