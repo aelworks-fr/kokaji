@@ -137,7 +137,7 @@ Les chemins admis sont ceux d'un dossier déclaré au déploiement (`KOKAJI_DEPO
 | A — le dépôt local et l'état | appliqué — `kokaji/depot`, naître et adopter initient, `harness_depot`, `GET /depot` |
 | B — le dépôt nu et les trois gestes | appliqué — `chemin_admis`, `lier`, `pousser`, `tirer`, `cloner` ; `PUT`/`DELETE /depot`, `POST /depot/pousser`, `/depot/tirer` ; le scellement pousse si le harness le demande ; `POST /harness` accepte `depot` et `cloner_depuis` ; CLI `kokaji enregistrer`, `pousser`, `tirer` ; `KOKAJI_DEPOTS` remplace `KOKAJI_DEPOT_PUSH` ; sabotages 1 à 5 en tests |
 | C — la page | appliqué — le panneau Dépôt enregistre, désenregistre, pousse, tire, règle le push au scellement ; la naissance clone un dépôt nu ou en lie un ; la trace du scellement dit poussé ou pourquoi non ; le Profil et l'offre portent l'état du dépôt |
-| D — la première instance | à faire — migration par `git subtree split`, `harness/` ignoré, cinq dépôts nus |
+| D — la première instance | appliqué le 14 septembre 2026 — cinq harness sortis par `git subtree split`, historique compris ; cinq dépôts nus sous `dojo/depots/` ; `harness/` ignoré par le dépôt de l'instance ; les cinq enregistrés, pousser au scellement |
 
 ---
 *Note d'établi : la RFC-009 disait « un repo git par harness » et l'a laissé à l'état de phrase. Ce RFC la prend au mot, sans sortir de la machine — parce qu'un dépôt qu'on ne voit pas est un dépôt qu'on oublie de pousser, et qu'un dépôt qu'on ne peut pas cloner n'est pas un dépôt.*

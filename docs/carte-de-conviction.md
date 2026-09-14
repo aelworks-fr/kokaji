@@ -24,8 +24,13 @@ pouvait pas y ouvrir sa base. Trois corrections, puis vert.
 ## B — La première instance (nominal)
 
 Le repo historique s'enregistre comme harness de cette instance et ses kata
-se forgent sans modification du produit. **À venir** : demande le geste
-d'enregistrement (RFC-009 §3), qui n'existe pas encore.
+se forgent sans modification du produit. **Fait le 14 septembre 2026**, par
+la RFC-012 : chaque harness de la première instance est sorti de son dépôt par
+`git subtree split`, historique compris, vers un dépôt nu enregistré auprès
+de l'instance ; le scellement y commite et y pousse, et l'instance sert ces
+clones sans qu'une ligne du produit n'ait changé pour eux. Les cinq
+sabotages de la RFC-012 §7 sont joués en tests (`test_depot`,
+`test_conception`, `test_aiguilleur`).
 
 ## C — Les sabotages de la trempe du produit
 
