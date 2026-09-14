@@ -257,6 +257,48 @@ class LaTrempeS_Ajoute(unittest.TestCase):
         self.assertIn('data-ret-crit="${i}"', RENDU)
 
 
+class LaPasseUn(unittest.TestCase):
+    """RFC-013, passe 1 — rendre le produit montrable (K-01, K-02, K-03, K-12, K-18 à K-21)."""
+
+    def test_la_page_parle_francais(self):
+        self.assertIn('<html lang="fr">', PAGE)
+        self.assertIn('<html lang="fr">', ADMIN)
+
+    def test_les_modales_sont_des_dialog_natifs(self):
+        self.assertIn('<dialog class="voile" id="voile" aria-labelledby="scel-titre">', PAGE)
+        self.assertIn('<dialog class="voile" id="voile-naissance" aria-labelledby="ne-titre">', PAGE)
+        self.assertIn('showModal()', PAGE)
+        # Plus aucune modale ne se montre par `hidden` : `[hidden]` l'emporterait sur `[open]`.
+        self.assertNotIn('$("voile").hidden', PAGE)
+        self.assertNotIn('$("voile-naissance").hidden', PAGE)
+        self.assertIn("dialog.voile::backdrop", PAGE)
+
+    def test_le_premier_champ_recoit_le_focus(self):
+        self.assertIn('id="scel-auteur" style="margin:6px 0 14px" autocomplete="off" autofocus>', PAGE)
+        self.assertIn('id="ne-source" style="margin:6px 0 14px" autofocus>', PAGE)
+
+    def test_le_contenu_a_son_landmark_et_son_lien_d_evitement(self):
+        self.assertIn('<main class="contenu" id="contenu">', PAGE)
+        self.assertIn('<a class="evitement" href="#contenu">Aller au contenu</a>', PAGE)
+        self.assertNotIn('<div class="contenu">', PAGE)
+
+    def test_l_en_tete_du_qg_se_replie_et_ancre_pratiquer(self):
+        self.assertIn(".nav-qg { flex-wrap: wrap;", PAGE)
+        self.assertIn(".nav-qg .nav-cta { white-space: nowrap; flex: none; margin-left: auto; }", PAGE)
+        self.assertIn(".nav-qg #sujets { max-width: 240px;", PAGE)
+        # Le badge « miroir » : court, à un seul endroit, l'explication en info-bulle (K-11).
+        self.assertIn('title="L\'état vient de la pratique : rien ne s\'écrit ici."', PAGE)
+
+    def test_le_rang_mobile_montre_qu_il_defile(self):
+        self.assertIn(".flanc::after { content: \"\"; flex: none; position: sticky; right: 0;", PAGE)
+        self.assertIn(".flanc-harness { flex: none; padding: 0; min-width: 11rem; }", PAGE)
+
+    def test_l_administration_a_un_retour_et_un_resume(self):
+        self.assertIn('href="/" class="mono"', ADMIN)
+        self.assertIn('id="vigie-resume"', ADMIN)
+        self.assertIn("remonté(s) en premier", ADMIN)
+
+
 class LesCoupes(unittest.TestCase):
     """L'axe 4 — le gabarit, les densho, la coupe qu'on voit (RFC-010 §4.4)."""
 

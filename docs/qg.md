@@ -121,6 +121,18 @@ détail d'un nœud** — à côté des champs et des hypothèses — et non une 
 nouvelle. Une nature n'est pas un score : elle ne colore rien, elle ne classe
 rien, elle se lit.
 
+## La page v2 — la passe 1 (RFC-013)
+
+L'audit du 14 septembre 2026 et son handoff vivent dans `docs/design/handoff-v2/`.
+La passe 1 rend le produit montrable sans changer sa structure : les modales
+sont des `<dialog>` natifs — devant tout, Échap ferme, le focus revient — ;
+l'en-tête du QG se replie et « pratiquer » reste ancré à droite ; le rang
+d'onglets mobile montre qu'il défile ; l'administration a un retour et un
+résumé « N sur N tiennent », écarts en tête ; `lang="fr"`, `<main>`, lien
+d'évitement. La vigie gagne un palier à 800 px et deux verdicts : « le CTA
+principal est dans le viewport » et « rien ne se superpose à une modale
+ouverte ». Les passes 2 et 3 suivent la RFC.
+
 ## Regarder le rendu
 
 `tests/test_rendu.py` ouvre un vrai navigateur sur un écran de 360 px et mesure

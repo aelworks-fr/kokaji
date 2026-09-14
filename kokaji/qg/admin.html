@@ -1,4 +1,5 @@
 <!doctype html>
+<html lang="fr">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Kokaji · administration</title>
@@ -37,6 +38,12 @@
 </style>
 
 <div class="page">
+  <!-- Un retour (K-04) : cette page n'a pas la barre latérale, elle ne doit
+       pas être un cul-de-sac. La vigie et les comptes rejoindront la page
+       principale avec la passe 2 (RFC-013). -->
+  <nav aria-label="Retour" style="margin-bottom:18px">
+    <a href="/" class="mono" style="color:var(--color-accent-700);text-decoration:none">← retour au QG</a>
+  </nav>
   <h1>Administration</h1>
   <p class="sous" id="sous">…</p>
 
@@ -118,8 +125,15 @@ async function charger() {
   });
 
   const v = d.vigie || { tient: false, verdicts: [] };
-  $("vigie").innerHTML = (v.verdicts.length ? v.verdicts : [{ quoi: "la vigie",
-      tient: false, detail: "aucun verdict" }]).map(x => `<div class="rangee">
+  // Le signal utile d'abord (K-04) : combien tiennent, en une ligne, puis les
+  // écarts en tête — lire quarante-six « tient » pour apprendre que tout va
+  // bien est exactement ce que l'audit reprochait.
+  const tous = v.verdicts.length ? v.verdicts : [{ quoi: "la vigie", tient: false, detail: "aucun verdict" }];
+  const tiennent = tous.filter(x => x.tient).length;
+  const ordonnes = [...tous].sort((a, b) => Number(a.tient) - Number(b.tient));
+  $("vigie").innerHTML = `<p class="nom" id="vigie-resume" style="margin:0 0 10px">${tiennent} sur ${tous.length} ${
+      tiennent === tous.length ? "tiennent" : "tiennent · " + (tous.length - tiennent) + " écart(s), remonté(s) en premier"}</p>`
+    + ordonnes.map(x => `<div class="rangee">
       <div><div class="nom">${e(x.quoi)}</div>
         <div class="meta">${e(x.detail || "")}</div></div>
       <div class="espace"></div>

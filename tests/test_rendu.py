@@ -112,6 +112,15 @@ class Rendu(unittest.TestCase):
         self.assertTrue(any("design" in q for q in quoi), quoi)
         self.assertGreaterEqual(len(self.verdicts), 10, quoi)
 
+    def test_le_palier_de_l_audit_et_ses_deux_verdicts_sont_regardes(self):
+        """K-01 et K-02 : le trou entre 800 et 1 024 px, le CTA dans l'écran,
+        la modale devant tout — la vigie nourrie plutôt que contournée."""
+        quoi = [v.quoi for v in self.verdicts]
+        self.assertIn("la page tient dans l'écran (800 px)", quoi)
+        for largeur in ("360", "800", "1280", "2560"):
+            self.assertIn(f"le CTA principal est dans le viewport ({largeur} px)", quoi)
+            self.assertIn(f"rien ne se superpose à une modale ouverte ({largeur} px)", quoi)
+
     def test_chaque_axe_du_design_est_regarde(self):
         """Le module s'ouvre sur le premier axe : sans clic, les trois autres —
         dont les coupes, deux colonnes et un gabarit entier — resteraient

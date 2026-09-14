@@ -26,6 +26,10 @@ __all__ = ["ETROIT", "LARGE", "TRES_LARGE", "navigateur_indisponible", "regarder
 # Un téléphone fait 360 px de large. C'est la mesure du problème, pas un choix.
 ETROIT = (360, 780)
 LARGE = (1280, 900)
+# Le palier que l'audit a trouvé vide (K-02) : les portables 13″ à fenêtre non
+# maximisée vivent entre 800 et 1 024 px, et c'est là que « pratiquer » sortait
+# de l'écran sans qu'aucune mesure ne le voie.
+PALIER = (800, 900)
 # Un ultra-large courant. Ajouté après coup : le produit y tenait dans le tiers
 # gauche, collé au flanc, et aucune des deux mesures précédentes ne pouvait le
 # montrer — sous 1180 px le défaut n'existe pas. Une mesure ne voit que les
@@ -98,6 +102,38 @@ CHEVAUCHENT = """() => {
   return chevauchent;
 }"""
 
+# Le CTA du QG : visible → entièrement dans l'écran ; caché (pas d'adresse de
+# chat) → on le dit, ce n'est pas un vert.
+CTA_DANS_L_ECRAN = """() => {
+  const a = document.getElementById('vers-chat');
+  if (!a) return { tient: false, detail: 'aucun CTA dans la page' };
+  if (a.hidden || a.offsetParent === null)
+    return { tient: true, detail: "CTA absent : pas d'adresse de chat" };
+  const r = a.getBoundingClientRect();
+  const dedans = r.left >= 0 && r.right <= window.innerWidth + 1 && r.top >= 0;
+  return { tient: dedans, detail: dedans ? '' :
+           'pratiquer : right = ' + Math.round(r.right) + ' pour ' + window.innerWidth + ' px' };
+}"""
+
+# La modale devant tout : ouverte, chaque point sondé de sa carte doit
+# répondre par un élément qui vit dans la modale.
+MODALE_DEVANT_TOUT = """() => {
+  const d = document.getElementById('voile-naissance');
+  if (!d || typeof d.showModal !== 'function') return { tient: false, detail: 'pas de <dialog> de naissance' };
+  const etait = d.open;
+  if (!etait) d.showModal();
+  const carte = d.querySelector('.dialogue') || d;
+  const r = carte.getBoundingClientRect();
+  const points = [[r.left + 8, r.top + 8], [r.right - 8, r.top + 8],
+                  [r.left + r.width / 2, r.top + r.height / 2],
+                  [r.left + 8, r.bottom - 8], [r.right - 8, r.bottom - 8]];
+  const intrus = points.map(([x, y]) => document.elementFromPoint(x, y))
+    .filter(n => n && !d.contains(n))
+    .map(n => (n.className || n.tagName) + ' « ' + (n.textContent || '').trim().slice(0, 20) + ' »');
+  if (!etait) d.close();
+  return { tient: intrus.length === 0, detail: intrus.join(' · ') };
+}"""
+
 # Les axes du module design, dans l'ordre de la page.
 AXES_DU_DESIGN = ("partition", "contrats", "trempe", "coupes")
 
@@ -141,7 +177,7 @@ def regarder(url: str) -> list[Verdict]:
     with sync_playwright() as pw:
         navigateur = pw.chromium.launch()
         try:
-            for largeur, hauteur in (ETROIT, LARGE, TRES_LARGE):
+            for largeur, hauteur in (ETROIT, PALIER, LARGE, TRES_LARGE):
                 contexte = navigateur.new_context(viewport={"width": largeur, "height": hauteur})
                 page = contexte.new_page()
                 page.goto(url, wait_until="networkidle")
@@ -157,6 +193,30 @@ def regarder(url: str) -> list[Verdict]:
                 )
                 verdicts.append(_liste(f"rien n'est hors d'atteinte ({ou})", page, HORS_D_ATTEINTE))
                 verdicts.append(_liste(f"rien ne se chevauche ({ou})", page, CHEVAUCHENT))
+
+                # L'action principale du QG (K-02) : si « pratiquer » est
+                # affiché, il est dans l'écran — pas au bout d'un défilement
+                # horizontal. Sans adresse de chat il est caché, et la mesure
+                # le dit plutôt que de passer au vert sur rien.
+                cta = page.evaluate(CTA_DANS_L_ECRAN)
+                verdicts.append(
+                    Verdict(
+                        f"le CTA principal est dans le viewport ({ou})",
+                        cta["tient"],
+                        "" if cta["tient"] else cta["detail"],
+                    )
+                )
+                # Une modale ouverte est devant tout (K-01) : on ouvre celle de
+                # la naissance, on regarde ce qui répond sous quelques points
+                # de sa carte, et ça doit être elle.
+                modale = page.evaluate(MODALE_DEVANT_TOUT)
+                verdicts.append(
+                    Verdict(
+                        f"rien ne se superpose à une modale ouverte ({ou})",
+                        modale["tient"],
+                        "" if modale["tient"] else modale["detail"],
+                    )
+                )
 
                 visibles = page.evaluate(MODULES_VISIBLES)
                 verdicts.append(

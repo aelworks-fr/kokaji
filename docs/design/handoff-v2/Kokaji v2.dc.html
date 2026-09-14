@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/organic-0c64a746-32dc-467a-88fc-683173fd2304/styles.css">
+  <script src="_ds/organic-0c64a746-32dc-467a-88fc-683173fd2304/_ds_bundle.js"></script>
+  <style>
+    body{margin:0;background:var(--color-bg);color:var(--color-text);font-family:var(--font-body)}
+    a{color:var(--color-accent-700)} a:hover{color:var(--color-accent-800)}
+    textarea:focus-visible,input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--color-accent);outline-offset:2px}
+  </style>
+</helmet>
+<div style="min-height:100vh;display:flex;align-items:stretch">
+  <aside style="width:236px;flex:none;display:flex;flex-direction:column;padding:22px 14px 18px;gap:2px;border-right:1px solid var(--color-neutral-200)">
+    <span style="font-family:var(--font-heading);font-size:22px;padding:0 12px 16px">Kokaji</span>
+    <span style="font-size:12.5px;font-weight:700;letter-spacing:.07em;color:var(--color-neutral-700);padding:6px 12px 6px">HARNESS</span>
+    <select class="input" aria-label="Harness actif" style="border-radius:999px;padding:8px 14px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);cursor:pointer;margin:0 4px 6px" value="{{ harnessId }}" onChange="{{ onHarness }}">
+      <sc-for list="{{ harnessOpts }}" as="ho" hint-placeholder-count="2">
+        <option value="{{ ho.id }}">{{ ho.label }}</option>
+      </sc-for>
+    </select>
+    <sc-for list="{{ navHarness }}" as="nh" hint-placeholder-count="2">
+      <button onClick="{{ nh.onClick }}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;margin-left:8px;border-radius:999px;border:none;cursor:pointer;text-align:left;font-family:var(--font-body);font-size:14px;font-weight:{{ nh.weight }};background:{{ nh.bg }};color:{{ nh.fg }}" style-hover="background:var(--color-neutral-200)">
+        <span style="width:8px;height:8px;border-radius:999px;background:{{ nh.dot }};flex:none"></span>{{ nh.label }}
+      </button>
+    </sc-for>
+    <button onClick="{{ onCreateOpen }}" class="btn btn-ghost" style="border-radius:999px;padding:8px 14px;font-size:12.5px;margin:6px 4px 0;justify-content:flex-start;color:var(--color-accent-800)">+ Créer un harness</button>
+    <span style="font-size:12.5px;font-weight:700;letter-spacing:.07em;color:var(--color-neutral-700);padding:20px 12px 6px">MOI</span>
+    <sc-for list="{{ navMoi }}" as="nm" hint-placeholder-count="2">
+      <button onClick="{{ nm.onClick }}" style="display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:999px;border:none;cursor:pointer;text-align:left;font-family:var(--font-body);font-size:14px;font-weight:{{ nm.weight }};background:{{ nm.bg }};color:{{ nm.fg }}" style-hover="background:var(--color-neutral-200)">
+        <span style="width:8px;height:8px;border-radius:999px;background:{{ nm.dot }};flex:none"></span>{{ nm.label }}
+      </button>
+    </sc-for>
+    <div style="flex:1"></div>
+    <span style="font-size:12.5px;font-weight:700;letter-spacing:.07em;color:var(--color-neutral-700);padding:6px 12px">KOKAJI</span>
+    <sc-for list="{{ navKokaji }}" as="nk" hint-placeholder-count="3">
+      <button onClick="{{ nk.onClick }}" style="display:flex;align-items:center;gap:10px;padding:8px 14px;border-radius:999px;border:none;cursor:pointer;text-align:left;font-family:var(--font-body);font-size:13px;font-weight:{{ nk.weight }};background:{{ nk.bg }};color:{{ nk.fg }}" style-hover="background:var(--color-neutral-200)">
+        <span style="width:7px;height:7px;border-radius:999px;background:{{ nk.dot }};flex:none"></span>{{ nk.label }}
+        <sc-if value="{{ nk.badge }}" hint-placeholder-val="{{ false }}">
+          <span style="min-width:18px;height:18px;border-radius:999px;background:var(--color-neutral-900);color:var(--color-bg);font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;margin-left:auto">{{ nk.badge }}</span>
+        </sc-if>
+      </button>
+    </sc-for>
+  </aside>
+
+  <div style="flex:1;min-width:0;display:flex;flex-direction:column">
+    <div style="display:flex;align-items:center;gap:12px;padding:10px 36px;border-bottom:1px solid var(--color-neutral-200);flex-wrap:wrap">
+      <span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--color-neutral-700);background:var(--color-neutral-200);border-radius:999px;padding:4px 14px">{{ route }}</span>
+      <span style="font-size:12px;color:var(--color-neutral-700)">titre : « {{ pageTitle }} »</span>
+    </div>
+    <sc-if value="{{ banner }}" hint-placeholder-val="{{ false }}">
+      <div style="margin:16px 36px 0;padding:12px 18px;border-radius:var(--radius-md);background:var(--color-accent-2-100);color:var(--color-accent-2-900);font-size:13.5px;display:flex;gap:12px;align-items:center">
+        <span style="flex:1">{{ banner }}</span>
+        <button class="btn btn-ghost" style="border-radius:999px;padding:4px 12px;font-size:12px" onClick="{{ onBannerClose }}">fermer</button>
+      </div>
+    </sc-if>
+
+    <sc-if value="{{ vQG }}" hint-placeholder-val="{{ true }}">
+    <main style="max-width:1160px;padding:24px 36px 64px;display:flex;flex-direction:column;gap:22px">
+      <header style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:32px;margin:0;flex:1 1 auto;min-width:200px">{{ harnessName }} — QG</h1>
+          <select class="input" aria-label="Sujet observé" style="border-radius:999px;padding:8px 14px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);cursor:pointer;max-width:240px;text-overflow:ellipsis" value="{{ subjectId }}" onChange="{{ onSubject }}">
+          <option value="vol">Système e-learning bénévoles</option>
+          <option value="repair">Café réparation</option>
+          </select>
+          <a href="#" onClick="{{ onNoop }}" class="btn btn-primary" style="border-radius:999px;padding:9px 22px;font-size:13.5px;font-weight:600;text-decoration:none;white-space:nowrap">pratiquer ↗</a>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="tag tag-outline" title="Le QG reflète l'état émis par la pratique ; rien ne s'y édite." style="font-size:11.5px;white-space:nowrap">miroir en lecture</span>
+          <span style="font-size:13px;color:var(--color-neutral-700)">{{ subjectLine }}</span>
+        </div>
+      </header>
+
+      <section class="card elev-sm" style="padding:26px 26px 18px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:19px;margin:0;flex:1">La chaîne</h2>
+          <button onClick="{{ onHelpChaleur }}" aria-label="Qu'est-ce que la chaleur ?" title="Qu'est-ce que la chaleur ?" style="width:26px;height:26px;border-radius:999px;border:1px solid var(--color-neutral-400);background:var(--color-neutral-100);color:var(--color-neutral-800);cursor:pointer;font-size:13px;font-weight:700;padding:0">?</button>
+        </div>
+        <div style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:4px">
+          <sc-for list="{{ nodes }}" as="n" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;flex:{{ n.grow }};min-width:0">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:8px;width:100%;min-width:104px;max-width:150px;flex:none;padding:0 4px">
+                <button onClick="{{ n.onClick }}" aria-label="{{ n.aria }}" title="{{ n.aria }}" style="position:relative;width:64px;height:64px;flex:none;border-radius:{{ n.radius }};background:{{ n.fill }};border:{{ n.borderCss }};cursor:pointer;outline:{{ n.selRing }};outline-offset:3px;padding:0">
+                  <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:{{ n.pctColor }}">{{ n.pctLabel }}</span>
+                  <sc-if value="{{ n.optBadge }}" hint-placeholder-val="{{ false }}">
+                    <span style="position:absolute;top:-7px;right:-9px;min-width:22px;height:22px;border-radius:999px;background:var(--color-accent-2-200);border:1.5px solid var(--color-accent-2-500);color:var(--color-accent-2-900);font-size:11.5px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px">{{ n.optCount }}</span>
+                  </sc-if>
+                  <sc-if value="{{ n.refuted }}" hint-placeholder-val="{{ false }}">
+                    <span title="1 hypothèse infirmée — une trempe ratée est une information" style="position:absolute;bottom:-6px;right:-4px;width:16px;height:16px;transform:rotate(45deg);background:var(--color-neutral-100);border:2px solid var(--color-neutral-800);display:block"></span>
+                  </sc-if>
+                </button>
+                <div style="text-align:center">
+                  <div style="font-size:13px;font-weight:600;line-height:1.25;overflow-wrap:break-word">{{ n.name }}</div>
+                  <div style="font-size:12.5px;color:var(--color-neutral-700);margin-top:3px;font-style:{{ n.freshStyle }}">{{ n.fresh }}</div>
+                </div>
+              </div>
+              <sc-if value="{{ n.hasEdge }}" hint-placeholder-val="{{ true }}">
+                <div style="flex:1;height:3px;border-radius:2px;background:var(--color-neutral-300);margin-top:31px;min-width:12px"></div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-top:18px;padding-top:12px;border-top:1px solid var(--color-neutral-200);font-size:12.5px;color:var(--color-neutral-700)">
+          <span style="display:flex;align-items:center;gap:6px"><span style="display:flex;gap:3px"><i style="width:13px;height:13px;border-radius:4px;background:var(--color-neutral-100);border:1.5px solid var(--color-neutral-300)"></i><i style="width:13px;height:13px;border-radius:4px;background:var(--color-accent-100)"></i><i style="width:13px;height:13px;border-radius:4px;background:var(--color-accent-300)"></i><i style="width:13px;height:13px;border-radius:4px;background:var(--color-accent-500)"></i><i style="width:13px;height:13px;border-radius:4px;background:var(--color-accent-700)"></i></span>chaleur = (faits établis + hypothèses validées) ÷ (champs connus + hypothèses actives)</span>
+          <span style="display:flex;align-items:center;gap:6px"><i style="width:14px;height:14px;border-radius:999px;background:var(--color-accent-2-200);border:1.5px solid var(--color-accent-2-500)"></i>possibles vivants</span>
+          <span style="display:flex;align-items:center;gap:6px"><i style="width:10px;height:10px;transform:rotate(45deg);background:var(--color-neutral-100);border:2px solid var(--color-neutral-800)"></i>hypothèse infirmée — mise de côté, ne refroidit jamais</span>
+        </div>
+      </section>
+
+      <sc-if value="{{ sel }}" hint-placeholder-val="{{ false }}">
+        <section class="card elev-md" style="padding:24px 26px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+          <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+            <h2 style="font-family:var(--font-heading);font-weight:400;font-size:21px;margin:0">{{ sel.name }}</h2>
+            <span class="tag tag-neutral" style="font-size:11px">{{ sel.typeLabel }}</span>
+            <span style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--color-neutral-700)">{{ sel.tech }}</span>
+            <div style="flex:1"></div>
+            <button class="btn btn-ghost" style="border-radius:999px;padding:6px 14px;font-size:12px" onClick="{{ closeSel }}">fermer</button>
+          </div>
+          <sc-if value="{{ sel.hasData }}" hint-placeholder-val="{{ true }}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:26px;margin-top:16px">
+              <div>
+                <h3 style="font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--color-neutral-700);margin:0 0 10px">Champs du dossier</h3>
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ sel.fields }}" as="f" hint-placeholder-count="3">
+                    <div style="display:flex;align-items:center;gap:10px">
+                      <span style="font-size:14px;flex:1">{{ f.name }}</span>
+                      <span class="tag" style="font-size:11px;background:{{ f.bg }};color:{{ f.fg }};border:{{ f.bd }}">{{ f.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+              <div>
+                <h3 style="font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--color-neutral-700);margin:0 0 10px">Hypothèses</h3>
+                <div style="display:flex;flex-direction:column;gap:10px">
+                  <sc-for list="{{ sel.hyps }}" as="h" hint-placeholder-count="2">
+                    <div style="display:flex;align-items:flex-start;gap:10px">
+                      <span style="font-size:14px;flex:1;text-decoration:{{ h.deco }};color:{{ h.color }}">{{ h.libelle }}</span>
+                      <span class="tag" style="font-size:11px;background:{{ h.bg }};color:{{ h.fg }};border:{{ h.bd }};white-space:nowrap">{{ h.label }}</span>
+                    </div>
+                  </sc-for>
+                </div>
+              </div>
+            </div>
+            <div style="margin-top:18px">
+              <h3 style="font-size:12.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--color-neutral-700);margin:0 0 10px">Journal de pratique</h3>
+              <sc-for list="{{ sel.sessions }}" as="s" hint-placeholder-count="1">
+                <div style="border-radius:var(--radius-md);background:var(--color-neutral-200);overflow:hidden;margin-bottom:8px">
+                  <button onClick="{{ s.onToggle }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:10px 14px;background:none;border:none;cursor:pointer;text-align:left;font-family:var(--font-body)">
+                    <span style="font-size:13px;font-weight:600;color:var(--color-text)">{{ s.title }}</span>
+                    <span style="font-size:12px;color:var(--color-neutral-700)">{{ s.meta }}</span>
+                    <span style="flex:1"></span>
+                    <span style="font-size:11.5px;color:var(--color-accent-700);font-weight:600">{{ s.toggleLabel }}</span>
+                  </button>
+                  <sc-if value="{{ s.open }}" hint-placeholder-val="{{ false }}">
+                    <div style="padding:4px 14px 14px;display:flex;flex-direction:column;gap:10px;background:var(--color-neutral-100)">
+                      <sc-for list="{{ s.turns }}" as="t" hint-placeholder-count="3">
+                        <div style="display:flex;gap:10px">
+                          <span style="flex:none;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:{{ t.who }};width:52px;padding-top:2px">{{ t.role }}</span>
+                          <p style="margin:0;font-size:13px;line-height:1.5;color:var(--color-neutral-800)">{{ t.text }}</p>
+                        </div>
+                      </sc-for>
+                      <div style="font-size:11.5px;color:var(--color-neutral-700);padding-top:6px;border-top:1px solid var(--color-neutral-200)">{{ s.emitted }}</div>
+                    </div>
+                  </sc-if>
+                </div>
+              </sc-for>
+            </div>
+            <div style="margin-top:14px;padding-top:10px;border-top:1px solid var(--color-neutral-200);font-size:12px;color:var(--color-neutral-700)">{{ sel.provenance }}</div>
+          </sc-if>
+          <sc-if value="{{ sel.empty }}" hint-placeholder-val="{{ false }}">
+            <p style="margin:14px 0 4px;font-size:14px;color:var(--color-neutral-700)">Aucune pratique n'a encore touché ce nœud. Son état apparaîtra ici, champ par champ, à mesure que les séances l'émettront — rien n'est inventé entre-temps.</p>
+          </sc-if>
+        </section>
+      </sc-if>
+
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:22px;align-items:start">
+        <section class="card elev-sm" style="padding:22px 24px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2 style="font-family:var(--font-heading);font-weight:400;font-size:19px;margin:0;flex:1">Possibles vivants</h2>
+            <button onClick="{{ onHelpPossible }}" aria-label="Qu'est-ce qu'un possible vivant ?" title="Qu'est-ce qu'un possible vivant ?" style="width:26px;height:26px;border-radius:999px;border:1px solid var(--color-neutral-400);background:var(--color-neutral-100);color:var(--color-neutral-800);cursor:pointer;font-size:13px;font-weight:700;padding:0">?</button>
+          </div>
+          <p style="margin:4px 0 14px;font-size:12.5px;color:var(--color-neutral-700)">{{ optSummary }}</p>
+          <div style="display:flex;flex-direction:column;gap:10px">
+            <sc-for list="{{ options }}" as="o" hint-placeholder-count="3">
+              <div style="display:flex;flex-direction:row;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius-md);background:{{ o.rowBg }}">
+                <i style="width:10px;height:10px;border-radius:999px;background:{{ o.dot }};flex:none"></i>
+                <div style="flex:1">
+                  <div style="font-size:13.5px;font-weight:600;text-decoration:{{ o.deco }};color:{{ o.color }}">{{ o.libelle }}</div>
+                  <div style="font-size:12px;color:var(--color-neutral-700)">{{ o.meta }}</div>
+                </div>
+                <span class="tag" style="font-size:10.5px;background:{{ o.bg }};color:{{ o.fg }}">{{ o.label }}</span>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+        <section class="card elev-sm" style="padding:22px 24px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:19px;margin:0 0 4px">Décisions</h2>
+          <p style="margin:0 0 14px;font-size:12.5px;color:var(--color-neutral-700)">Chaque décision porte son delta — ce qu'elle ferme, ce qu'elle ouvre.</p>
+          <div style="display:flex;flex-direction:column;gap:14px">
+            <sc-for list="{{ decisions }}" as="d" hint-placeholder-count="2">
+              <div style="display:flex;gap:14px">
+                <div style="display:flex;flex-direction:column;align-items:center;flex:none;width:14px;padding-top:4px"><i style="width:12px;height:12px;border-radius:999px;background:var(--color-accent-500);flex:none"></i><i style="width:2px;flex:1;background:var(--color-neutral-200);margin-top:4px"></i></div>
+                <div>
+                  <div style="font-size:14px;font-weight:600">{{ d.libelle }}</div>
+                  <div style="font-size:12px;color:var(--color-neutral-700);margin:2px 0 8px">{{ d.date }} · à « {{ d.noeud }} »</div>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+                    <sc-for list="{{ d.closed }}" as="c" hint-placeholder-count="1">
+                      <span class="tag" style="font-size:11px;background:var(--color-neutral-200);color:var(--color-neutral-700);text-decoration:line-through">{{ c.t }}</span>
+                    </sc-for>
+                    <sc-for list="{{ d.opened }}" as="p" hint-placeholder-count="1">
+                      <span class="tag tag-accent-2" style="font-size:11px">+ {{ p.t }}</span>
+                    </sc-for>
+                  </div>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </section>
+      </div>
+    </main>
+    </sc-if>
+
+    <sc-if value="{{ vDesign }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:1160px;padding:24px 36px 72px;display:flex;flex-direction:column;gap:18px">
+      <header style="display:flex;flex-direction:column;gap:8px">
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:32px;margin:0;flex:1 1 auto;min-width:200px">{{ harnessName }} — Design</h1>
+          <button class="btn btn-ghost" style="border-radius:999px;padding:8px 16px;font-size:12.5px" onClick="{{ onMembers }}">{{ membersLabel }}</button>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span class="tag tag-outline" title="Rien n'est écrit tant qu'on ne scelle pas." style="font-size:11.5px;white-space:nowrap">rien n'est écrit sans sceau</span>
+          <span style="font-size:13px;color:var(--color-neutral-700)">{{ dsSub }}</span>
+        </div>
+      </header>
+
+      <section class="card elev-md" style="padding:16px 22px;border-radius:var(--radius-lg);background:var(--color-neutral-100);display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="display:flex;align-items:center;gap:9px;padding:7px 17px;border-radius:999px;background:{{ vd.bg }};color:{{ vd.fg }};border:{{ vd.bd }};font-size:13.5px;font-weight:700;white-space:nowrap">{{ vd.mark }} {{ vd.label }}</span>
+        <span style="font-size:13px;color:var(--color-neutral-700);flex:1;min-width:220px">{{ vd.detail }}</span>
+        <button class="btn btn-primary" style="border-radius:999px;padding:9px 22px;font-size:13.5px;font-weight:600" onClick="{{ onAssay }}">Éprouver</button>
+        <button class="btn btn-secondary" style="border-radius:999px;padding:9px 20px;font-size:13.5px" disabled="{{ vd.sealDisabled }}" onClick="{{ onSealOpen }}">Sceller…</button>
+      </section>
+      <sc-if value="{{ journal }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;flex-direction:column;gap:6px;padding:14px 16px;border-radius:var(--radius-md);background:var(--color-accent-100);font-family:ui-monospace,Menlo,monospace;font-size:12px;color:var(--color-accent-900)">
+          <span>{{ journal.line1 }}</span>
+          <span style="color:var(--color-neutral-700)">{{ journal.line2 }}</span>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ membersOpen }}" hint-placeholder-val="{{ false }}">
+        <section class="card elev-sm" style="padding:20px 24px;border-radius:var(--radius-lg);background:var(--color-neutral-100);display:flex;flex-direction:column;gap:12px">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:18px;margin:0">Autorat de « {{ harnessName }} »</h2>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <sc-for list="{{ members }}" as="m" hint-placeholder-count="2">
+              <div style="display:flex;align-items:center;gap:12px;padding:9px 14px;border-radius:var(--radius-md);background:var(--color-neutral-200)">
+                <span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px;flex:1">{{ m.id }}</span>
+                <span class="tag" style="font-size:10.5px;background:{{ m.bg }};color:{{ m.fg }}">{{ m.role }}</span>
+                <span style="font-size:12px;color:var(--color-neutral-700)">{{ m.since }}</span>
+              </div>
+            </sc-for>
+          </div>
+          <div>
+            <button class="btn btn-secondary" style="border-radius:999px;padding:7px 18px;font-size:12.5px" onClick="{{ onNoop }}">Inviter un co-auteur</button>
+          </div>
+          <div style="margin-top:6px;padding:16px 18px;border-radius:var(--radius-md);border:1.5px solid var(--color-neutral-400);display:flex;flex-direction:column;gap:8px">
+            <span style="font-size:13px;font-weight:700;color:var(--color-neutral-900)">Supprimer ce harness</span>
+            <span style="font-size:12.5px;color:var(--color-neutral-700);max-width:70ch">Irréversible dans Kokaji : la définition, les sujets, les cas et le journal ne seront plus servis. Le dépôt git lié reste intact. Réservé au propriétaire.</span>
+            <div><button class="btn btn-ghost" style="border-radius:999px;padding:7px 18px;font-size:12.5px;color:var(--color-neutral-900);border:1.5px solid var(--color-neutral-400)" onClick="{{ onDeleteOpen }}">Supprimer « {{ harnessName }} »…</button></div>
+          </div>
+        </section>
+      </sc-if>
+
+      <section class="card elev-sm" style="padding:24px 26px 16px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+        <p style="margin:0 0 16px;font-size:12.5px;color:var(--color-neutral-700);max-width:76ch">Le graphe du harness — les mêmes nœuds, le même ordre, les mêmes noms que le QG. Sélectionnez un nœud : chaque axe ci-dessous en montre une facette. Les marques signalent où intervenir.</p>
+        <div style="display:flex;align-items:flex-start;gap:0;overflow-x:auto;padding-bottom:4px">
+          <sc-for list="{{ gNodes }}" as="g" hint-placeholder-count="4">
+            <div style="display:flex;align-items:flex-start;flex:{{ g.grow }};min-width:0">
+              <button onClick="{{ g.onClick }}" aria-label="{{ g.aria }}" style="display:flex;flex-direction:column;align-items:center;gap:8px;border:none;background:none;cursor:pointer;padding:4px 2px;width:100%;min-width:96px;max-width:150px;flex:none">
+                <span style="position:relative;width:56px;height:56px;border-radius:{{ g.radius }};background:{{ g.fill }};border:{{ g.border }};outline:{{ g.ring }};outline-offset:3px;display:block">
+                  <sc-if value="{{ g.contrat }}" hint-placeholder-val="{{ false }}">
+                    <span title="contrat violé" style="position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:6px;background:var(--color-neutral-900);color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">✕</span>
+                  </sc-if>
+                </span>
+                <span style="font-size:13px;font-weight:{{ g.weight }};line-height:1.25;overflow-wrap:break-word;color:var(--color-text)">{{ g.name }}</span>
+                <span style="display:flex;gap:5px;flex-wrap:wrap;justify-content:center">
+                  <sc-if value="{{ g.densho }}" hint-placeholder-val="{{ false }}">
+                    <span class="tag" style="font-size:10px;background:var(--color-neutral-100);color:var(--color-neutral-800);border:1.5px dashed var(--color-neutral-500)">densho incomplet</span>
+                  </sc-if>
+                  <sc-if value="{{ g.seuil }}" hint-placeholder-val="{{ false }}">
+                    <span class="tag" style="font-size:10px;background:var(--color-neutral-200);color:var(--color-neutral-700)">seuil par défaut</span>
+                  </sc-if>
+                </span>
+              </button>
+              <sc-if value="{{ g.hasEdge }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;align-items:center;margin-top:22px;flex:1;min-width:48px">
+                  <div style="flex:1;min-width:4px;height:3px;border-radius:2px;background:var(--color-neutral-300)"></div>
+                  <button onClick="{{ g.onInsert }}" title="insérer un kata ici" aria-label="insérer un kata après {{ g.name }}" style="width:40px;height:40px;flex:none;border-radius:999px;border:1px solid var(--color-neutral-300);background:var(--color-neutral-200);cursor:pointer;font-size:16px;line-height:1;color:var(--color-neutral-800);padding:0">+</button>
+                  <div style="flex:1;min-width:4px;height:3px;border-radius:2px;background:var(--color-neutral-300)"></div>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;padding:14px 0 6px;border-top:1px solid var(--color-neutral-200);margin-top:10px">
+          <sc-for list="{{ axes }}" as="ax" hint-placeholder-count="4">
+            <button onClick="{{ ax.onClick }}" style="display:flex;align-items:center;gap:8px;padding:8px 17px;border-radius:999px;border:none;cursor:pointer;font-family:var(--font-body);font-size:13.5px;font-weight:{{ ax.weight }};background:{{ ax.bg }};color:{{ ax.fg }}">{{ ax.label }}
+              <sc-if value="{{ ax.count }}" hint-placeholder-val="{{ false }}">
+                <span style="min-width:19px;height:19px;border-radius:999px;background:var(--color-neutral-900);color:var(--color-bg);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px">{{ ax.count }}</span>
+              </sc-if>
+            </button>
+          </sc-for>
+        </div>
+      </section>
+
+      <sc-if value="{{ axPartition }}" hint-placeholder-val="{{ false }}">
+        <section class="card elev-sm" style="padding:24px 26px;border-radius:var(--radius-lg);background:var(--color-neutral-100);display:flex;flex-direction:column;gap:16px">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0">Partitionnement — {{ fNode.name }}</h2>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:760px">
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label for="f-nom" style="font-size:12.5px;color:var(--color-neutral-700)">Nom d'affichage — la seule source, reprise partout</label>
+              <input id="f-nom" class="input" style="border-radius:999px;padding:9px 16px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300)" value="{{ fNode.name }}" onChange="{{ onNodeName }}">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label for="f-id" style="font-size:12.5px;color:var(--color-neutral-700)">Identifiant technique</label>
+              <input id="f-id" class="input" style="border-radius:999px;padding:9px 16px;font-size:13px;font-family:ui-monospace,Menlo,monospace;background:var(--color-neutral-200);border:1px solid var(--color-neutral-300)" value="{{ fNode.tech }}" onChange="{{ onNodeTech }}">
+            </div>
+            <div style="display:flex;flex-direction:column;gap:5px">
+              <label for="f-type" style="font-size:12.5px;color:var(--color-neutral-700)">Type</label>
+              <select id="f-type" class="input" style="border-radius:999px;padding:9px 14px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);cursor:pointer" value="{{ fNode.type }}" onChange="{{ onNodeType }}">
+                <option value="kata">kata</option>
+                <option value="jalon">jalon</option>
+                <option value="externe">externe</option>
+              </select>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn btn-secondary" style="border-radius:999px;padding:9px 18px;font-size:12.5px;min-height:40px" onClick="{{ onMoveLeft }}">← avancer dans la chaîne</button>
+            <button class="btn btn-secondary" style="border-radius:999px;padding:9px 18px;font-size:12.5px;min-height:40px" onClick="{{ onMoveRight }}">reculer dans la chaîne →</button>
+            <button class="btn btn-ghost" style="border-radius:999px;padding:9px 18px;font-size:12.5px;min-height:40px;color:var(--color-neutral-900);border:1.5px solid var(--color-neutral-400)" onClick="{{ onRemoveNode }}">{{ removeLabel }}</button>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ axContrats }}" hint-placeholder-val="{{ true }}">
+        <section class="card elev-sm" style="padding:24px 26px;border-radius:var(--radius-lg);background:var(--color-neutral-100);display:flex;flex-direction:column;gap:18px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0;flex:1">Contrats f♯ — {{ fNode.name }} <span style="font-size:13px;color:var(--color-neutral-700)">{{ fNode.versionLine }}</span></h2>
+            <button onClick="{{ onHelpContrat }}" aria-label="Qu'est-ce qu'un contrat f♯ ?" title="Qu'est-ce qu'un contrat f♯ ?" style="width:26px;height:26px;border-radius:999px;border:1px solid var(--color-neutral-400);background:var(--color-neutral-100);color:var(--color-neutral-800);cursor:pointer;font-size:13px;font-weight:700;padding:0">?</button>
+          </div>
+          <div>
+            <p style="margin:0 0 10px;font-size:12.5px;color:var(--color-neutral-700)">Ce qu'il exige — chaque demande à côté de ce que l'amont promet réellement.</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ fHerite }}" as="h" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 14px;border-radius:var(--radius-md);background:{{ h.rowBg }}">
+                  <span style="flex:none;width:20px;height:20px;border-radius:6px;background:{{ h.markBg }};color:{{ h.markFg }};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700">{{ h.mark }}</span>
+                  <span style="font-size:13.5px;min-width:200px;flex:1">{{ h.human }} <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--color-neutral-700)">{{ h.field }}</span></span>
+                  <span style="font-size:12px;color:var(--color-neutral-700)">exige</span>
+                  <select class="input" aria-label="niveau exigé" style="border-radius:999px;padding:5px 12px;font-size:12px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);cursor:pointer" value="{{ h.s }}" onChange="{{ h.onChange }}">
+                    <option value="">présence seule</option>
+                    <option value="en_pause">en pause</option>
+                    <option value="hypothese">hypothèse</option>
+                    <option value="fait_etabli">fait établi</option>
+                  </select>
+                  <span style="font-size:12px;color:var(--color-neutral-700)">{{ h.promiseLabel }}</span>
+                  <span class="tag" style="font-size:10.5px;background:{{ h.pBg }};color:{{ h.pFg }}">{{ h.promise }}</span>
+                  <sc-if value="{{ h.broken }}" hint-placeholder-val="{{ false }}">
+                    <span style="flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap;padding-left:32px">
+                      <button class="btn btn-ghost" style="border-radius:999px;padding:5px 14px;font-size:12px" onClick="{{ h.onFixDown }}">abaisser l'exigence à « hypothèse »</button>
+                      <button class="btn btn-ghost" style="border-radius:999px;padding:5px 14px;font-size:12px" onClick="{{ h.onFixUp }}">relever la garantie de l'amont ♯</button>
+                    </span>
+                  </sc-if>
+                </div>
+              </sc-for>
+              <sc-if value="{{ fNoHerite }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:0;font-size:13px;color:var(--color-neutral-700)">N'exige rien — ce nœud ouvre la chaîne.</p>
+              </sc-if>
+            </div>
+          </div>
+          <div>
+            <p style="margin:0 0 10px;font-size:12.5px;color:var(--color-neutral-700)">Ce qu'il garantit — le statut minimal que l'aval peut exiger.</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ fProduit }}" as="p" hint-placeholder-count="2">
+                <div style="display:flex;flex-direction:row;align-items:center;gap:12px;flex-wrap:wrap;padding:11px 14px;border-radius:var(--radius-md);background:var(--color-neutral-200)">
+                  <span style="font-size:13.5px;min-width:200px;flex:1">{{ p.human }} <span style="font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--color-neutral-700)">{{ p.field }}</span></span>
+                  <span style="font-size:12px;color:var(--color-neutral-700)">garantit au moins</span>
+                  <select class="input" aria-label="garantie minimale" style="border-radius:999px;padding:5px 12px;font-size:12px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);cursor:pointer" value="{{ p.s }}" onChange="{{ p.onChange }}">
+                    <option value="en_pause">en pause</option>
+                    <option value="hypothese">hypothèse</option>
+                    <option value="fait_etabli">fait établi</option>
+                  </select>
+                  <span style="font-size:12px;color:var(--color-neutral-700)">{{ p.consumers }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ fNoProduit }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:0;font-size:13px;color:var(--color-neutral-700)">Ne garantit rien — un nœud externe lit la chaîne sans y ajouter.</p>
+              </sc-if>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ axTrempe }}" hint-placeholder-val="{{ false }}">
+        <section class="card elev-sm" style="padding:24px 26px;border-radius:var(--radius-lg);background:var(--color-neutral-100);display:flex;flex-direction:column;gap:20px">
+          <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0">Trempe — {{ fNode.name }}</h2>
+          <div>
+            <h3 style="font-family:ui-monospace,Menlo,monospace;font-size:13px;margin:0 0 4px">justesse — seuil de ce kata</h3>
+            <p style="margin:0 0 10px;font-size:12.5px;color:var(--color-neutral-700)">Vide : le défaut ({{ justesseDefaut }}) s'applique. Un seuil est une promesse sur le harness, jamais une note sur un sujet.</p>
+            <input class="input" type="number" step="0.05" min="0" max="1" aria-label="seuil de justesse" placeholder="{{ justesseDefaut }}" style="border-radius:999px;padding:7px 14px;font-size:13px;width:110px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);font-family:ui-monospace,Menlo,monospace" value="{{ fSeuil }}" onChange="{{ onSeuil }}">
+          </div>
+          <div>
+            <h3 style="font-family:ui-monospace,Menlo,monospace;font-size:13px;margin:0 0 10px">checks_de_session</h3>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ checks }}" as="c" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:row;align-items:center;gap:14px;padding:10px 14px;border-radius:var(--radius-md);background:var(--color-neutral-200)">
+                  <span style="font-size:13.5px;flex:1">{{ c.label }}</span>
+                  <button onClick="{{ c.onToggle }}" style="border:none;cursor:pointer;border-radius:999px;padding:6px 16px;min-height:32px;font-family:var(--font-body);font-size:11.5px;font-weight:600;background:{{ c.bg }};color:{{ c.fg }}">{{ c.state }}</button>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div>
+            <h3 style="font-family:ui-monospace,Menlo,monospace;font-size:13px;margin:0 0 4px">vocabulaire_interdit <span style="font-family:var(--font-body);font-weight:400;color:var(--color-neutral-700)">— commun à toute la chaîne</span></h3>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px">
+              <sc-for list="{{ vocab }}" as="v" hint-placeholder-count="3">
+                <span style="display:flex;align-items:center;gap:8px;padding:6px 8px 6px 14px;border-radius:999px;background:var(--color-neutral-200);font-family:ui-monospace,Menlo,monospace;font-size:12px">{{ v.word }}<button onClick="{{ v.onRemove }}" aria-label="retirer {{ v.word }}" style="width:22px;height:22px;border-radius:999px;border:none;background:var(--color-neutral-300);color:var(--color-neutral-800);cursor:pointer;font-size:12px;line-height:1;padding:0">×</button></span>
+              </sc-for>
+              <input class="input" aria-label="ajouter un mot interdit" placeholder="ajouter un mot…" style="border-radius:999px;padding:6px 14px;font-size:12px;font-family:ui-monospace,Menlo,monospace;width:150px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300)" value="{{ vocabInput }}" onChange="{{ onVocabInput }}" onKeyDown="{{ onVocabKey }}">
+            </div>
+          </div>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{ axCoupes }}" hint-placeholder-val="{{ false }}">
+        <section class="card elev-sm" style="padding:24px 26px;border-radius:var(--radius-lg);background:var(--color-neutral-100);display:flex;flex-direction:column;gap:16px">
+          <div>
+            <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0 0 4px">Coupes — le densho de « {{ fNode.name }} »</h2>
+            <p style="margin:0;font-size:12.5px;color:var(--color-neutral-700);max-width:76ch">Le seul endroit du produit où l'on écrit longuement : pleine largeur, hauteur libre, l'aperçu de la coupe rendue à côté.</p>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:26px;align-items:start">
+            <div style="display:flex;flex-direction:column;gap:16px">
+              <sc-for list="{{ denshoFields }}" as="df" hint-placeholder-count="4">
+                <div style="display:flex;flex-direction:column;gap:5px">
+                  <label for="{{ df.id }}" style="font-size:12.5px;font-weight:600;color:var(--color-neutral-800)">{{ df.label }}</label>
+                  <textarea id="{{ df.id }}" class="input" rows="{{ df.rows }}" style="border-radius:var(--radius-md);padding:12px 16px;font-size:14px;line-height:1.6;font-family:var(--font-body);background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);width:100%;box-sizing:border-box;resize:vertical;min-height:64px" value="{{ df.val }}" onChange="{{ df.onChange }}" placeholder="{{ df.placeholder }}"></textarea>
+                </div>
+              </sc-for>
+            </div>
+            <div style="border-radius:var(--radius-md);background:var(--color-neutral-200);padding:22px 24px;position:sticky;top:16px">
+              <span class="tag tag-neutral" style="font-size:10.5px">coupe rendue</span>
+              <h3 style="font-family:var(--font-heading);font-weight:400;font-size:18px;margin:12px 0 8px">{{ fNode.name }}</h3>
+              <p style="margin:0 0 12px;font-size:13px;line-height:1.6;color:var(--color-neutral-800)">{{ previewRole }}</p>
+              <p style="margin:0;font-size:13px;line-height:1.6;color:var(--color-neutral-800);white-space:pre-wrap">{{ previewQuestions }}</p>
+              <sc-if value="{{ previewIncomplete }}" hint-placeholder-val="{{ false }}">
+                <p style="margin:14px 0 0;font-size:12.5px;color:var(--color-neutral-800);border-top:1.5px dashed var(--color-neutral-500);padding-top:10px">Densho incomplet : le « passage » est vide — la coupe ne peut pas être rendue en entier.</p>
+              </sc-if>
+            </div>
+          </div>
+        </section>
+      </sc-if>
+    </main>
+    </sc-if>
+
+    <sc-if value="{{ vProfil }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:960px;padding:28px 36px 64px;display:flex;flex-direction:column;gap:24px">
+      <header style="display:flex;align-items:center;gap:18px">
+        <span style="width:64px;height:64px;border-radius:999px;background:var(--color-accent-2-200);border:1.5px solid var(--color-accent-2-500);display:flex;align-items:center;justify-content:center;font-family:var(--font-heading);font-size:24px;color:var(--color-accent-2-900)">F</span>
+        <div>
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:30px;margin:0">forgeron</h1>
+          <p style="margin:2px 0 0;font-size:13px;color:var(--color-neutral-700)">pratique depuis juin 2026 · 12 séances · 2 harness</p>
+        </div>
+      </header>
+      <section>
+        <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0 0 12px">Activités accessibles</h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ activities }}" as="a" hint-placeholder-count="2">
+            <div class="card elev-sm" style="display:flex;flex-direction:row;align-items:center;gap:14px;padding:16px 20px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+              <div style="flex:1">
+                <div style="font-size:14.5px;font-weight:600">{{ a.name }}</div>
+                <div style="font-size:12.5px;color:var(--color-neutral-700);margin-top:2px">{{ a.meta }}</div>
+              </div>
+              <span class="tag" style="font-size:11px;background:{{ a.bg }};color:{{ a.fg }}">{{ a.role }}</span>
+              <button class="btn btn-ghost" style="border-radius:999px;padding:6px 16px;font-size:12.5px" onClick="{{ a.onOpen }}">ouvrir le QG</button>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+      <section>
+        <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0 0 12px">Mes harness</h2>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <sc-for list="{{ myHarnesses }}" as="h" hint-placeholder-count="2">
+            <div class="card elev-sm" style="display:flex;flex-direction:row;align-items:center;gap:14px;padding:16px 20px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+              <div style="flex:1">
+                <div style="font-size:14.5px;font-weight:600">{{ h.name }} <span style="font-weight:400;color:var(--color-neutral-700)">{{ h.version }}</span></div>
+                <div style="font-size:12.5px;color:var(--color-neutral-700);margin-top:2px">{{ h.meta }}</div>
+              </div>
+              <span class="tag tag-accent" style="font-size:11px">propriétaire</span>
+              <button class="btn btn-ghost" style="border-radius:999px;padding:6px 16px;font-size:12.5px" onClick="{{ h.onOpen }}">ouvrir le design</button>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </main>
+    </sc-if>
+
+    <sc-if value="{{ vDecouvrir }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:860px;padding:28px 36px 64px;display:flex;flex-direction:column;gap:20px">
+      <h1 style="font-family:var(--font-heading);font-weight:400;font-size:30px;margin:0">Découvrir</h1>
+      <p style="margin:0;font-size:14.5px;line-height:1.65;color:var(--color-neutral-800);max-width:66ch">Kokaji est une forge personnelle de harnais conversationnels. On y déclare un sujet, on le pratique kata par kata, et le QG reflète — sans jamais l'inventer — l'état que la pratique émet. Rien n'est écrit tant qu'on ne scelle pas.</p>
+      <section class="card elev-sm" style="padding:24px 26px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+        <h2 style="font-family:var(--font-heading);font-weight:400;font-size:20px;margin:0 0 14px">Lexique</h2>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <sc-for list="{{ lexique }}" as="lx" hint-placeholder-count="6">
+            <div style="padding:12px 14px;border-radius:var(--radius-md);background:{{ lx.bg }}">
+              <div style="font-size:14px;font-weight:700">{{ lx.term }}</div>
+              <div style="font-size:13.5px;line-height:1.55;color:var(--color-neutral-800);margin-top:3px">{{ lx.def }}</div>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </main>
+    </sc-if>
+
+    <sc-if value="{{ vVigie }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:960px;padding:28px 36px 64px;display:flex;flex-direction:column;gap:18px">
+      <header>
+        <h1 style="font-family:var(--font-heading);font-weight:400;font-size:30px;margin:0">Vigie</h1>
+        <p style="margin:6px 0 0;font-size:14px;color:var(--color-neutral-800)">{{ vigieSummary }}</p>
+      </header>
+      <sc-for list="{{ vigieEcarts }}" as="e" hint-placeholder-count="1">
+        <div class="card elev-md" style="display:flex;flex-direction:row;gap:14px;padding:18px 22px;border-radius:var(--radius-lg);background:var(--color-neutral-100)">
+          <span style="flex:none;width:24px;height:24px;border-radius:6px;background:var(--color-neutral-900);color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700">✕</span>
+          <div style="flex:1">
+            <div style="font-size:14px;font-weight:700">{{ e.name }}</div>
+            <div style="font-size:13px;color:var(--color-neutral-800);margin-top:3px">{{ e.detail }}</div>
+            <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--color-neutral-700);margin-top:6px">{{ e.mesure }}</div>
+          </div>
+          <button class="btn btn-secondary" style="border-radius:999px;padding:7px 16px;font-size:12px;align-self:flex-start" onClick="{{ onNoop }}">rejouer</button>
+        </div>
+      </sc-for>
+      <section style="display:flex;flex-direction:column;gap:8px">
+        <sc-for list="{{ vigieGroups }}" as="vg" hint-placeholder-count="5">
+          <div class="card elev-sm" style="border-radius:var(--radius-lg);background:var(--color-neutral-100);overflow:hidden">
+            <button onClick="{{ vg.onToggle }}" style="display:flex;align-items:center;gap:12px;width:100%;padding:14px 20px;background:none;border:none;cursor:pointer;text-align:left;font-family:var(--font-body)">
+              <span style="font-size:14px;font-weight:600;flex:1">{{ vg.name }}</span>
+              <span class="tag tag-accent-2" style="font-size:11px">{{ vg.status }}</span>
+              <span style="font-size:12px;color:var(--color-accent-700);font-weight:600">{{ vg.toggleLabel }}</span>
+            </button>
+            <sc-if value="{{ vg.open }}" hint-placeholder-val="{{ false }}">
+              <div style="padding:0 20px 14px;display:flex;flex-direction:column;gap:6px">
+                <sc-for list="{{ vg.items }}" as="vi" hint-placeholder-count="3">
+                  <div style="display:flex;align-items:center;gap:10px;font-size:13px;color:var(--color-neutral-800)"><span style="width:16px;height:16px;border-radius:5px;background:var(--color-accent-2-200);color:var(--color-accent-2-900);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none">✓</span>{{ vi.t }}</div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </section>
+    </main>
+    </sc-if>
+
+    <sc-if value="{{ vComptes }}" hint-placeholder-val="{{ false }}">
+    <main style="max-width:960px;padding:28px 36px 64px;display:flex;flex-direction:column;gap:18px">
+      <header style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1;min-width:220px">
+          <h1 style="font-family:var(--font-heading);font-weight:400;font-size:30px;margin:0">Comptes &amp; invitations</h1>
+          <p style="margin:6px 0 0;font-size:13px;color:var(--color-neutral-700)">Visible des administrateurs seulement. Les identifiants techniques sont repliés par défaut.</p>
+        </div>
+        <button class="btn btn-primary" style="border-radius:999px;padding:9px 20px;font-size:13px;font-weight:600" onClick="{{ onNoop }}">Ouvrir une invitation</button>
+      </header>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <sc-for list="{{ comptes }}" as="cp" hint-placeholder-count="3">
+          <div class="card elev-sm" style="border-radius:var(--radius-lg);background:var(--color-neutral-100);padding:14px 20px;display:flex;flex-direction:column;gap:8px">
+            <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+              <span style="font-size:14px;font-weight:600;flex:1">{{ cp.name }}</span>
+              <span class="tag" style="font-size:11px;background:{{ cp.bg }};color:{{ cp.fg }}">{{ cp.role }}</span>
+              <button class="btn btn-ghost" style="border-radius:999px;padding:5px 14px;font-size:11.5px" onClick="{{ cp.onToggle }}">{{ cp.toggleLabel }}</button>
+            </div>
+            <sc-if value="{{ cp.open }}" hint-placeholder-val="{{ false }}">
+              <div style="font-family:ui-monospace,Menlo,monospace;font-size:11.5px;color:var(--color-neutral-700);display:flex;flex-direction:column;gap:3px;padding:8px 12px;border-radius:var(--radius-md);background:var(--color-neutral-200)">
+                <span>{{ cp.email }}</span><span>{{ cp.uuid }}</span>
+              </div>
+            </sc-if>
+          </div>
+        </sc-for>
+      </div>
+    </main>
+    </sc-if>
+  </div>
+</div>
+
+<sc-if value="{{ createOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="position:fixed;inset:0;background:rgba(32,30,29,.45);display:flex;align-items:center;justify-content:center;padding:32px;z-index:60">
+    <div class="dialog elev-lg" role="dialog" aria-modal="true" aria-label="Créer un harness" style="width:100%;max-width:520px;background:var(--color-neutral-100);border-radius:var(--radius-lg);padding:28px 30px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow-lg);isolation:isolate">
+      <h2 style="font-family:var(--font-heading);font-weight:400;font-size:22px;margin:0">Créer un harness</h2>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label for="c-nom" style="font-size:12.5px;color:var(--color-neutral-700)">Nom</label>
+        <input id="c-nom" class="input" style="border-radius:999px;padding:9px 16px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300)" placeholder="ex. Atelier" value="{{ createName }}" onChange="{{ onCreateName }}">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label for="c-base" style="font-size:12.5px;color:var(--color-neutral-700)">À partir de</label>
+        <select id="c-base" class="input" style="border-radius:999px;padding:9px 14px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300);cursor:pointer">
+          <option>une chaîne vierge</option>
+          <option>une copie de « Atelier »</option>
+        </select>
+      </div>
+      <p style="margin:0;font-size:11.5px;color:var(--color-neutral-700)">Modale accessible : &lt;dialog&gt; natif — focus initial sur « Nom », Échap ferme, le focus revient au déclencheur.</p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" style="border-radius:999px;padding:8px 18px;font-size:13px" onClick="{{ onCreateClose }}">Annuler</button>
+        <button class="btn btn-primary" style="border-radius:999px;padding:8px 22px;font-size:13px;font-weight:600" disabled="{{ createDisabled }}" onClick="{{ onCreate }}">Créer</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ deleteOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="position:fixed;inset:0;background:rgba(32,30,29,.45);display:flex;align-items:center;justify-content:center;padding:32px;z-index:60">
+    <div class="dialog elev-lg" role="dialog" aria-modal="true" aria-label="Supprimer le harness" style="width:100%;max-width:540px;background:var(--color-neutral-100);border-radius:var(--radius-lg);padding:28px 30px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow-lg);isolation:isolate">
+      <h2 style="font-family:var(--font-heading);font-weight:400;font-size:22px;margin:0">Supprimer « {{ harnessName }} »</h2>
+      <div style="padding:14px 16px;border-radius:var(--radius-md);background:var(--color-neutral-200);font-size:13px;line-height:1.55;color:var(--color-neutral-900)">
+        <strong>Irréversible dans Kokaji.</strong> La définition, les sujets, les cas et le journal ne seront plus servis. Le dépôt git lié reste intact.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label for="d-nom" style="font-size:12.5px;color:var(--color-neutral-700)">Saisissez le nom exact du harness pour confirmer</label>
+        <input id="d-nom" class="input" style="border-radius:999px;padding:9px 16px;font-size:13.5px;font-family:ui-monospace,Menlo,monospace;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300)" placeholder="{{ harnessName }}" value="{{ deleteName }}" onChange="{{ onDeleteName }}">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" style="border-radius:999px;padding:8px 18px;font-size:13px" onClick="{{ onDeleteClose }}">Annuler</button>
+        <button class="btn btn-primary" style="border-radius:999px;padding:8px 22px;font-size:13px;font-weight:600" disabled="{{ deleteDisabled }}" onClick="{{ onDelete }}">Supprimer définitivement</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+
+<sc-if value="{{ sealOpen }}" hint-placeholder-val="{{ false }}">
+  <div class="dialog-backdrop" style="position:fixed;inset:0;background:rgba(32,30,29,.45);display:flex;align-items:center;justify-content:center;padding:32px;z-index:60">
+    <div class="dialog elev-lg" role="dialog" aria-modal="true" aria-label="Sceller la définition" style="width:100%;max-width:540px;background:var(--color-neutral-100);border-radius:var(--radius-lg);padding:28px 30px;display:flex;flex-direction:column;gap:16px;box-shadow:var(--shadow-lg);isolation:isolate">
+      <h2 style="font-family:var(--font-heading);font-weight:400;font-size:22px;margin:0">Sceller cette définition</h2>
+      <div style="padding:14px 16px;border-radius:var(--radius-md);background:var(--color-neutral-200);font-size:12.5px;line-height:1.55;color:var(--color-neutral-900)"><strong>Sceller périme le corpus.</strong> Les coupes existantes documentent une forme qui n'existera plus : après le sceau, `kokaji forge` puis `kokaji regression` pour mesurer ce que ce changement fait à la pratique.</div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label for="s-auteur" style="font-size:12.5px;color:var(--color-neutral-700)">Auteur — requis, journalisé avec le sceau</label>
+        <input id="s-auteur" class="input" style="border-radius:999px;padding:9px 16px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300)" placeholder="votre nom" value="{{ sealAuthor }}" onChange="{{ onSealAuthor }}">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:5px">
+        <label for="s-motif" style="font-size:12.5px;color:var(--color-neutral-700)">Motif</label>
+        <input id="s-motif" class="input" style="border-radius:999px;padding:9px 16px;font-size:13.5px;background:var(--color-neutral-100);border:1px solid var(--color-neutral-300)" placeholder="pourquoi ce changement" value="{{ sealMotif }}" onChange="{{ onSealMotif }}">
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" style="border-radius:999px;padding:8px 18px;font-size:13px" onClick="{{ onSealClose }}">Annuler</button>
+        <button class="btn btn-primary" style="border-radius:999px;padding:8px 22px;font-size:13px;font-weight:600" disabled="{{ sealDisabled }}" onClick="{{ onSeal }}">Sceller et signer</button>
+      </div>
+    </div>
+  </div>
+</sc-if>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  static NODES = [
+    { id: "idee", name: "Clarifier l'idée", type: "kata", heat: 1.0, fresh: "il y a 3 j", stale: false, opts: 0, refuted: false },
+    { id: "cadrage", name: "Cadrer le projet", type: "kata", heat: 0.8, fresh: "il y a 9 j", stale: false, opts: 1, refuted: false },
+    { id: "decoupage", name: "Découper le premier incrément", type: "kata", heat: 0.67, fresh: "il y a 41 j", stale: true, opts: 2, refuted: true },
+    { id: "mise_en_oeuvre", name: "Mettre en œuvre", type: "jalon", heat: null, fresh: "jamais pratiqué", stale: false, opts: 0, refuted: false }
+  ];
+  static DOSSIERS = {
+    idee: {
+      fields: [["énoncé du besoin", "fait_etabli"], ["apprenants visés", "fait_etabli"], ["existant", "fait_etabli"]],
+      hyps: [["Le turn-over vient des lacunes de formation", "validee"]],
+      session: { title: "Séance 2 — affûter le signal de succès", meta: "6 août · 38 min · kata idee v1.2", emitted: "Blocs d'état émis : énoncé du besoin → fait établi · existant → fait établi", turns: [
+        { role: "kata", text: "Si le système fonctionne, qu'est-ce qui change d'observable en un trimestre ?" },
+        { role: "humain", text: "Moins de questions répétées aux coordinateurs, et des créneaux qu'on ne refuse plus." },
+        { role: "kata", text: "Le second signal est lisible dans le planning dès aujourd'hui — c'est votre premier test bon marché." }
+      ] },
+      provenance: "harness « Atelier » v2.1 · kata idee v1.2 · dernier bloc d'état le 6 août 2026"
+    },
+    cadrage: {
+      fields: [["qui forme aujourd'hui", "fait_etabli"], ["qui maintient le contenu", "hypothese"], ["contraintes techniques", "en_pause"]],
+      hyps: [["Les coordinateurs peuvent rédiger eux-mêmes", "validee"], ["La fédération co-financera l'outillage", "en_cours"]],
+      session: { title: "Séance 1 — la carte des acteurs", meta: "28 juil. · 45 min · kata cadrage v1.4", emitted: "Blocs d'état émis : qui forme aujourd'hui → fait établi · qui maintient le contenu → hypothèse · possible né : « S'appuyer sur le wiki »", turns: [
+        { role: "kata", text: "Qui, par nom ou par rôle, forme aujourd'hui — même informellement ?" },
+        { role: "humain", text: "Les coordinateurs de chapitre, plus Marta qui a écrit le classeur." },
+        { role: "kata", text: "« Les coordinateurs pourraient » est une hypothèse sur leur temps, pas un fait. Je la note ainsi." }
+      ] },
+      provenance: "harness « Atelier » v2.1 · kata cadrage v1.4 · dernier bloc d'état le 28 juil. 2026"
+    },
+    decoupage: {
+      fields: [["périmètre du pilote", "hypothese"], ["chapitre pilote", "fait_etabli"], ["plan de mesure", "en_pause"]],
+      hyps: [["Les sessions en direct sont indispensables", "infirmee"], ["Un chapitre suffit pour apprendre", "en_cours"]],
+      session: { title: "Séance 1 — dessiner le pilote", meta: "29 juin · 41 min · kata decoupage v1.1", emitted: "Blocs d'état émis : chapitre pilote → fait établi · hypothèse infirmée : « les sessions en direct sont indispensables »", turns: [
+        { role: "kata", text: "Vous supposez que le direct est indispensable à la rétention. Sur quoi cela repose-t-il ?" },
+        { role: "humain", text: "Sur l'habitude. Mais nos deux bénévoles les plus fidèles n'y sont jamais venus." },
+        { role: "kata", text: "C'est une preuve contre votre propre hypothèse, tirée de vos propres données. Je la note infirmée — une trempe ratée qui vous épargne tout un système de planification." }
+      ] },
+      provenance: "harness « Atelier » v2.1 · kata decoupage v1.1 · dernier bloc d'état le 29 juin 2026"
+    }
+  };
+  static FLAB = { fait_etabli: "fait établi", hypothese: "hypothèse", en_pause: "en pause", validee: "validée", en_cours: "en cours", infirmee: "infirmée ◇" };
+  static HUMAN = { "idee.besoin": "l'énoncé du besoin", "idee.existant": "l'existant", "cadrage.hypotheses_de_valeur": "les hypothèses de valeur", "cadrage.acteurs": "la carte des acteurs", "decoupage.perimetre": "le périmètre du pilote" };
+  static DENSHO = {
+    idee: { role: "Tu es un compagnon de clarification. Tu aides à dire le besoin dans la langue de ceux qui le vivent, jamais dans celle du comité.", questions: "— Dis le besoin en une phrase, comme les intéressés la diraient.\n— Qu'existe-t-il déjà quand ce besoin se présente ?\n— Qui le porte, combien de personnes, depuis quand ?", structure: "Un énoncé du besoin (une phrase), les apprenants visés (cohorte chiffrée), l'existant (états de fait seulement).", passage: "Le nœud passe quand l'énoncé tient en une phrase vérifiable et que l'existant est décrit sans jugement." },
+    cadrage: { role: "Tu es un cartographe d'acteurs. Tu distingues ce que les gens font de ce qu'ils disent qu'ils feraient.", questions: "— Qui forme aujourd'hui, même informellement ?\n— Si le contenu doit vivre un an, qui le maintient ?\n— Qu'est-ce qui est un fait, qu'est-ce qui est une promesse ?", structure: "La carte des acteurs (rôles réels), le maintien du contenu (statut honnête), les contraintes techniques si connues.", passage: "Le nœud passe quand chaque acteur clé a un statut : fait établi ou hypothèse assumée." },
+    decoupage: { role: "Tu es un tailleur d'incréments. Tu cherches le plus petit morceau qui apprend le plus.", questions: "— Quel est le plus petit périmètre qui teste l'hypothèse de valeur ?\n— Qu'est-ce qu'on refuse de faire dans ce premier incrément ?\n— Comment saura-t-on que c'était le bon morceau ?", structure: "Un périmètre de pilote, le chapitre retenu, le plan de mesure (même en pause).", passage: "Le nœud passe quand le pilote est assez petit pour être abandonné sans regret." },
+    mise_en_oeuvre: { role: "Tu es un témoin de jalon. Tu constates, tu ne relances pas.", questions: "— Le seuil de preuve fixé au cadrage est-il atteint ?\n— Qu'est-ce qui a été appris qui ne figure dans aucun champ ?", structure: "Le constat du jalon : seuil atteint ou non, et les apprentissages hors champs.", passage: "" }
+  };
+  static VIGIE_GROUPS = [
+    { id: "charge", name: "Chargement", items: ["la page répond en moins de 2 s", "aucune erreur console au premier rendu", "les polices sont servies localement"], n: 9 },
+    { id: "passerelle", name: "Passerelle", items: ["le middleware répond", "les blocs d'état sont bien formés", "le corpus est daté"], n: 8 },
+    { id: "t360", name: "Tenue à 360 px", items: ["le menu est atteignable", "aucun débordement horizontal", "les cibles font 40 px"], n: 10 },
+    { id: "t800", name: "Tenue à 800–1024 px — nouveau palier", items: ["le CTA principal est dans le viewport", "l'en-tête du QG se replie", "rien ne se superpose à une modale ouverte"], n: 3 },
+    { id: "t1280", name: "Tenue à 1280 px", items: ["la grille tient", "les cartes ne se chevauchent pas"], n: 9 },
+    { id: "t2560", name: "Tenue à 2560 px", items: ["largeur de lecture bornée", "pas d'étirement des formulaires"], n: 8 },
+    { id: "contraste", name: "Contrastes — nouvelle famille", items: ["textes secondaires ≥ 4,5:1", "aucun texte sous 12,5 px"], n: 9 }
+  ];
+  state = {
+    view: "qg", axis: "contrats", harnessId: "atelier", deleted: false,
+    subjectId: "vol", selQG: null, openSession: null, selNode: "decoupage",
+    nodes: Component.NODES.map(n => ({ ...n })),
+    heriteFix: null, changes: [], tested: false,
+    seuils: { idee: 0.8 }, checks: [true, true, false],
+    vocab: ["optimiser", "synergie", "disrupter"], vocabInput: "",
+    densho: JSON.parse(JSON.stringify(Component.DENSHO)),
+    membersOpen: false, sealOpen: false, sealAuthor: "", sealMotif: "", journal: null,
+    createOpen: false, createName: "", deleteOpen: false, deleteName: "",
+    removeArmed: false, banner: null, vigieOpen: {}, comptesOpen: {}, helpTerm: null
+  };
+  change(path) {
+    this.setState(s => ({ changes: s.changes.indexOf(path) >= 0 ? s.changes : s.changes.concat(path), tested: false, journal: null }));
+  }
+  nav(view, extra) { this.setState({ view, banner: null, ...(extra || {}) }); }
+  componentDidMount() { this.syncTitle(); }
+  componentDidUpdate() { this.syncTitle(); }
+  syncTitle() { document.title = this.pageTitle(); }
+  pageTitle() {
+    const h = this.harnessName(), v = this.state.view;
+    return v === "qg" ? h + " · QG — Kokaji" : v === "design" ? h + " · Design · " + ({ partition: "Partitionnement", contrats: "Contrats f♯", trempe: "Trempe", coupes: "Coupes" })[this.state.axis] + " — Kokaji"
+      : v === "profil" ? "Profil — Kokaji" : v === "decouvrir" ? "Découvrir — Kokaji" : v === "vigie" ? "Vigie — Kokaji" : "Comptes & invitations — Kokaji";
+  }
+  harnessName() { return this.state.harnessId === "atelier" && !this.state.deleted ? "Atelier" : "Idée forge"; }
+  route() {
+    const s = this.state, h = s.harnessId === "atelier" && !s.deleted ? "atelier" : "idee-forge";
+    return s.view === "qg" ? "/h/" + h + "/qg?sujet=" + s.subjectId : s.view === "design" ? "/h/" + h + "/design/" + s.axis + "?noeud=" + s.selNode
+      : s.view === "profil" ? "/moi/profil" : "/kokaji/" + (s.view === "decouvrir" ? "decouvrir" : s.view);
+  }
+  heatStyle(h) {
+    return h === null ? { fill: "var(--color-neutral-100)", border: "2px dashed var(--color-neutral-400)", pct: "var(--color-neutral-700)" }
+      : h <= .25 ? { fill: "var(--color-accent-100)", border: "1.5px solid var(--color-accent-300)", pct: "var(--color-accent-800)" }
+      : h <= .5 ? { fill: "var(--color-accent-300)", border: "1.5px solid var(--color-accent-400)", pct: "var(--color-accent-900)" }
+      : h <= .75 ? { fill: "var(--color-accent-500)", border: "1.5px solid var(--color-accent-600)", pct: "var(--color-neutral-100)" }
+      : { fill: "var(--color-accent-700)", border: "1.5px solid var(--color-accent-800)", pct: "var(--color-accent-100)" };
+  }
+  renderVals() {
+    const S = this.state, INK = "var(--color-neutral-900)";
+    const nodes = S.nodes, selN = nodes.find(n => n.id === S.selNode) || nodes[0];
+    const navItem = (label, active, onClick, small) => ({
+      label, onClick, weight: active ? 600 : 400,
+      bg: active ? "var(--color-accent-200)" : "transparent",
+      fg: active ? "var(--color-accent-900)" : "var(--color-neutral-800)",
+      dot: active ? "var(--color-accent-600)" : "var(--color-neutral-400)"
+    });
+    const FTAG = st => ({
+      label: Component.FLAB[st],
+      bg: st === "fait_etabli" || st === "validee" ? "var(--color-accent-200)" : st === "en_pause" ? "var(--color-neutral-200)" : "var(--color-neutral-100)",
+      fg: st === "fait_etabli" || st === "validee" ? "var(--color-accent-900)" : "var(--color-neutral-800)",
+      bd: st === "hypothese" || st === "en_cours" ? "1.5px dashed var(--color-neutral-500)" : st === "infirmee" ? "2px solid var(--color-neutral-800)" : "none"
+    });
+    const qgNodes = nodes.map((n, i) => {
+      const c = this.heatStyle(n.heat);
+      const pct = n.heat === null ? "—" : Math.round(n.heat * 100) + " %";
+      return {
+        name: n.name, grow: i < nodes.length - 1 ? "1 1 0" : "0 0 auto", hasEdge: i < nodes.length - 1,
+        radius: n.type === "jalon" ? "var(--radius-md)" : "999px",
+        fill: c.fill, borderCss: c.border, pctLabel: pct, pctColor: c.pct,
+        aria: n.name + ", " + (n.heat === null ? "jamais pratiqué" : pct + (n.opts ? ", " + n.opts + " possible(s) vivant(s)" : "")) + " — ouvrir le dossier",
+        selRing: S.selQG === n.id ? "2px solid var(--color-accent-2-600)" : "none",
+        optBadge: n.opts > 0, optCount: n.opts, refuted: n.refuted,
+        fresh: n.fresh, freshStyle: n.stale ? "italic" : "normal",
+        onClick: () => this.setState(s => ({ selQG: s.selQG === n.id ? null : n.id, openSession: null }))
+      };
+    });
+    let sel = null;
+    if (S.selQG) {
+      const n = nodes.find(x => x.id === S.selQG), d = Component.DOSSIERS[S.selQG];
+      sel = {
+        name: n.name, tech: n.id, typeLabel: n.type, hasData: !!d && S.subjectId === "vol", empty: !d || S.subjectId !== "vol",
+        provenance: d ? d.provenance : "",
+        fields: d ? d.fields.map(([name, st]) => ({ name, ...FTAG(st) })) : [],
+        hyps: d ? d.hyps.map(([l, st]) => ({ libelle: l, ...FTAG(st), deco: st === "infirmee" ? "line-through" : "none", color: st === "infirmee" ? "var(--color-neutral-700)" : "var(--color-text)" })) : [],
+        sessions: d ? [{
+          title: d.session.title, meta: d.session.meta, emitted: d.session.emitted,
+          open: S.openSession === S.selQG,
+          toggleLabel: S.openSession === S.selQG ? "replier la transcription" : "lire la transcription",
+          turns: d.session.turns.map(t => ({ role: t.role, text: t.text, who: t.role === "kata" ? "var(--color-accent-700)" : "var(--color-accent-2-800)" })),
+          onToggle: () => this.setState(s => ({ openSession: s.openSession === S.selQG ? null : S.selQG }))
+        }] : []
+      };
+    }
+    const OT = { ouverte: ["var(--color-accent-2-100)", "var(--color-accent-2-500)", "ouverte", "var(--color-accent-2-200)", "var(--color-accent-2-900)"], engagee: ["var(--color-neutral-100)", "var(--color-accent-500)", "engagée", "var(--color-accent-200)", "var(--color-accent-900)"], ecartee: ["var(--color-neutral-100)", "var(--color-neutral-400)", "écartée", "var(--color-neutral-200)", "var(--color-neutral-700)"] };
+    const opts = [
+      { l: "S'appuyer sur le wiki existant", n: "Cadrer le projet", s: "ouverte", m: "née il y a 24 j" },
+      { l: "Parcours de mentorat en parallèle", n: "Découper le premier incrément", s: "ouverte", m: "née il y a 11 j" },
+      { l: "Plateforme sur mesure", n: "Cadrer le projet", s: "ecartee", m: "née il y a 47 j" }
+    ].map(o => ({ libelle: o.l, meta: "à « " + o.n + " » · " + o.m, rowBg: OT[o.s][0], dot: OT[o.s][1], label: OT[o.s][2], bg: OT[o.s][3], fg: OT[o.s][4], deco: o.s === "ecartee" ? "line-through" : "none", color: o.s === "ecartee" ? "var(--color-neutral-700)" : "var(--color-text)" }));
+
+    const flags = {
+      idee: { contrat: false, densho: false, seuil: false },
+      cadrage: { contrat: false, densho: false, seuil: true },
+      decoupage: { contrat: S.heriteFix === null, densho: false, seuil: true },
+      mise_en_oeuvre: { contrat: false, densho: !S.densho.mise_en_oeuvre.passage.trim(), seuil: true }
+    };
+    const anomalies = flags.decoupage.contrat ? 1 : 0;
+    const gNodes = nodes.map((n, i) => {
+      const f = flags[n.id] || { contrat: false, densho: false, seuil: true };
+      return {
+        name: n.name, hasEdge: i < nodes.length - 1, grow: i < nodes.length - 1 ? "1 1 0" : "0 0 auto",
+        radius: n.type === "jalon" ? "var(--radius-md)" : "999px",
+        fill: n.type === "externe" ? "var(--color-neutral-100)" : "var(--color-neutral-200)",
+        border: n.type === "externe" ? "2px dashed var(--color-neutral-400)" : "1.5px solid var(--color-neutral-400)",
+        ring: S.selNode === n.id ? "2px solid " + INK : "none",
+        weight: S.selNode === n.id ? 700 : 400,
+        aria: n.name + (f.contrat ? ", contrat violé" : "") + (f.densho ? ", densho incomplet" : "") + " — sélectionner ce nœud",
+        contrat: f.contrat, densho: f.densho, seuil: f.seuil,
+        onClick: () => this.setState({ selNode: n.id, removeArmed: false }),
+        onInsert: () => { this.change("chaine." + n.id + ".après"); this.setState({ banner: "Un kata « nouveau_kata » serait inséré après « " + n.name + " » — maquette : l'insertion réelle passe par Éprouver puis Sceller." }); }
+      };
+    });
+    const axes = [["partition", "Partitionnement", 0], ["contrats", "Contrats f♯", anomalies], ["trempe", "Trempe", 0], ["coupes", "Coupes", 0]].map(([id, label, count]) => ({
+      label, count: count || false,
+      weight: S.axis === id ? 600 : 400,
+      bg: S.axis === id ? "var(--color-accent-200)" : "var(--color-neutral-200)",
+      fg: S.axis === id ? "var(--color-accent-900)" : "var(--color-neutral-800)",
+      onClick: () => this.setState({ axis: id })
+    }));
+
+    let vd;
+    if (!S.changes.length) vd = { mark: "·", label: "aucun changement", detail: "La définition scellée, telle que trempée le 24 juillet.", bg: "var(--color-neutral-200)", fg: "var(--color-neutral-800)", bd: "none", sealDisabled: true };
+    else if (!S.tested) vd = { mark: "?", label: "non éprouvé", detail: S.changes.length + " changement(s) ne vivent que dans cette page — rien n'est écrit, aucun brouillon n'est gardé.", bg: "var(--color-neutral-100)", fg: "var(--color-neutral-800)", bd: "2px dashed var(--color-neutral-400)", sealDisabled: true };
+    else if (anomalies) vd = { mark: "✕", label: "la définition ne tient pas", detail: "1 anomalie à « Découper le premier incrément » : il exige « fait établi » là où l'amont ne garantit que « hypothèse ». Les issues sont sur la ligne en cause, axe Contrats.", bg: INK, fg: "var(--color-bg)", bd: "none", sealDisabled: true };
+    else vd = { mark: "✓", label: "la définition tient", detail: "Copie chargée, forgée et trempée. " + S.changes.length + " changement(s) prêts à sceller.", bg: "var(--color-accent-200)", fg: "var(--color-accent-900)", bd: "none", sealDisabled: false };
+
+    const dsh = S.densho[selN.id] || { role: "", questions: "", structure: "", passage: "" };
+    const denshoFields = [["role", "Rôle", 3], ["questions", "Questions", 4], ["structure", "Structure du livrable", 3], ["passage", "Passage", 2]].map(([k, label, rows]) => ({
+      id: "densho-" + k, label, rows, val: dsh[k], placeholder: k === "passage" ? "À quelle condition ce nœud passe-t-il ?" : "",
+      onChange: e => { const v = e.target.value; this.change("densho." + selN.id + "." + k); this.setState(s => { const d = JSON.parse(JSON.stringify(s.densho)); d[selN.id][k] = v; return { densho: d }; }); }
+    }));
+
+    const heriteData = { idee: [], cadrage: [{ f: "idee.besoin", s: "hypothese", ok: true, from: "Clarifier l'idée", promise: "fait établi" }], decoupage: [{ f: "cadrage.hypotheses_de_valeur", s: S.heriteFix === "down" ? "hypothese" : "fait_etabli", ok: S.heriteFix !== null, from: "Cadrer le projet", promise: S.heriteFix === "up" ? "fait établi" : "hypothèse" }], mise_en_oeuvre: [{ f: "decoupage.perimetre", s: "hypothese", ok: true, from: "Découper le premier incrément", promise: "hypothèse" }] };
+    const produitData = { idee: [{ f: "idee.besoin", s: "fait_etabli", c: "lu par « Cadrer le projet »" }, { f: "idee.existant", s: "hypothese", c: "lu par personne encore" }], cadrage: [{ f: "cadrage.hypotheses_de_valeur", s: S.heriteFix === "up" ? "fait_etabli" : "hypothese", c: "lu par « Découper le premier incrément »" }], decoupage: [{ f: "decoupage.perimetre", s: "hypothese", c: "lu par « Mettre en œuvre »" }], mise_en_oeuvre: [] };
+    const fHerite = (heriteData[selN.id] || []).map(h => ({
+      field: h.f, human: Component.HUMAN[h.f] || h.f, s: h.s, broken: !h.ok,
+      rowBg: h.ok ? "var(--color-neutral-200)" : "var(--color-accent-100)",
+      mark: h.ok ? "✓" : "✕", markBg: h.ok ? "var(--color-accent-200)" : INK, markFg: h.ok ? "var(--color-accent-900)" : "var(--color-bg)",
+      promiseLabel: "· « " + h.from + " » garantit", promise: h.promise,
+      pBg: h.ok ? "var(--color-neutral-100)" : INK, pFg: h.ok ? "var(--color-neutral-800)" : "var(--color-bg)",
+      onChange: e => { const v = e.target.value; this.change("kata." + selN.id + ".herite ♯"); if (selN.id === "decoupage") this.setState({ heriteFix: v === "hypothese" || v === "" || v === "en_pause" ? "down" : null }); },
+      onFixDown: () => { this.change("kata.decoupage.herite ♯"); this.setState({ heriteFix: "down" }); },
+      onFixUp: () => { this.change("kata.cadrage.produit ♯"); this.setState({ heriteFix: "up" }); }
+    }));
+    const fProduit = (produitData[selN.id] || []).map(p => ({
+      field: p.f, human: Component.HUMAN[p.f] || p.f, s: p.s, consumers: p.c,
+      onChange: () => this.change("kata." + selN.id + ".produit ♯")
+    }));
+
+    const groups = Component.VIGIE_GROUPS;
+    const total = groups.reduce((a, g) => a + g.n, 0) + 1;
+
+    return {
+      route: "kokaji.aelworks.fr" + this.route(), pageTitle: this.pageTitle(),
+      banner: S.banner, onBannerClose: () => this.setState({ banner: null }),
+      onNoop: e => { if (e && e.preventDefault) e.preventDefault(); },
+      harnessId: S.harnessId, harnessName: this.harnessName(),
+      harnessOpts: S.deleted ? [{ id: "idee_forge", label: "Idée forge · v1.3" }] : [{ id: "atelier", label: "Atelier · v2.1" }, { id: "idee_forge", label: "Idée forge · v1.3" }],
+      onHarness: e => this.setState({ harnessId: e.target.value }),
+      navHarness: [navItem("Design", S.view === "design", () => this.nav("design")), navItem("QG", S.view === "qg", () => this.nav("qg"))],
+      navMoi: [navItem("Profil", S.view === "profil", () => this.nav("profil")), navItem("Se déconnecter", false, () => {})],
+      navKokaji: [
+        { ...navItem("Découvrir", S.view === "decouvrir", () => this.nav("decouvrir")), badge: false },
+        { ...navItem("Vigie", S.view === "vigie", () => this.nav("vigie")), badge: "1" },
+        { ...navItem("Comptes & invitations", S.view === "comptes", () => this.nav("comptes")), badge: false }
+      ],
+      vQG: S.view === "qg", vDesign: S.view === "design", vProfil: S.view === "profil",
+      vDecouvrir: S.view === "decouvrir", vVigie: S.view === "vigie", vComptes: S.view === "comptes",
+      subjectId: S.subjectId, onSubject: e => this.setState({ subjectId: e.target.value, selQG: null }),
+      subjectLine: S.subjectId === "vol" ? "« Un système e-learning pour que les bénévoles se forment en continu » — déclaré le 12 juin" : "Sujet déclaré le 7 août — aucune séance pratiquée.",
+      nodes: qgNodes, sel, closeSel: () => this.setState({ selQG: null }),
+      options: opts, optSummary: "2 ouverts · 1 écarté — comptés, jamais notés",
+      decisions: [
+        { libelle: "Piloter sur un chapitre avant tout choix d'outil", noeud: "Découper le premier incrément", date: "3 août", closed: [], opened: [{ t: "Parcours de mentorat en parallèle" }] },
+        { libelle: "Abandonner la piste sur mesure", noeud: "Cadrer le projet", date: "22 juil.", closed: [{ t: "Plateforme sur mesure" }], opened: [{ t: "S'appuyer sur le wiki existant" }] }
+      ],
+      onHelpChaleur: () => this.nav("decouvrir", { helpTerm: "chaleur" }),
+      onHelpPossible: () => this.nav("decouvrir", { helpTerm: "possible vivant" }),
+      onHelpContrat: () => this.nav("decouvrir", { helpTerm: "contrat f♯" }),
+      dsSub: "v2.1 · scellé le 24 juillet par forgeron",
+      vd, journal: S.journal,
+      onAssay: () => this.setState({ tested: true }),
+      membersOpen: S.membersOpen, membersLabel: S.membersOpen ? "replier l'autorat" : "qui forge avec moi · 2",
+      onMembers: () => this.setState(s => ({ membersOpen: !s.membersOpen })),
+      members: [
+        { id: "forgeron", role: "propriétaire", since: "depuis le 12 juin", bg: "var(--color-accent-200)", fg: "var(--color-accent-900)" },
+        { id: "m.roux", role: "co-auteur", since: "ajouté le 2 août", bg: "var(--color-neutral-300)", fg: "var(--color-neutral-800)" }
+      ],
+      gNodes, axes,
+      axPartition: S.axis === "partition", axContrats: S.axis === "contrats", axTrempe: S.axis === "trempe", axCoupes: S.axis === "coupes",
+      fNode: { name: selN.name, tech: selN.id, type: selN.type, versionLine: S.changes.some(c => c.indexOf(selN.id) >= 0 && c.indexOf("♯") >= 0) ? "— v2.0.0 au sceau ♯" : "— inchangé" },
+      onNodeName: e => { const v = e.target.value; this.change("chaine." + selN.id + ".nom"); this.setState(s => ({ nodes: s.nodes.map(n => n.id === selN.id ? { ...n, name: v } : n) })); },
+      onNodeTech: () => this.change("chaine." + selN.id + ".id ♯"),
+      onNodeType: e => { const v = e.target.value; this.change("chaine." + selN.id + ".type"); this.setState(s => ({ nodes: s.nodes.map(n => n.id === selN.id ? { ...n, type: v } : n) })); },
+      onMoveLeft: () => { this.change("chaine.ordre"); this.setState(s => { const i = s.nodes.findIndex(n => n.id === selN.id); if (i <= 0) return {}; const a = s.nodes.slice(); const t = a[i - 1]; a[i - 1] = a[i]; a[i] = t; return { nodes: a }; }); },
+      onMoveRight: () => { this.change("chaine.ordre"); this.setState(s => { const i = s.nodes.findIndex(n => n.id === selN.id); if (i < 0 || i >= s.nodes.length - 1) return {}; const a = s.nodes.slice(); const t = a[i + 1]; a[i + 1] = a[i]; a[i] = t; return { nodes: a }; }); },
+      removeLabel: S.removeArmed ? "confirmer le retrait de « " + selN.name + " »" : "retirer ce nœud…",
+      onRemoveNode: () => {
+        if (!S.removeArmed) { this.setState({ removeArmed: true }); return; }
+        this.change("chaine.retrait ♯");
+        this.setState(s => { const a = s.nodes.filter(n => n.id !== selN.id); return { nodes: a, selNode: a[0].id, removeArmed: false, banner: "« " + selN.name + " » retiré de la chaîne — rien n'est écrit tant que la définition n'est pas éprouvée puis scellée." }; });
+      },
+      fHerite, fNoHerite: fHerite.length === 0, fProduit, fNoProduit: fProduit.length === 0,
+      justesseDefaut: "0,75",
+      fSeuil: S.seuils[selN.id] === undefined ? "" : S.seuils[selN.id],
+      onSeuil: e => { const raw = e.target.value, v = parseFloat(raw); this.change("trempe.justesse." + selN.id); this.setState(s => { const sq = { ...s.seuils }; if (raw === "") delete sq[selN.id]; else sq[selN.id] = isNaN(v) ? 0 : v; return { seuils: sq }; }); },
+      checks: [["aucun libellé de domaine dans les questions"], ["une seule question par tour"], ["relance si le champ reste vide"]].map(([label], i) => ({
+        label, state: S.checks[i] ? "exigé" : "inactif",
+        bg: S.checks[i] ? "var(--color-accent-200)" : "var(--color-neutral-300)",
+        fg: S.checks[i] ? "var(--color-accent-900)" : "var(--color-neutral-800)",
+        onToggle: () => { this.change("trempe.checks"); this.setState(s => { const c = s.checks.slice(); c[i] = !c[i]; return { checks: c }; }); }
+      })),
+      vocab: S.vocab.map((w, i) => ({ word: w, onRemove: () => { this.change("trempe.vocabulaire"); this.setState(s => ({ vocab: s.vocab.filter((_, j) => j !== i) })); } })),
+      vocabInput: S.vocabInput,
+      onVocabInput: e => this.setState({ vocabInput: e.target.value }),
+      onVocabKey: e => { if (e.key !== "Enter") return; const v = e.target.value.trim(); if (!v) return; this.change("trempe.vocabulaire"); this.setState(s => ({ vocab: s.vocab.concat(v), vocabInput: "" })); },
+      denshoFields,
+      previewRole: dsh.role || "—",
+      previewQuestions: dsh.questions || "",
+      previewIncomplete: !dsh.passage.trim(),
+      sealOpen: S.sealOpen, sealAuthor: S.sealAuthor, sealMotif: S.sealMotif,
+      sealDisabled: S.sealAuthor.trim().length === 0,
+      onSealOpen: () => { if (!vd.sealDisabled) this.setState({ sealOpen: true }); },
+      onSealClose: () => this.setState({ sealOpen: false }),
+      onSealAuthor: e => this.setState({ sealAuthor: e.target.value }),
+      onSealMotif: e => this.setState({ sealMotif: e.target.value }),
+      onSeal: () => this.setState(s => ({
+        sealOpen: false, changes: [], tested: false,
+        journal: {
+          line1: "scellé par " + s.sealAuthor.trim() + " — 14 sept. 2026, 11:05" + (s.sealMotif.trim() ? " · « " + s.sealMotif.trim() + " »" : ""),
+          line2: "atelier v2.1 → v2.2 · les coupes sont périmées : `kokaji forge`, puis `kokaji regression`."
+        }
+      })),
+      createOpen: S.createOpen, createName: S.createName,
+      createDisabled: S.createName.trim().length === 0,
+      onCreateOpen: () => this.setState({ createOpen: true }),
+      onCreateClose: () => this.setState({ createOpen: false }),
+      onCreateName: e => this.setState({ createName: e.target.value }),
+      onCreate: () => this.setState(s => ({ createOpen: false, banner: "« " + s.createName.trim() + " » créé — sa chaîne vierge attend son premier kata dans le Design.", createName: "" })),
+      deleteOpen: S.deleteOpen, deleteName: S.deleteName,
+      deleteDisabled: S.deleteName !== this.harnessName(),
+      onDeleteOpen: () => this.setState({ deleteOpen: true, deleteName: "" }),
+      onDeleteClose: () => this.setState({ deleteOpen: false }),
+      onDeleteName: e => this.setState({ deleteName: e.target.value }),
+      onDelete: () => this.setState({ deleteOpen: false, deleted: true, harnessId: "idee_forge", membersOpen: false, banner: "« Atelier » a été retiré : sa définition, ses sujets, ses cas et son journal ne sont plus servis. Le dépôt git lié est intact. « Idée forge » est maintenant sélectionné." }),
+      activities: [
+        { name: "Système e-learning bénévoles", meta: "harness « Atelier » v2.1 · 9 séances · pratiqué il y a 3 j", role: "praticien", bg: "var(--color-accent-2-200)", fg: "var(--color-accent-2-900)", onOpen: () => this.nav("qg", { subjectId: "vol" }) },
+        { name: "Café réparation", meta: "harness « Atelier » v2.1 · 0 séance", role: "observateur", bg: "var(--color-neutral-200)", fg: "var(--color-neutral-800)", onOpen: () => this.nav("qg", { subjectId: "repair" }) }
+      ],
+      myHarnesses: (S.deleted ? [] : [{ name: "Atelier", version: "v2.1", meta: "4 nœuds · 3 kata, 1 jalon · 2 sujets en cours", id: "atelier" }]).concat([{ name: "Idée forge", version: "v1.3", meta: "5 nœuds · jamais pratiqué depuis la v1.3", id: "idee_forge" }]).map(h => ({ ...h, onOpen: () => this.setState({ view: "design", harnessId: h.id, banner: null }) })),
+      lexique: [
+        ["chaleur", "La part du dossier d'un nœud qui repose sur du solide : faits établis et hypothèses validées, rapportés à ce qui est connu. Une hypothèse infirmée ou en pause ne refroidit jamais un nœud."],
+        ["possible vivant", "Une option née en pratique et pas encore tranchée. On les compte, on ne les note jamais."],
+        ["hypothèse infirmée", "Une trempe ratée : le losange sur le nœud. C'est une information acquise, pas une faute."],
+        ["contrat f♯", "Ce qu'un kata exige de l'amont et garantit à l'aval. Un aval ne peut pas exiger plus que ce que l'amont promet — sinon la définition ne tient pas."],
+        ["densho", "Le texte de transmission d'un kata : son rôle, ses questions, la structure de son livrable, sa condition de passage."],
+        ["sceller", "Le seul geste qui écrit. Versionné, signé, journalisé — et le corpus des coupes en est périmé."]
+      ].map(([term, def]) => ({ term, def, bg: S.helpTerm === term ? "var(--color-accent-100)" : "transparent" })),
+      vigieSummary: (total - 1) + " sur " + total + " verdicts tiennent · dernier tour il y a 3 min · 1 écart, remonté en premier",
+      vigieEcarts: [{ name: "le CTA principal est dans le viewport — QG · palier 800–1024 px", detail: "« pratiquer ↗ » sort de l'écran entre 800 et 1 040 px : l'en-tête ne se replie pas.", mesure: "innerWidth 814 · scrollWidth 1041 · a.tag right = 1041" }],
+      vigieGroups: groups.map(g => ({
+        name: g.name, status: g.n + " sur " + g.n + " tiennent",
+        open: !!S.vigieOpen[g.id],
+        toggleLabel: S.vigieOpen[g.id] ? "replier" : "détailler",
+        items: g.items.map(t => ({ t })),
+        onToggle: () => this.setState(s => ({ vigieOpen: { ...s.vigieOpen, [g.id]: !s.vigieOpen[g.id] } }))
+      })),
+      comptes: [
+        { id: "forgeron", name: "forgeron", role: "administrateur", bg: "var(--color-accent-200)", fg: "var(--color-accent-900)", email: "forgeron@aelworks.fr", uuid: "8f2c…c41a" },
+        { id: "mroux", name: "m.roux", role: "membre", bg: "var(--color-neutral-300)", fg: "var(--color-neutral-800)", email: "m.roux@aelworks.fr", uuid: "17bd…90e2" },
+        { id: "inv", name: "invitation ouverte", role: "en attente", bg: "var(--color-neutral-200)", fg: "var(--color-neutral-800)", email: "lien valable 7 jours", uuid: "inv_4t…" }
+      ].map(c => ({ ...c, open: !!S.comptesOpen[c.id], toggleLabel: S.comptesOpen[c.id] ? "replier les identifiants" : "identifiants techniques", onToggle: () => this.setState(s => ({ comptesOpen: { ...s.comptesOpen, [c.id]: !s.comptesOpen[c.id] } })) }))
+    };
+  }
+}
+</script>
+</body>
+</html>
