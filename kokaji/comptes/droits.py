@@ -50,6 +50,10 @@ GESTES: dict[str, tuple[str, ...]] = {
     "archiver": (PROPRIETAIRE,),
     "transferer": (PROPRIETAIRE,),
     "supprimer": (PROPRIETAIRE,),
+    # RFC-012 : enregistrer ou désenregistrer un dépôt nu porte sur la
+    # possession ; pousser et tirer sont des gestes d'œuvre, de co-auteur.
+    "enregistrer": (PROPRIETAIRE,),
+    "pousser": (PROPRIETAIRE, CONTRIBUTEUR),
 }
 
 

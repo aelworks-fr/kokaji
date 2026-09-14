@@ -38,6 +38,11 @@ publiées à chaque commit sur `main` — `ghcr.io/aelworks-fr/kokaji` et
 pour qu'une instance puisse tourner sans cloner le produit : dans son compose,
 `image:` remplace `build:`.
 
+Les dépôts nus des harness (RFC-012) vivent sous `KOKAJI_DEPOTS_HOST`
+(`./depots` par défaut), monté en `/depots` : c'est le seul dossier où le
+service enregistre, pousse, tire et clone. Depuis son poste, on clone un
+harness par `git clone <machine>:<dossier>/depots/<id>.git`.
+
 Les services sont en `restart: on-failure:5` et plafonnés en mémoire et CPU
 (voir l'en-tête de `compose.yaml`). Un conteneur qui plante au démarrage
 finit en `Exited` au lieu de redémarrer sans fin : le lire dans

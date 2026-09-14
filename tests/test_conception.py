@@ -642,6 +642,10 @@ class SurfaceHttp(Bac):
         self.assertEqual(d["dernier_commit"]["message"], "naissance : h")
         self.assertTrue(d["propre"])
 
+    def test_sans_magasin_l_enregistrement_ne_se_fait_pas(self):
+        r = self.client.put("/depot", json={"chemin": "h.git"})
+        self.assertEqual(r.status_code, 404)
+
     def test_la_coupe_se_rend_par_la_surface_sans_rien_ecrire(self):
         avant = (self.racine / "template.md").read_text(encoding="utf-8")
         r = self.client.post("/conception/coupe", json={
@@ -736,6 +740,58 @@ class SurfaceGardee(Bac):
             "/session", json={"email": courriel, "mot_de_passe": self.mdp}
         ).json()["jeton"]
         return {"Authorization": f"Bearer {jeton}"}
+
+    def test_le_depot_nu_s_enregistre_se_pousse_et_se_tire_par_la_surface(self):
+        """RFC-012 lot B — le nominal, et les sabotages 2 et 5 sur la surface."""
+        import os
+        from unittest.mock import patch
+
+        from kokaji.depot import est_depot_nu, initier
+
+        initier(self.racine, "naissance : h")
+        depots = Path(self._tmp.name) / "depots"
+        depots.mkdir()
+        proprietaire = self.cle("c@exemple.test")
+        with patch.dict(os.environ, {"KOKAJI_DEPOTS": str(depots)}):
+            # Sabotage 2 : hors du dossier des dépôts, refus nommé, aucune ligne.
+            hors = self.client.put("/depot", json={"chemin": "/tmp/ailleurs.git"}, headers=proprietaire)
+            self.assertEqual(hors.status_code, 409, hors.text)
+            self.assertIsNone(self.comptes.depot("h"))
+
+            r = self.client.put("/depot", json={"chemin": "h.git"}, headers=proprietaire)
+            self.assertEqual(r.status_code, 200, r.text)
+            self.assertTrue(est_depot_nu(depots / "h.git"))
+            self.assertEqual(self.comptes.depot("h").chemin, str(depots / "h.git"))
+            self.assertEqual(self.comptes.depot("h").commit_reference, r.json()["commit_reference"])
+
+            lu = self.client.get("/depot", headers=proprietaire).json()
+            self.assertEqual(lu["etat"], "à jour")
+            self.assertEqual(lu["enregistrement"]["chemin"], str(depots / "h.git"))
+
+            # Un scellement commite et pousse (pousser_au_scellement, vrai par défaut).
+            scelle = self.client.post("/conception/scellement", json={
+                "proposition": {"kata": [{"id": "k2", "nom": "Autre"}]}, "auteur": "Co"},
+                headers=proprietaire).json()
+            self.assertTrue(scelle["commit"], scelle)
+            self.assertEqual(scelle["pousse"], scelle["commit"], scelle)
+            self.assertEqual(self.comptes.depot("h").commit_reference, scelle["commit"])
+
+            # Rien à pousser, rien à tirer : ça se dit, en 200.
+            self.assertEqual(self.client.post("/depot/pousser", headers=proprietaire).status_code, 200)
+            self.assertEqual(self.client.post("/depot/tirer", headers=proprietaire).status_code, 200)
+
+            # Sabotage 5 : un non-membre ne pousse pas ; un contributeur n'enregistre pas.
+            dehors = self.cle("d@exemple.test")
+            self.assertEqual(self.client.post("/depot/pousser", headers=dehors).status_code, 403)
+            self.comptes.ajouter_contributeur("h", self.dehors.id)
+            self.assertEqual(self.client.put("/depot", json={"chemin": "x.git"}, headers=dehors).status_code, 403)
+            self.assertEqual(self.client.delete("/depot", headers=dehors).status_code, 403)
+            self.assertEqual(self.client.post("/depot/pousser", headers=dehors).status_code, 200)
+
+            # Désenregistrer efface la ligne, le clone et le dépôt nu restent.
+            self.assertTrue(self.client.delete("/depot", headers=proprietaire).json()["desenregistre"])
+            self.assertIsNone(self.comptes.depot("h"))
+            self.assertTrue(est_depot_nu(depots / "h.git"))
 
     def test_un_non_membre_ne_lit_ni_n_eprouve_ni_ne_scelle(self):
         cle = self.cle("d@exemple.test")

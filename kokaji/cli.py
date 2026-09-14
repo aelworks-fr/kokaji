@@ -1194,6 +1194,24 @@ def _note(args) -> int:
     return 0
 
 
+def _geste_de_depot(args) -> int:
+    from .depot import DepotRefuse, etat, lier, pousser, tirer
+
+    try:
+        if args.commande == "enregistrer":
+            sha = lier(args.harness, args.nu, args.branche)
+            print(f"✓ {args.harness.name} enregistré auprès de {args.nu} — {args.branche} à {sha}")
+        elif args.commande == "pousser":
+            print(f"✓ poussé — {args.branche} à {pousser(args.harness, args.branche)}")
+        else:
+            print(f"✓ tiré — {args.branche} à {tirer(args.harness, args.branche)}")
+    except DepotRefuse as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    print(f"  état : {etat(args.harness).mot}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parseur = argparse.ArgumentParser(prog="kokaji", description=__doc__)
     sous = parseur.add_subparsers(dest="commande", required=True)
@@ -1522,7 +1540,26 @@ def main(argv: list[str] | None = None) -> int:
     note.add_argument("--brutes", action="store_true", help="ce qui attend d'être relu")
     note.add_argument("--liste", action="store_true", help="tout le carnet")
 
+    # RFC-012 — le dépôt nu d'un harness, depuis la ligne de commande : ces trois
+    # gestes agissent sur git seul (le distant `origin` du clone) ; l'enregistrement
+    # au magasin de l'instance est le geste du service.
+    for nom_geste, aide in (
+        ("pousser", "pousse le harness à son dépôt nu, en avance rapide"),
+        ("tirer", "tire le dépôt nu dans le harness, en avance rapide, clone propre exigé"),
+    ):
+        geste = sous.add_parser(nom_geste, help=aide)
+        geste.add_argument("harness", type=Path, help="dossier du harness")
+        geste.add_argument("--branche", default="main")
+    enregistrer = sous.add_parser(
+        "enregistrer", help="lie un harness à un dépôt nu (créé s'il n'existe pas) et y pousse son historique"
+    )
+    enregistrer.add_argument("harness", type=Path, help="dossier du harness")
+    enregistrer.add_argument("--nu", required=True, type=Path, help="le dépôt nu — chemin de la machine")
+    enregistrer.add_argument("--branche", default="main")
+
     args = parseur.parse_args(argv)
+    if args.commande in ("pousser", "tirer", "enregistrer"):
+        return _geste_de_depot(args)
     if args.commande == "concevoir":
         return _concevoir(args)
     if args.commande == "compte":

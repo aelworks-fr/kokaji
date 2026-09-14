@@ -200,13 +200,15 @@ services:
       KOKAJI_MOTEURS: /litellm/moteurs.yaml
       # Où la vigie dépose son verdict. L'administration le lit là.
       KOKAJI_VERDICTS: /verdicts/verdicts.json
-      # Le scellement commite dans le dépôt du harness monté ; pousser est un
-      # choix de déploiement (voir .env.example).
-      KOKAJI_DEPOT_PUSH: ${KOKAJI_DEPOT_PUSH:-0}
+      # Les dépôts nus des harness (RFC-012) : le seul dossier où le service
+      # enregistre, pousse, tire et clone. Monté en écriture.
+      KOKAJI_DEPOTS: /depots
     volumes:
       # Le dossier **des** harness : un harness ne peut naître que là où le
       # service en sert plusieurs (RFC-006). En écriture — une naissance écrit.
       - ${KOKAJI_HARNESS_HOST:-./harness}:/harness
+      # Les dépôts nus des harness — hors git, à sauvegarder.
+      - ${KOKAJI_DEPOTS_HOST:-./depots}:/depots
       - ./verdicts:/verdicts:ro
       # Les coupes, en écriture : sceller forge (RFC-006 §4). La passerelle les
       # lit au même endroit — un kata scellé est appelable sans relance.

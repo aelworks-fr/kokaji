@@ -81,7 +81,7 @@ Le dialogue dit ce que chaque voie fait à la pratique — le corpus reste vide,
 | `POST /depot/tirer` | tirer, en avance rapide, clone propre exigé | éditer |
 | `POST /naissance` | existante ; gagne `depot: { chemin, branche }` et la voie `cloner` | créer |
 
-Le CLI suit : `kokaji depot enregistrer|pousser|tirer|etat <harness>`, et `kokaji enregistrer <chemin> --id <id>` pour cloner sans passer par la page.
+Le CLI suit : `kokaji enregistrer <harness> --nu <chemin>`, `kokaji pousser <harness>`, `kokaji tirer <harness>` — sur git seul, l'enregistrement au magasin restant le geste du service (`kokaji depot` est déjà la trempe du dépôt, R10.2).
 
 Les chemins admis sont ceux d'un dossier déclaré au déploiement (`KOKAJI_DEPOTS`, monté dans le conteneur) : le service n'écrit ni ne clone n'importe où sur la machine.
 
@@ -129,6 +129,15 @@ Les chemins admis sont ceux d'un dossier déclaré au déploiement (`KOKAJI_DEPO
 
 **Lot D — la première instance** (dépôt privé, docs/deploiement.md)
 - `git subtree split` par harness, cinq dépôts, `harness/` ignoré, `KOKAJI_DEPOTS` monté, cinq dépôts nus ; l'enregistrement des cinq ; le critère B consigné.
+
+## 9. Tableau d'application
+
+| Lot | État (14 septembre 2026) |
+|---|---|
+| A — le dépôt local et l'état | appliqué — `kokaji/depot`, naître et adopter initient, `harness_depot`, `GET /depot` |
+| B — le dépôt nu et les trois gestes | appliqué — `chemin_admis`, `lier`, `pousser`, `tirer`, `cloner` ; `PUT`/`DELETE /depot`, `POST /depot/pousser`, `/depot/tirer` ; le scellement pousse si le harness le demande ; `POST /harness` accepte `depot` et `cloner_depuis` ; CLI `kokaji enregistrer`, `pousser`, `tirer` ; `KOKAJI_DEPOTS` remplace `KOKAJI_DEPOT_PUSH` ; sabotages 1 à 5 en tests |
+| C — la page | à faire — le panneau Dépôt lit l'état ; les gestes ne sont pas encore dessinés |
+| D — la première instance | à faire — migration par `git subtree split`, `harness/` ignoré, cinq dépôts nus |
 
 ---
 *Note d'établi : la RFC-009 disait « un repo git par harness » et l'a laissé à l'état de phrase. Ce RFC la prend au mot, sans sortir de la machine — parce qu'un dépôt qu'on ne voit pas est un dépôt qu'on oublie de pousser, et qu'un dépôt qu'on ne peut pas cloner n'est pas un dépôt.*

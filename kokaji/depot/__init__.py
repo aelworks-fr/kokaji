@@ -18,7 +18,10 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
-__all__ = ["DepotIndisponible", "Etat", "est_depot", "etat", "git", "initier"]
+__all__ = [
+    "DepotIndisponible", "DepotRefuse", "Etat", "chemin_admis", "cloner", "est_depot",
+    "est_depot_nu", "etat", "git", "initier", "lier", "pousser", "reference", "tirer",
+]
 
 
 class DepotIndisponible(Exception):
@@ -127,3 +130,158 @@ def etat(racine: Path, reference: str | None = None) -> Etat:
         dernier_commit=sha, dernier_message=message, dernier_le=quand,
         avance=avance, reference_connue=connue,
     )
+
+
+# --- le dépôt nu et les trois gestes (RFC-012 D12.2, D12.3) ------------------
+#
+# Un dépôt nu est un chemin de la machine, sous le dossier que le déploiement
+# déclare (`KOKAJI_DEPOTS`) : le service n'écrit ni ne clone n'importe où.
+# Trois gestes — enregistrer, pousser, tirer — en avance rapide seulement.
+# Kokaji ne fusionne jamais : une fusion est un jugement sur deux définitions.
+
+
+class DepotRefuse(Exception):
+    """Un geste sur un dépôt que l'on refuse, et pourquoi — jamais un silence."""
+
+
+def chemin_admis(chemin: str | Path, racine_depots: Path | str | None) -> Path:
+    """Le chemin d'un dépôt nu, s'il est sous le dossier déclaré.
+
+    Un chemin relatif se lit depuis ce dossier ; un chemin absolu doit y être.
+    Sans dossier déclaré, aucun dépôt nu n'est admis — et on le dit.
+    """
+    if not racine_depots:
+        raise DepotRefuse(
+            "aucun dossier de dépôts déclaré (KOKAJI_DEPOTS) : rien ne peut être enregistré"
+        )
+    racine = Path(racine_depots).resolve()
+    brut = Path(str(chemin).strip())
+    if not str(brut):
+        raise DepotRefuse("un enregistrement sans chemin n'enregistre rien")
+    cible = (brut if brut.is_absolute() else racine / brut).resolve()
+    if cible != racine and racine not in cible.parents:
+        raise DepotRefuse(f"chemin hors du dossier des dépôts : {chemin}")
+    if cible == racine:
+        raise DepotRefuse("le dossier des dépôts lui-même n'est pas un dépôt")
+    return cible
+
+
+def est_depot_nu(chemin: Path) -> bool:
+    return Path(chemin).is_dir() and git(chemin, "rev-parse", "--is-bare-repository").stdout.strip() == "true"
+
+
+def reference(chemin_nu: Path, branche: str) -> str:
+    """Le dernier commit du dépôt nu sur cette branche — vide s'il n'en a pas."""
+    lu = git(chemin_nu, "rev-parse", "--short", f"refs/heads/{branche}")
+    return lu.stdout.strip() if lu.returncode == 0 else ""
+
+
+def lier(racine: Path, chemin_nu: Path, branche: str = "main", auteur: str = "Kokaji") -> str:
+    """Enregistre un harness auprès d'un dépôt nu : créé s'il n'existe pas,
+    l'historique local y est poussé. Rend le commit de référence.
+
+    Le harness devient un dépôt s'il ne l'est pas encore. Un dépôt nu qui
+    porte déjà un autre historique sur cette branche refuse le push : on le
+    dit, rien n'est fusionné.
+    """
+    racine = Path(racine)
+    chemin_nu = Path(chemin_nu)
+    if shutil.which("git") is None:
+        raise DepotRefuse("git est absent")
+    if not est_depot(racine):
+        initier(racine, f"enregistrement : {racine.name}", auteur)
+    if chemin_nu.exists() and not est_depot_nu(chemin_nu):
+        raise DepotRefuse(f"{chemin_nu} existe et n'est pas un dépôt nu")
+    if not chemin_nu.exists():
+        chemin_nu.parent.mkdir(parents=True, exist_ok=True)
+        fait = git(chemin_nu.parent, "init", "--bare", "-q", "-b", branche, str(chemin_nu))
+        if fait.returncode != 0:
+            raise DepotRefuse(f"git init --bare a refusé : {fait.stderr.strip()}")
+    git(racine, "remote", "remove", "origin")
+    fait = git(racine, "remote", "add", "origin", str(chemin_nu))
+    if fait.returncode != 0:
+        raise DepotRefuse(f"git remote a refusé : {fait.stderr.strip()}")
+    return pousser(racine, branche)
+
+
+def pousser(racine: Path, branche: str = "main") -> str:
+    """Pousse la branche au dépôt nu, en avance rapide. Rend le commit poussé."""
+    racine = Path(racine)
+    if not est_depot(racine):
+        raise DepotRefuse("ce harness n'est pas un dépôt")
+    if git(racine, "remote", "get-url", "origin").returncode != 0:
+        raise DepotRefuse("aucun dépôt nu enregistré")
+    fait = git(racine, "push", "--quiet", "origin", f"HEAD:refs/heads/{branche}")
+    if fait.returncode != 0:
+        detail = fait.stderr.strip().splitlines()[-1] if fait.stderr.strip() else "refus sans motif"
+        if "rejected" in fait.stderr or "non-fast-forward" in fait.stderr or "fetch first" in fait.stderr:
+            raise DepotRefuse(
+                f"le dépôt nu a avancé de son côté — divergé, et Kokaji ne fusionne jamais ({detail})"
+            )
+        raise DepotRefuse(f"git push a refusé : {detail[:200]}")
+    return git(racine, "rev-parse", "--short", "HEAD").stdout.strip()
+
+
+def tirer(racine: Path, branche: str = "main") -> str:
+    """Tire la branche du dépôt nu, en avance rapide, clone propre exigé.
+
+    Des modifications non scellées ? On refuse, le clone est intact. La
+    branche a divergé ? On refuse, jamais de fusion. Rend le commit atteint.
+    """
+    racine = Path(racine)
+    if not est_depot(racine):
+        raise DepotRefuse("ce harness n'est pas un dépôt")
+    if git(racine, "remote", "get-url", "origin").returncode != 0:
+        raise DepotRefuse("aucun dépôt nu enregistré")
+    if git(racine, "status", "--porcelain").stdout.strip():
+        raise DepotRefuse("des modifications non scellées : tirer les écraserait — scelle d'abord")
+    cherche = git(racine, "fetch", "--quiet", "origin", branche)
+    if cherche.returncode != 0:
+        raise DepotRefuse(f"git fetch a refusé : {cherche.stderr.strip()[:200]}")
+    fusion = git(racine, "merge", "--ff-only", "--quiet", "FETCH_HEAD")
+    if fusion.returncode != 0:
+        raise DepotRefuse("la branche a divergé : Kokaji ne fusionne jamais — réconcilie dans un éditeur")
+    return git(racine, "rev-parse", "--short", "HEAD").stdout.strip()
+
+
+def cloner(chemin_nu: Path, vers: Path, branche: str = "main") -> Path:
+    """Clone un dépôt nu pour faire naître un harness. Rend le dossier.
+
+    Le dossier n'existe qu'une fois le clone lu et validé (R2.1) : un dépôt
+    qui n'est pas un harness ne laisse ni dossier ni ligne — c'est à l'appelant
+    de charger et, s'il refuse, de retirer.
+    """
+    vers = Path(vers)
+    if vers.exists():
+        raise DepotRefuse(f"le dossier existe déjà : {vers.name}")
+    if not est_depot_nu(chemin_nu):
+        raise DepotRefuse(f"pas un dépôt nu : {chemin_nu}")
+    if not reference(chemin_nu, branche):
+        raise DepotRefuse(f"le dépôt nu n'a pas de branche « {branche} » : rien à cloner")
+    fait = git(vers.parent, "clone", "--quiet", "--branch", branche, str(chemin_nu), str(vers))
+    if fait.returncode != 0:
+        raise DepotRefuse(f"git clone a refusé : {fait.stderr.strip().splitlines()[-1][:200] if fait.stderr.strip() else '?'}")
+    _redonner_les_dossiers_vides(vers)
+    return vers
+
+
+def _redonner_les_dossiers_vides(racine: Path) -> None:
+    """git ne suit pas un dossier vide : un harness cloné arrive sans son
+    `personas/` ou son `corpus/` s'ils n'avaient rien dedans, et le manifest
+    refuse. On recrée ce que le manifest déclare — des dossiers, rien d'autre."""
+    import yaml
+
+    try:
+        manifest = yaml.safe_load((racine / "harness.yaml").read_text(encoding="utf-8")) or {}
+    except (OSError, yaml.YAMLError):
+        return
+    chemins: list[str] = []
+    for cle in ("personas", "corpus"):
+        valeur = manifest.get(cle)
+        if isinstance(valeur, str):
+            chemins.append(valeur)
+        elif isinstance(valeur, list):
+            chemins.extend(str(c.get("chemin") or c.get("dossier") or "") for c in valeur if isinstance(c, dict))
+    for chemin in chemins:
+        if chemin and not chemin.startswith(("/", "..")):
+            (racine / chemin).mkdir(parents=True, exist_ok=True)

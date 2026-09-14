@@ -396,7 +396,7 @@ class LAutoratDansLeHarness(unittest.TestCase):
     def test_le_depot_se_lit_dans_l_autorat(self):
         self.assertIn('id="depot-panneau"', PAGE)
         self.assertIn('d = await lire("/depot")', PAGE)
-        self.assertIn("arrivent avec la RFC-012", PAGE)
+        self.assertIn("(RFC-012) ; le panneau suit", PAGE)
 
     def test_les_gestes_de_proprietaire_ne_sont_offerts_qu_au_proprietaire(self):
         self.assertIn('${jeSuisLePatron ? `<div><button class="btn-fantome btn-encre" id="btn-archiver"', PAGE)

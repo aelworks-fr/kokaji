@@ -107,8 +107,9 @@ D9.1) : le scellement, une fois écrit, commite le harness — et seulement lui 
 dans le dépôt qui le contient, avec ses versions, le motif et l'auteur dans le
 message. Sans git, hors de tout dépôt, ou si le commit échoue, le scellement
 tient et la trace dit pourquoi rien n'a été commité. Pousser vers le distant
-est un choix de déploiement, `KOKAJI_DEPOT_PUSH=1`, qui suppose des
-accréditations dans le conteneur.
+est un réglage du harness, `pousser_au_scellement`, posé à l'enregistrement
+d'un dépôt nu (RFC-012) : le service pousse alors après chaque scellement, en
+avance rapide, et la trace dit « commité et poussé » ou pourquoi non.
 
 ## Au backlog, non bloquant — la nature au détail du nœud (RFC-003 §5.5)
 

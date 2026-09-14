@@ -597,6 +597,83 @@ def creer_harness(
             },
         }
 
+    def _racine_depots():
+        return os.environ.get("KOKAJI_DEPOTS") or None
+
+    def _exiger_sur_depot(requete: Request, geste: str):
+        qui = identification.qui(requete)
+        try:
+            exiger(geste, role_de(qui), harness.id)
+        except AccesRefuse as err:
+            raise HTTPException(status_code=403, detail=str(err)) from err
+        if comptes is None:
+            raise HTTPException(status_code=404, detail="aucun magasin de comptes : rien ne s'enregistre")
+        return qui
+
+    @app.put("/depot", summary="Enregistrer le harness auprès d'un dépôt nu (RFC-012)")
+    def enregistrer_depot(
+        requete: Request,
+        chemin: str = Body(embed=True),
+        branche: str = Body(default="main", embed=True),
+        pousser_au_scellement: bool = Body(default=True, embed=True),
+    ) -> dict:
+        """Lier : le dépôt nu est créé s'il n'existe pas, sous le dossier que
+        le déploiement déclare, et l'historique du harness y est poussé. La
+        ligne ne s'écrit qu'après — un push refusé n'enregistre rien.
+        """
+        from ..depot import DepotRefuse, chemin_admis, lier
+
+        _exiger_sur_depot(requete, "enregistrer")
+        try:
+            nu = chemin_admis(chemin, _racine_depots())
+            sha = lier(_racine(), nu, branche)
+        except DepotRefuse as err:
+            raise HTTPException(status_code=409, detail=str(err)) from err
+        enregistrement = comptes.enregistrer_depot(
+            harness.id, str(nu), branche, pousser_au_scellement, commit_reference=sha
+        )
+        return {"harness": harness.id, "chemin": enregistrement.chemin,
+                "branche": enregistrement.branche, "commit_reference": sha,
+                "pousser_au_scellement": enregistrement.pousser_au_scellement}
+
+    @app.delete("/depot", summary="Désenregistrer — la ligne, pas le clone")
+    def desenregistrer_depot(requete: Request) -> dict:
+        _exiger_sur_depot(requete, "enregistrer")
+        return {"harness": harness.id, "desenregistre": comptes.desenregistrer_depot(harness.id)}
+
+    @app.post("/depot/pousser", summary="Pousser la branche, en avance rapide")
+    def pousser_depot(requete: Request) -> dict:
+        from ..depot import DepotRefuse, pousser
+
+        _exiger_sur_depot(requete, "pousser")
+        enregistrement = comptes.depot(harness.id)
+        if enregistrement is None:
+            raise HTTPException(status_code=409, detail="aucun dépôt nu enregistré")
+        try:
+            sha = pousser(_racine(), enregistrement.branche)
+        except DepotRefuse as err:
+            raise HTTPException(status_code=409, detail=str(err)) from err
+        comptes.poser_reference(harness.id, sha)
+        return {"harness": harness.id, "pousse": sha}
+
+    @app.post("/depot/tirer", summary="Tirer la branche, en avance rapide, clone propre exigé")
+    def tirer_depot(requete: Request) -> dict:
+        from ..depot import DepotRefuse, tirer
+
+        _exiger_sur_depot(requete, "pousser")
+        enregistrement = comptes.depot(harness.id)
+        if enregistrement is None:
+            raise HTTPException(status_code=409, detail="aucun dépôt nu enregistré")
+        try:
+            sha = tirer(_racine(), enregistrement.branche)
+        except DepotRefuse as err:
+            raise HTTPException(status_code=409, detail=str(err)) from err
+        comptes.poser_reference(harness.id, sha)
+        # La définition servie vient peut-être de changer : on la relit.
+        if rafraichir is not None:
+            rafraichir()
+        return {"harness": harness.id, "tire": sha}
+
     @app.get("/conception", summary="La définition, en forme éditable")
     def conception(qui_role: tuple = Depends(membre)) -> dict:
         """Ce que le module 3 met à l'écran. Lecture seule : éditer se propose."""
@@ -793,6 +870,8 @@ def creer_harness(
             # Le commit dans le dépôt du harness, ou pourquoi il n'y en a pas.
             "commit": trace.commit,
             "commit_motif": trace.commit_motif,
+            # Et le push, si le harness le demande (RFC-012 D12.3).
+            **_pousser_apres_scellement(trace.commit),
             "coupes": _forger_apres_scellement(),
             "passerelle": _publier_a_la_passerelle(),
         }
@@ -805,6 +884,22 @@ def creer_harness(
         if rafraichir is not None:
             rafraichir()
         return reponse
+
+    def _pousser_apres_scellement(commit: str) -> dict:
+        """Suit le scellement, ne le conditionne pas : un push refusé se dit."""
+        from ..depot import DepotRefuse, pousser
+
+        enregistrement = comptes.depot(harness.id) if comptes is not None else None
+        if enregistrement is None or not enregistrement.pousser_au_scellement:
+            return {"pousse": "", "pousse_motif": "" if enregistrement else "aucun dépôt nu enregistré"}
+        if not commit:
+            return {"pousse": "", "pousse_motif": "rien n'a été commité"}
+        try:
+            sha = pousser(_racine(), enregistrement.branche)
+        except DepotRefuse as err:
+            return {"pousse": "", "pousse_motif": str(err)}
+        comptes.poser_reference(harness.id, sha)
+        return {"pousse": sha, "pousse_motif": ""}
 
     def _publier_a_la_passerelle() -> dict:
         """Déclare à la passerelle ce que ce harness sert — NOTE-0016.

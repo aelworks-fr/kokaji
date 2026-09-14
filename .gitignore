@@ -7,6 +7,7 @@ dist/
 # Le dojo d'une instance : ses harness (un repo chacun, D9.1), son journal,
 # ses comptes (R12.2), ses verdicts — rien de tout cela n'est le produit.
 dojo/harness/
+dojo/depots/
 dojo/journal/*
 !dojo/journal/.gitkeep
 # Le dossier des comptes doit exister avant le premier `up` : monté absent,

@@ -518,6 +518,91 @@ class Naissance(Bac):
             )
         )
 
+    def test_naitre_avec_un_depot_nu_l_enregistre_et_y_pousse(self):
+        """RFC-012 D12.4 — enregistrer un dépôt nu tout de suite."""
+        import os
+        from unittest.mock import patch
+
+        from kokaji.depot import est_depot_nu, reference
+
+        depots = self.dossier / "depots"
+        depots.mkdir()
+        client = self.client_avec_naissance()
+        with patch.dict(os.environ, {"KOKAJI_DEPOTS": str(depots)}):
+            vu = client.post(
+                "/harness",
+                json={"source": "h", "id_harness": "neuf", "nom": "Neuf", "depot": {"chemin": "neuf.git"}},
+                headers=self.cle(self.un),
+            )
+        self.assertEqual(vu.status_code, 200, vu.text)
+        self.assertTrue(vu.json()["depot"]["enregistre"], vu.json())
+        self.assertTrue(est_depot_nu(depots / "neuf.git"))
+        self.assertEqual(self.comptes.depot("neuf").commit_reference, reference(depots / "neuf.git", "main"))
+
+    def test_un_depot_hors_du_dossier_refuse_avant_la_naissance(self):
+        """Sabotage 2 : un refus ne laisse pas un harness né à moitié."""
+        import os
+        from unittest.mock import patch
+
+        client = self.client_avec_naissance()
+        with patch.dict(os.environ, {"KOKAJI_DEPOTS": str(self.dossier / "depots")}):
+            vu = client.post(
+                "/harness",
+                json={"source": "h", "id_harness": "neuf", "nom": "Neuf", "depot": {"chemin": "/tmp/x.git"}},
+                headers=self.cle(self.un),
+            )
+        self.assertEqual(vu.status_code, 409)
+        self.assertFalse((self.dossier / "neuf").exists())
+        self.assertIsNone(self.comptes.acl("neuf"))
+
+    def test_cloner_un_depot_nu_fait_naitre_et_un_non_harness_ne_laisse_rien(self):
+        """RFC-012 D12.4, sabotage 1."""
+        import os
+        import subprocess
+        from unittest.mock import patch
+
+        from kokaji.depot import lier
+
+        depots = self.dossier / "depots"
+        depots.mkdir()
+        # Un vrai harness poussé à un dépôt nu, sous un autre id.
+        source = self.dossier / "h"
+        manifest = (source / "harness.yaml").read_text(encoding="utf-8")
+        (source / "harness.yaml").write_text(manifest.replace("id: h\n", "id: venu\n", 1), encoding="utf-8")
+        lier(source, depots / "venu.git")
+        (source / "harness.yaml").write_text(manifest, encoding="utf-8")
+        # Et un dépôt nu qui n'est pas un harness du tout : un texte, poussé.
+        subprocess.run(["git", "init", "--bare", "-q", "-b", "main", str(depots / "vide.git")], check=True)
+        brouillon = self.dossier / "brouillon"
+        brouillon.mkdir()
+        (brouillon / "notes.md").write_text("pas un harness", encoding="utf-8")
+        for commande in (["init", "-q", "-b", "main"], ["add", "-A"],
+                         ["-c", "user.name=T", "-c", "user.email=t@e.test", "commit", "-q", "-m", "notes"],
+                         ["push", "-q", str(depots / "vide.git"), "HEAD:main"]):
+            subprocess.run(["git", "-C", str(brouillon), *commande], check=True)
+
+        client = self.client_avec_naissance()
+        with patch.dict(os.environ, {"KOKAJI_DEPOTS": str(depots)}):
+            vu = client.post(
+                "/harness",
+                json={"id_harness": "venu", "cloner_depuis": {"chemin": "venu.git"}},
+                headers=self.cle(self.un),
+            )
+            self.assertEqual(vu.status_code, 200, vu.text)
+            self.assertEqual(self.comptes.role("venu", self.un.id), "proprietaire")
+            self.assertEqual(self.comptes.depot("venu").chemin, str(depots / "venu.git"))
+            self.assertTrue((self.dossier / "venu" / "harness.yaml").is_file())
+
+            rien = client.post(
+                "/harness",
+                json={"id_harness": "rien", "cloner_depuis": {"chemin": "vide.git"}},
+                headers=self.cle(self.un),
+            )
+        self.assertEqual(rien.status_code, 409, rien.text)
+        self.assertIn("n'est pas un harness", rien.json()["detail"])
+        self.assertFalse((self.dossier / "rien").exists())
+        self.assertIsNone(self.comptes.acl("rien"))
+
     def test_creer_par_copie_et_en_etre_proprietaire(self):
         client = self.client_avec_naissance()
         vu = client.post(

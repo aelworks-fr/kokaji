@@ -2103,7 +2103,7 @@ async function rendreDepot() {
       <div class="mot">${d.est_depot ? `branche <span class="mono">${e(d.branche)}</span> · dernier commit : ${dernier}` :
         "Ce harness n'est pas un dépôt git : le scellement écrit, mais ne commite rien."}</div>
       ${d.enregistrement ? `<div class="mot">enregistré auprès de <span class="mono">${e(d.enregistrement.chemin)}</span></div>`
-        : `<div class="mot">Aucun dépôt nu enregistré — enregistrer, pousser et tirer arrivent avec la RFC-012.</div>`}
+        : `<div class="mot">Aucun dépôt nu enregistré — enregistrer, pousser et tirer se font par l'API et la ligne de commande (RFC-012) ; le panneau suit.</div>`}
     </div>`;
 }
 

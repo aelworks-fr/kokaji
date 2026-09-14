@@ -9,9 +9,9 @@ de ce dépôt n'est pas touché.
 
 Ce geste **suit** le scellement et ne le conditionne pas. Sans git, hors de
 tout dépôt, ou si le commit échoue, le scellement tient et la trace dit
-pourquoi rien n'a été commité. Le push est un choix de déploiement
-(`KOKAJI_DEPOT_PUSH=1`) : pousser depuis un service demande des accréditations
-qu'on ne suppose pas.
+pourquoi rien n'a été commité. Pousser est un réglage du harness
+(RFC-012, `pousser_au_scellement`), et le service s'en charge après le
+scellement.
 """
 
 from __future__ import annotations
@@ -81,9 +81,4 @@ def commiter(racine: Path, auteur: str, motif: str, versions: dict[str, str]) ->
     if commit.returncode != 0:
         return "", f"git commit a refusé : {commit.stderr.strip()}"
     sha = _git(depot, "rev-parse", "--short", "HEAD").stdout.strip()
-
-    if os.environ.get("KOKAJI_DEPOT_PUSH") == "1":
-        pousse = _git(depot, "push", "--quiet")
-        if pousse.returncode != 0:
-            return sha, f"commité, mais le push a refusé : {pousse.stderr.strip()[:200]}"
     return sha, ""

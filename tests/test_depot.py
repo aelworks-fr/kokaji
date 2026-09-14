@@ -95,5 +95,116 @@ class LEtat(Bac):
         self.assertEqual(lu.mot, "non enregistré")
 
 
+
+class LeDepotNu(Bac):
+    """RFC-012 D12.2, D12.3 — enregistrer, pousser, tirer ; jamais de fusion."""
+
+    def setUp(self):
+        super().setUp()
+        from kokaji.depot import initier
+
+        initier(self.racine, "naissance : h")
+        self.depots = Path(self._tmp.name) / "depots"
+        self.depots.mkdir()
+
+    def test_un_chemin_hors_du_dossier_des_depots_est_refuse(self):
+        """Sabotage 2 : le service n'écrit ni ne clone n'importe où."""
+        from kokaji.depot import DepotRefuse, chemin_admis
+
+        self.assertEqual(chemin_admis("h.git", self.depots), self.depots / "h.git")
+        with self.assertRaises(DepotRefuse):
+            chemin_admis("../ailleurs/h.git", self.depots)
+        with self.assertRaises(DepotRefuse):
+            chemin_admis("/tmp/h.git", self.depots)
+        with self.assertRaises(DepotRefuse):
+            chemin_admis("h.git", None)
+
+    def test_lier_cree_le_depot_nu_et_y_pousse_l_historique(self):
+        from kokaji.depot import est_depot_nu, etat, lier, reference
+
+        sha = lier(self.racine, self.depots / "h.git")
+        self.assertTrue(est_depot_nu(self.depots / "h.git"))
+        self.assertEqual(reference(self.depots / "h.git", "main"), sha)
+        self.assertEqual(etat(self.racine, sha).mot, "à jour")
+
+    def test_pousser_apres_un_commit_avance_le_depot_nu(self):
+        from kokaji.depot import lier, pousser, reference
+
+        lier(self.racine, self.depots / "h.git")
+        (self.racine / "template.md").write_text("{{ role }} !", encoding="utf-8")
+        _git(self.racine, "add", "-A")
+        _git(self.racine, "-c", "user.name=T", "-c", "user.email=t@e.test", "commit", "-q", "-m", "scellement")
+        sha = pousser(self.racine)
+        self.assertEqual(reference(self.depots / "h.git", "main"), sha)
+
+    def test_tirer_avec_des_modifications_non_scellees_refuse_et_ne_touche_rien(self):
+        """Sabotage 3."""
+        from kokaji.depot import DepotRefuse, lier, tirer
+
+        lier(self.racine, self.depots / "h.git")
+        (self.racine / "template.md").write_text("{{ role }} en cours", encoding="utf-8")
+        with self.assertRaises(DepotRefuse) as vu:
+            tirer(self.racine)
+        self.assertIn("non scellées", str(vu.exception))
+        self.assertEqual((self.racine / "template.md").read_text(encoding="utf-8"), "{{ role }} en cours")
+
+    def _autre_clone(self):
+        """Un second clone du même dépôt nu — un poste de travail, ailleurs."""
+        from kokaji.depot import cloner
+
+        autre = cloner(self.depots / "h.git", Path(self._tmp.name) / "poste")
+        (autre / "registre.yaml").write_text("kata: {x: X}", encoding="utf-8")
+        _git(autre, "add", "-A")
+        _git(autre, "-c", "user.name=P", "-c", "user.email=p@e.test", "commit", "-q", "-m", "depuis le poste")
+        _git(autre, "push", "-q", "origin", "HEAD:main")
+        return autre
+
+    def test_tirer_en_avance_rapide_prend_ce_qui_a_ete_pousse_d_ailleurs(self):
+        from kokaji.depot import lier, tirer
+
+        lier(self.racine, self.depots / "h.git")
+        self._autre_clone()
+        sha = tirer(self.racine)
+        self.assertEqual((self.racine / "registre.yaml").read_text(encoding="utf-8"), "kata: {x: X}")
+        self.assertEqual(_git(self.racine, "rev-parse", "--short", "HEAD"), sha)
+
+    def test_une_branche_divergee_refuse_de_tirer_et_de_pousser_jamais_de_fusion(self):
+        """Sabotage 4 : l'état dit divergé, rien n'est fusionné."""
+        from kokaji.depot import DepotRefuse, lier, pousser, tirer
+
+        lier(self.racine, self.depots / "h.git")
+        self._autre_clone()
+        (self.racine / "template.md").write_text("{{ role }} ici", encoding="utf-8")
+        _git(self.racine, "add", "-A")
+        _git(self.racine, "-c", "user.name=T", "-c", "user.email=t@e.test", "commit", "-q", "-m", "ici")
+        with self.assertRaises(DepotRefuse) as t:
+            tirer(self.racine)
+        self.assertIn("divergé", str(t.exception))
+        with self.assertRaises(DepotRefuse) as p:
+            pousser(self.racine)
+        self.assertIn("divergé", str(p.exception))
+        self.assertEqual((self.racine / "template.md").read_text(encoding="utf-8"), "{{ role }} ici")
+
+    def test_cloner_un_depot_nu_donne_un_dossier_lisible(self):
+        from kokaji.depot import DepotRefuse, cloner, est_depot, lier
+        from kokaji.hds import charger
+
+        lier(self.racine, self.depots / "h.git")
+        vers = cloner(self.depots / "h.git", Path(self._tmp.name) / "clone")
+        self.assertTrue(est_depot(vers))
+        self.assertEqual(charger(vers).id, "h")
+        with self.assertRaises(DepotRefuse):
+            cloner(self.depots / "absent.git", Path(self._tmp.name) / "rien")
+        self.assertFalse((Path(self._tmp.name) / "rien").exists())
+
+    def test_sans_depot_nu_pousser_et_tirer_le_disent(self):
+        from kokaji.depot import DepotRefuse, pousser, tirer
+
+        with self.assertRaises(DepotRefuse):
+            pousser(self.racine)
+        with self.assertRaises(DepotRefuse):
+            tirer(self.racine)
+
+
 if __name__ == "__main__":
     unittest.main()
