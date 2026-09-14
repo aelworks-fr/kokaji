@@ -73,7 +73,9 @@ def initier(racine: Path, message: str, auteur: str = "Kokaji") -> str:
         raise DepotIndisponible("git est absent : le harness naît sans dépôt")
     if est_depot(racine):
         raise DepotIndisponible(f"{racine.name} est déjà un dépôt")
-    for etape in (("init", "-q"), ("add", "-A"), ("commit", "-q", "-m", message)):
+    # La branche est nommée : sans `-b`, git prend `master` ou `main` selon
+    # le poste, et le dépôt nu — qui reçoit `main` — ne s'y retrouverait pas.
+    for etape in (("init", "-q", "-b", "main"), ("add", "-A"), ("commit", "-q", "-m", message)):
         fait = git(racine, *etape, env=_identite(auteur))
         if fait.returncode != 0:
             raise DepotIndisponible(f"git {etape[0]} a refusé : {fait.stderr.strip()}")
