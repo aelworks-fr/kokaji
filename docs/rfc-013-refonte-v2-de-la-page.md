@@ -89,7 +89,7 @@ Chaque passe se livre seule, tests et mesures de rendu compris, et la vigie de l
 | Passe | État (14 septembre 2026) |
 |---|---|
 | 1 · Correctifs | appliquée — `kokaji/qg/vue.html`, `admin.html`, `kokaji/rendu.py` ; 64 mesures aux quatre largeurs |
-| 2 · Structure | à faire |
+| 2 · Structure | appliquée — trois territoires et routage (796a1a5), Autorat avec Dépôt et archivage (39a2f4f), graphe unique et facettes, vocabulaire unifié ; les nœuds de chaîne qui ne sont pas des kata se lisent dans le graphe sans s'y éditer |
 | 3 · Confort | à faire |
 
 ---

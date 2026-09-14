@@ -275,7 +275,7 @@ class LesAdjonctions(unittest.TestCase):
     def test_l_amont_s_ajoute_depuis_ce_qui_existe(self):
         """Un héritage tapé de mémoire donnerait un lien rompu : on offre la liste."""
         self.assertIn('id="herite-ajouter"', RENDU)
-        self.assertIn("garanti par ${e(x.par)}", RENDU)
+        self.assertIn("garanti par « ${e(nomDe(x.par))} »", RENDU)
 
     def test_l_amont_de_chaine_suit_le_contrat(self):
         """Hériter sans amont est une faute de manifest : le lien suit."""
@@ -400,6 +400,61 @@ class LAutoratDansLeHarness(unittest.TestCase):
 
     def test_les_gestes_de_proprietaire_ne_sont_offerts_qu_au_proprietaire(self):
         self.assertIn('${jeSuisLePatron ? `<div><button class="btn-fantome btn-encre" id="btn-archiver"', PAGE)
+
+
+class LeGrapheUnique(unittest.TestCase):
+    """RFC-013 D13.1, remarque 3 — un seul graphe, les axes en facettes du nœud sélectionné."""
+
+    def test_le_graphe_est_en_tete_et_les_axes_sous_lui(self):
+        design = PAGE[PAGE.index('<section id="module-design"'):PAGE.index('<section id="module-qg"')]
+        self.assertLess(design.index('id="graphe-rang"'), design.index('id="axe-partition"'))
+        self.assertLess(design.index('id="axe-coupes"'), design.index('id="axe-corps"'))
+
+    def test_les_formes_sont_celles_du_fil_du_qg(self):
+        self.assertIn(".noeud-g.jalon { border-radius: var(--radius-md); }", PAGE)
+        self.assertIn(".noeud-g.externe { border-style: dashed;", PAGE)
+        self.assertIn('.noeud-g[aria-pressed="true"] { outline: 2px solid var(--color-neutral-900);', PAGE)
+
+    def test_la_selection_est_partagee_par_les_facettes(self):
+        for facette in ("rendrePartition(k)", "rendreContrats(k)", "rendreTrempe(k)", "rendreCoupes(k)"):
+            self.assertIn(f"function {facette}", PAGE, facette)
+        self.assertIn("const k = brouillon.kata.find(x => x.id === kataChoisi);", PAGE)
+        self.assertNotIn('id="coupe-kata"', PAGE)
+
+    def test_le_noeud_porte_ses_marques_par_facette(self):
+        self.assertIn("function marquesDe(k)", PAGE)
+        self.assertIn('title="contrat violé"', PAGE)
+        self.assertIn(">densho incomplet</span>", PAGE)
+        self.assertIn(">seuil par défaut</span>", PAGE)
+
+    def test_un_noeud_choisi_entre_dans_l_adresse(self):
+        self.assertIn('history.replaceState(null, "", routeDe("design", { noeud: n.id }));', PAGE)
+
+    def test_le_partitionnement_edite_le_nom_d_affichage_et_confirme_le_retrait(self):
+        """K-06, K-22 : la seule source de nom, et un retrait en deux temps sur des cibles de 40 px."""
+        self.assertIn("Nom d'affichage — la seule source, reprise partout", PAGE)
+        self.assertIn('confirmer le retrait de « ${e(k.nom || k.id)} »', PAGE)
+        self.assertIn(".plus { width: 40px; height: 40px;", PAGE)
+        self.assertIn("← avancer dans la chaîne", PAGE)
+
+    def test_les_contrats_parlent_francais_et_offrent_les_deux_issues(self):
+        self.assertIn('const HUMAIN = { fait_etabli: "fait établi", hypothese: "hypothèse", en_pause: "en pause",', PAGE)
+        self.assertIn("abaisser l'exigence à « ${e(humain(promesse.statut))} »", PAGE)
+        self.assertIn("relever la garantie de l'amont ♯", PAGE)
+        self.assertIn('lu par " + lu.map(n => `« ${e(n)} »`)', PAGE)
+
+    def test_le_densho_est_en_pleine_largeur_avec_l_apercu_colle(self):
+        """K-10 : hauteur libre, police de lecture, l'aperçu à côté."""
+        self.assertIn(".densho-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));", PAGE)
+        self.assertIn("field-sizing: content;", PAGE)
+        self.assertIn(".apercu-coupe {", PAGE)
+        self.assertIn("Densho incomplet :", PAGE)
+
+    def test_le_gabarit_est_au_dessus_du_graphe_replie(self):
+        design = PAGE[PAGE.index('<section id="module-design"'):PAGE.index('<section id="module-qg"')]
+        self.assertLess(design.index('id="gabarit-pli"'), design.index('id="graphe"'))
+        self.assertIn('<div id="gabarit-corps" hidden></div>', PAGE)
+        self.assertIn("let gabaritOuvert = false;", PAGE)
 
 
 class LesCoupes(unittest.TestCase):

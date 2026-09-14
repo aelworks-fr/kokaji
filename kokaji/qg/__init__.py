@@ -366,8 +366,15 @@ def composer(
     produits = {
         k.id: tuple(champ_nu(r) for r, _ in k.produit) for k in harness.kata
     }
+    # Le nom d'affichage d'un nœud est celui de son kata — la seule source,
+    # reprise partout (RFC-013, K-06). Le nom de la chaîne ne sert qu'aux
+    # nœuds qui ne sont pas des kata : un jalon, une étape externe.
+    noms_de_kata = {k.id: k.nom for k in harness.kata}
     noeuds = {
-        n.id: VueNoeud(id=n.id, type=n.type, nom=n.nom, attendus=produits.get(n.id, ()))
+        n.id: VueNoeud(
+            id=n.id, type=n.type, nom=noms_de_kata.get(n.id, n.nom),
+            attendus=produits.get(n.id, ()),
+        )
         for n in harness.chaine.noeuds
     }
 

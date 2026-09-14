@@ -121,6 +121,28 @@ détail d'un nœud** — à côté des champs et des hypothèses — et non une 
 nouvelle. Une nature n'est pas un score : elle ne colore rien, elle ne classe
 rien, elle se lit.
 
+## La page v2 — la passe 2 (RFC-013)
+
+Le menu tient en trois territoires : *Harness* — le sélecteur, puis Design et
+QG comme ses sous-vues, puis créer —, *Moi* — Profil, se déconnecter —, et
+*Kokaji* en pied — Découvrir, Vigie, Comptes & invitations. Chaque vue a une
+adresse dans le fragment (`#/h/<harness>/design/<axe>?noeud=<id>`,
+`#/kokaji/vigie`…) et un titre d'onglet qui dit le harness, la vue et l'axe.
+
+Le Design tient sur **un seul graphe** — les mêmes nœuds, le même ordre, les
+mêmes noms que le QG, le nom d'affichage venant du kata — et les quatre axes
+sont des facettes du nœud sélectionné : Partitionnement (nom, identifiant,
+type, avancer, reculer, retirer en deux temps), Contrats f♯ (ce qu'il exige,
+ce qu'il garantit, les deux issues d'une ligne cassée sur la ligne), Trempe
+(le seuil du nœud, le reste commun à la chaîne), Coupes (le densho en pleine
+largeur, l'aperçu de la coupe collé à côté). Le nœud porte ses marques : contrat
+violé, densho incomplet, seuil par défaut. Le gabarit, commun à toute la
+chaîne, se replie au-dessus du graphe.
+
+L'autorat vit dans le harness, ouvert par « qui forge avec moi » : les
+membres, inviter un co-auteur, le panneau Dépôt (RFC-012), et la zone
+d'archivage — archiver, jamais supprimer, confirmé par le nom exact.
+
 ## La page v2 — la passe 1 (RFC-013)
 
 L'audit du 14 septembre 2026 et son handoff vivent dans `docs/design/handoff-v2/`.

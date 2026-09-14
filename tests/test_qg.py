@@ -299,3 +299,21 @@ class Profil(Bac):
         from kokaji.qg import composition
 
         self.assertEqual(composition(self.harness), "1 jalon, 2 kata")
+
+
+class LeNomDUnNoeud(Bac):
+    """RFC-013, K-06 — une seule source de nom d'affichage : celle du kata."""
+
+    def test_un_kata_prend_le_nom_de_son_densho_et_un_jalon_garde_le_sien(self):
+        from kokaji.hds import charger
+        from kokaji.qg import composer
+
+        manifest = (self.racine / "harness.yaml").read_text(encoding="utf-8")
+        (self.racine / "harness.yaml").write_text(
+            manifest.replace("{ id: k1, type: kata, nom: K1 }", "{ id: k1, type: kata, nom: Ancien nom }"),
+            encoding="utf-8",
+        )
+        vue = composer(charger(self.racine), "S")
+        noms = {n.id: n.nom for n in vue.noeuds}
+        self.assertEqual(noms["k1"], "K1")
+        self.assertEqual(noms["j1"], "J1")

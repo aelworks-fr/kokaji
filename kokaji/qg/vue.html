@@ -181,7 +181,41 @@
                   font-family: ui-monospace, monospace; text-align: center; width: 100%;
                   background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300);
                   color: var(--color-text); }
-  .plus { width: 22px; height: 22px; border-radius: 999px; border: 1px solid var(--color-neutral-300);
+  /* Le graphe unique reprend les formes du fil du QG : cercle = kata ou
+     externe, carré arrondi = jalon, bord tireté = externe, 56 px, sans
+     chaleur. La sélection est un anneau à l'encre ; les marques par facette
+     sont posées sur le nœud (K-09). */
+  .noeud-g { position: relative; width: 56px; height: 56px; border-radius: 999px; border: 1.5px solid var(--color-neutral-400);
+             background: var(--color-neutral-200); cursor: pointer; padding: 0; display: block; }
+  .noeud-g.jalon { border-radius: var(--radius-md); }
+  .noeud-g.externe { border-style: dashed; border-width: 2px; background: var(--color-neutral-100); }
+  .noeud-g[aria-pressed="true"] { outline: 2px solid var(--color-neutral-900); outline-offset: 3px; }
+  .noeud-g:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .colonne-g { width: 100%; min-width: 96px; max-width: 150px; flex: none; padding: 4px 2px; display: flex;
+               flex-direction: column; align-items: center; gap: 8px; border: none; background: none; }
+  .colonne-g .nom-noeud { margin-top: 0; font-weight: 400; }
+  .colonne-g[aria-current="true"] .nom-noeud { font-weight: 700; }
+  .marques-g { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+  .tag-tirete { background: var(--color-neutral-100); color: var(--color-neutral-800);
+                border: 1.5px dashed var(--color-neutral-500); font-size: 10px; }
+  .tag-doux { background: var(--color-neutral-200); color: var(--color-neutral-700); font-size: 10px; }
+  .lien-g { display: flex; align-items: center; margin-top: 22px; flex: 1; min-width: 48px; }
+  .lien-g .trait { flex: 1; min-width: 4px; height: 3px; border-radius: 2px; background: var(--color-neutral-300); }
+  .gabarit-pli { padding: 14px 24px; }
+  .gabarit-titre { display: flex; align-items: center; gap: 8px; width: 100%; border: none; background: none;
+                   font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; padding: 0; text-align: left;
+                   color: var(--color-text); }
+  .gabarit-titre[aria-expanded="true"] { margin-bottom: 12px; }
+  .gabarit-titre[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+  .gabarit-titre .chevron { display: inline-block; transition: transform .15s; }
+  /* Le densho en pleine largeur (K-10) : hauteur libre, police de lecture,
+     l'aperçu à côté sur grand écran, collé au défilement. */
+  .densho-grille { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 26px; align-items: start; }
+  .densho-zone { width: 100%; box-sizing: border-box; border-radius: var(--radius-md); padding: 12px 16px; font: inherit;
+                 font-size: 14px; line-height: 1.6; background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300);
+                 color: var(--color-text); resize: vertical; min-height: 64px; field-sizing: content; }
+  .apercu-coupe { border-radius: var(--radius-md); background: var(--color-neutral-200); padding: 22px 24px; position: sticky; top: 16px; }
+  .plus { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--color-neutral-300);
           background: var(--color-neutral-100); color: var(--color-neutral-700); font: inherit;
           cursor: pointer; line-height: 1; padding: 0; }
 
@@ -408,6 +442,8 @@
     .flanc-espace { display: none; }
     .onglet-sous { margin-left: 0; }
     .flanc-action { margin: 0; white-space: nowrap; flex: none; }
+    .densho-grille { grid-template-columns: 1fr; }
+    .apercu-coupe { position: static; }
 
     .page { padding: var(--space-4) var(--space-3) var(--space-6); }
     .profil, .design { padding: 20px 16px 48px; gap: 18px; }
@@ -646,12 +682,30 @@
   <div class="card elev-md verdict" id="verdict"></div>
   <div class="card elev-sm" id="membres" hidden style="padding:20px 24px"></div>
 
-  <div class="axes">
-    <button class="axe" id="axe-partition" aria-current="page">1 · Partitionnement</button>
-    <button class="axe" id="axe-contrats">2 · Contrats f♯<span class="badge-encre"
-      id="badge-contrats" hidden></span></button>
-    <button class="axe" id="axe-trempe">3 · Trempe</button>
-    <button class="axe" id="axe-coupes">4 · Coupes</button>
+  <!-- Le gabarit du harness — commun à toute la chaîne, donc à aucun nœud :
+       au-dessus du graphe, replié par défaut (RFC-013 D13.4). -->
+  <div class="card elev-sm gabarit-pli" id="gabarit-pli">
+    <button class="gabarit-titre" id="gabarit-basculer" aria-expanded="false">
+      <span class="chevron" aria-hidden="true">▸</span> Le gabarit du harness
+      <span class="mot" id="gabarit-sous"></span></button>
+    <div id="gabarit-corps" hidden></div>
+  </div>
+
+  <!-- Un seul graphe (RFC-013 D13.1, remarque 3) : les mêmes nœuds, le même
+       ordre, les mêmes noms que le QG. Sélectionner un nœud est l'état
+       partagé ; les axes en sont des facettes. -->
+  <div class="card elev-sm" id="graphe" style="padding:24px 26px 12px">
+    <p class="mot" style="margin:0 0 16px;max-width:76ch">Le graphe du harness — les mêmes nœuds,
+      le même ordre, les mêmes noms que le QG. Sélectionnez un nœud : chaque axe ci-dessous en
+      montre une facette. Les marques signalent où intervenir.</p>
+    <div class="rang" id="graphe-rang"></div>
+    <div class="axes" style="padding-top:14px;border-top:1px solid var(--color-neutral-200);margin-top:10px">
+      <button class="axe" id="axe-partition" aria-current="page">Partitionnement</button>
+      <button class="axe" id="axe-contrats">Contrats f♯<span class="badge-encre"
+        id="badge-contrats" hidden></span></button>
+      <button class="axe" id="axe-trempe">Trempe</button>
+      <button class="axe" id="axe-coupes">Coupes</button>
+    </div>
   </div>
 
   <div class="card elev-sm" id="axe-corps" style="padding:24px"></div>
@@ -1483,6 +1537,19 @@ const AXES = { partition: "axe-partition", contrats: "axe-contrats", trempe: "ax
 const DENSHO = ["role", "interdits", "questions", "livrable_nom", "livrable_structure", "passage", "natures"];
 const DENSHO_LISTES = ["interdits", "questions", "livrable_structure", "natures"];
 
+// Le vocabulaire unifié (K-06) : le nom d'affichage d'un nœud est celui de
+// son densho, partout ; l'identifiant technique reste en monospace
+// secondaire. Les statuts se disent en français.
+const HUMAIN = { fait_etabli: "fait établi", hypothese: "hypothèse", en_pause: "en pause",
+                 validee: "validée", en_cours: "en cours", infirmee: "infirmée" };
+const humain = (s) => HUMAIN[s] || String(s || "").replace(/_/g, " ");
+const nomDe = (id) => {
+  const k = brouillon && brouillon.kata.find(x => x.id === id);
+  if (k) return k.nom || id;
+  const n = def && def.chaine.noeuds.find(x => x.id === id);
+  return n ? n.nom : id;
+};
+
 const RANG = (s) => (def ? def.statuts_champ.indexOf(s) : -1);
 const couvre = (garanti, exige) => {
   if (!exige) return true;                       // présence seule
@@ -1676,7 +1743,19 @@ function rendreDesign() {
   $("badge-contrats").textContent = rompus.length;
   for (const [nom, id] of Object.entries(AXES))
     $(id).setAttribute("aria-current", axe === nom ? "page" : "false");
-  ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe, coupes: rendreCoupes })[axe]();
+  rendreGabarit();
+  rendreGraphe();
+  const k = brouillon.kata.find(x => x.id === kataChoisi);
+  if (!k) {
+    $("axe-corps").innerHTML = brouillon.kata.length
+      ? `<p class="rien">Ce nœud est une étape de chaîne, pas un kata : il n'a ni contrat, ni trempe, ni
+         densho. Sélectionnez un kata pour en éditer une facette.</p>`
+      : `<p class="rien">Aucun kata dans la chaîne.</p>
+         <button class="btn-fantome" id="btn-ajouter-kata" style="margin-top:12px">＋ Ajouter une étape</button>
+         <p class="rien" id="ajout-dit" style="margin-top:8px"></p>`;
+  } else {
+    ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe, coupes: rendreCoupes })[axe](k);
+  }
   // Reconstruit avec l'axe : sans ce rebranchement, le bouton existerait sans agir.
   // Deux natures d'étape, deux gestes : dans un harness adopté, une étape est
   // un texte qui entre tel quel — pas une source de forge à remplir.
@@ -1684,6 +1763,106 @@ function rendreDesign() {
     $("btn-ajouter-kata").onclick =
       def.harness.exogene ? ouvrirAdoptionEtape : ajouterUnKata;
   rendreProposition();
+}
+
+// Ce que chaque nœud porte comme marques, par facette (remarque 3).
+function marquesDe(k) {
+  const rompus = liensRompus().filter(r => r.kata === k.id).length;
+  const src = brouillon.source[k.id];
+  const incomplet = !def.harness.exogene && (!src
+    || !(src.role || "").trim() || !(src.questions || []).length
+    || !(src.livrable_structure || []).length || !(src.passage || "").trim());
+  const seuil = !((brouillon.trempe.justesse || {}).par_kata || {})[k.id];
+  return { contrat: rompus, densho: incomplet, seuil };
+}
+
+function rendreGraphe() {
+  const rang = $("graphe-rang");
+  rang.innerHTML = "";
+  // Les nœuds éditables — les kata du brouillon — puis les nœuds de chaîne
+  // qui ne sont pas des kata (un jalon, une étape externe), en lecture : le
+  // graphe montre la même chaîne que le QG.
+  const kataIds = new Set(brouillon.kata.map(k => k.id));
+  const noeuds = [...brouillon.kata.map(k => ({ ...k, editable: true })),
+    ...def.chaine.noeuds.filter(n => !kataIds.has(n.id)).map(n => ({ id: n.id, nom: n.nom, type: n.type, editable: false }))];
+  if (!noeuds.some(n => n.id === kataChoisi)) kataChoisi = noeuds.length ? noeuds[0].id : null;
+
+  noeuds.forEach((n, i) => {
+    const m = n.editable ? marquesDe(n) : { contrat: 0, densho: false, seuil: false };
+    const choisi = n.id === kataChoisi;
+    const env = document.createElement("div");
+    env.className = "enveloppe";
+    const col = document.createElement("div");
+    col.className = "colonne-g";
+    col.setAttribute("aria-current", choisi ? "true" : "false");
+    col.innerHTML = `
+      <button class="noeud-g ${n.type === "jalon" ? "jalon" : ""} ${n.type === "externe" ? "externe" : ""}"
+              aria-pressed="${choisi}" data-noeud="${e(n.id)}"
+              aria-label="${e(n.nom || n.id)}${m.contrat ? ", contrat violé" : ""}${m.densho ? ", densho incomplet" : ""} — sélectionner ce nœud">
+        ${m.contrat ? `<span class="marque-encre" title="contrat violé">✕</span>` : ""}
+      </button>
+      <div class="nom-noeud">${e(n.nom || n.id)}</div>
+      <div class="marques-g">
+        ${m.densho ? `<span class="tag tag-tirete">densho incomplet</span>` : ""}
+        ${m.seuil && n.editable ? `<span class="tag tag-doux">seuil par défaut</span>` : ""}
+        ${!n.editable ? `<span class="tag tag-doux">${e(n.type)}</span>` : ""}
+      </div>`;
+    col.querySelector("button").onclick = () => {
+      kataChoisi = n.id; retraitArme = null;
+      history.replaceState(null, "", routeDe("design", { noeud: n.id }));
+      rendreDesign();
+    };
+    env.appendChild(col);
+    if (i < noeuds.length - 1) {
+      const lien = document.createElement("div");
+      lien.className = "lien-g";
+      lien.innerHTML = `<div class="trait"></div>` + (n.editable && !def.harness.exogene
+        ? `<button class="plus" data-inserer="${i + 1}" title="insérer un kata ici"
+                   aria-label="insérer un kata après ${e(n.nom || n.id)}">+</button>` : "")
+        + `<div class="trait"></div>`;
+      env.appendChild(lien);
+    }
+    rang.appendChild(env);
+  });
+  rang.querySelectorAll("button[data-inserer]").forEach(x => {
+    x.onclick = () => {
+      const ou = Number(x.dataset.inserer);
+      const id = idLibre();
+      brouillon.kata.splice(ou, 0, { id, nom: `Étape ${ou + 1}`, type: "kata",
+        livrable: `Livrable de l'étape ${ou + 1}`, amont: [], herite: [],
+        produit: [{ champ: `${id}.a-nommer`, statut: "fait_etabli" }] });
+      kataChoisi = id; retouche();
+    };
+  });
+}
+
+function idLibre() {
+  const pris = new Set(brouillon.kata.map(k => k.id));
+  let n = brouillon.kata.length + 1;
+  while (pris.has(`etape-${n}`)) n += 1;
+  return `etape-${n}`;
+}
+
+let gabaritOuvert = false;
+function rendreGabarit() {
+  const zone = $("gabarit-corps");
+  $("gabarit-basculer").setAttribute("aria-expanded", gabaritOuvert ? "true" : "false");
+  $("gabarit-basculer").onclick = () => { gabaritOuvert = !gabaritOuvert; rendreGabarit(); };
+  zone.hidden = !gabaritOuvert;
+  if (!gabaritOuvert) { zone.innerHTML = ""; }
+  if (def.harness.exogene || !def.template) {
+    $("gabarit-sous").textContent = "— un harness adopté n'en a pas";
+    if (gabaritOuvert) zone.innerHTML = `<p class="rien">Ses étapes sont des textes servis tels quels.</p>`;
+    return;
+  }
+  const variables = def.template.variables || [];
+  $("gabarit-sous").textContent = `— commun à toute la chaîne · ${variables.length} variable(s)`;
+  if (!gabaritOuvert) return;
+  zone.innerHTML = `<p class="rien" style="margin:0 0 8px">La doctrine commune à toute la chaîne. Ses
+      variables — ${variables.length ? variables.map(v => `<code>{{ ${e(v)} }}</code>`).join(", ") : "aucune"} —
+      sont remplies par le densho de chaque kata à la forge.</p>
+    <textarea class="densho-zone mono" id="gabarit-texte" rows="12" aria-label="Le gabarit du harness">${e(brouillon.template ?? "")}</textarea>`;
+  $("gabarit-texte").onchange = (ev) => { brouillon.template = ev.target.value; retoucheCoupe(); };
 }
 
 function rendreVerdict() {
@@ -1918,65 +2097,56 @@ async function retirerUnMembre(id) {
 }
 
 // --- axe 1 · le partitionnement : la chaîne, sans sujet dedans ---------------
-function rendrePartition() {
-  const corps = $("axe-corps");
-  const formes = { kata: "", jalon: "jalon", externe: "externe" };
-  corps.innerHTML = `<p class="mot" style="margin:0 0 16px">Comment le domaine est
-    découpé. Aucune chaleur, aucun possible : ici il n'y a pas de sujet.</p>
-    <div class="rang" id="rang-def"></div>
-    <button class="btn-fantome" id="btn-ajouter-kata" style="margin-top:16px">
-      ＋ Ajouter une étape</button>
+let retraitArme = null;   // le nœud dont le retrait attend sa confirmation (K-22)
+function rendrePartition(k) {
+  const i = brouillon.kata.indexOf(k);
+  const exogene = def.harness.exogene;
+  $("axe-corps").innerHTML = `
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 16px">Partitionnement — ${e(k.nom || k.id)}</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;max-width:760px">
+      <div>
+        <label class="mot" for="f-nom">Nom d'affichage — la seule source, reprise partout</label>
+        <input class="champ-large" id="f-nom" value="${e(k.nom || "")}" style="margin-top:5px" autocomplete="off">
+      </div>
+      <div>
+        <label class="mot" for="f-id">Identifiant technique</label>
+        <input class="champ-large mono" id="f-id" value="${e(k.id)}" style="margin-top:5px;background:var(--color-neutral-200)"
+               autocomplete="off" ${exogene ? "disabled" : ""}>
+      </div>
+      <div>
+        <label class="mot" for="f-type">Type</label>
+        <select class="champ-large" id="f-type" style="margin-top:5px">
+          ${["kata", "jalon", "externe"].map(x => `<option ${x === (k.type || "kata") ? "selected" : ""}>${x}</option>`).join("")}
+        </select>
+      </div>
+      <div>
+        <label class="mot" for="f-livrable">Livrable</label>
+        <input class="champ-large" id="f-livrable" value="${e(k.livrable || "")}" style="margin-top:5px" autocomplete="off">
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px">
+      <button class="btn-fantome" id="f-avancer" style="min-height:40px" ${i <= 0 ? "disabled" : ""}>← avancer dans la chaîne</button>
+      <button class="btn-fantome" id="f-reculer" style="min-height:40px" ${i >= brouillon.kata.length - 1 ? "disabled" : ""}>reculer dans la chaîne →</button>
+      <button class="btn-fantome btn-encre" id="f-retirer" style="min-height:40px">${
+        retraitArme === k.id ? `confirmer le retrait de « ${e(k.nom || k.id)} »` : "retirer ce nœud…"}</button>
+      <span style="flex:1"></span>
+      <button class="btn-fantome" id="btn-ajouter-kata" style="min-height:40px">＋ Ajouter une étape à la fin</button>
+    </div>
     <p class="rien" id="ajout-dit" style="margin-top:8px"></p>`;
-  const rang = $("rang-def");
-
-  brouillon.kata.forEach((k, i) => {
-    const env = document.createElement("div");
-    env.className = "enveloppe";
-    const col = document.createElement("div");
-    col.className = "colonne";
-    col.innerHTML = `
-      <div class="noeud-def ${formes[k.type || "kata"]}">${e((k.id || "?").slice(0, 3))}</div>
-      <input class="champ-pilule" style="margin-top:8px" value="${e(k.id)}" data-id="${i}">
-      <select class="select-pilule" style="margin-top:6px" data-type="${i}">
-        ${["kata", "jalon", "externe"].map(x =>
-          `<option ${x === (k.type || "kata") ? "selected" : ""}>${x}</option>`).join("")}
-      </select>
-      <button class="btn-fantome" style="margin-top:6px;font-size:11px" data-retirer="${i}">retirer</button>`;
-    env.appendChild(col);
-    if (i < brouillon.kata.length - 1) {
-      const a = document.createElement("div");
-      a.className = "arete";
-      a.style.position = "relative";
-      env.appendChild(a);
-      const plus = document.createElement("button");
-      plus.className = "plus";
-      plus.textContent = "+";
-      plus.dataset.inserer = i + 1;
-      plus.style.cssText = "align-self:center;margin-top:22px";
-      env.appendChild(plus);
-    }
-    rang.appendChild(env);
-  });
-
-  rang.querySelectorAll("input[data-id]").forEach(x => {
-    x.onchange = () => { brouillon.kata[Number(x.dataset.id)].id = x.value.trim(); retouche(); };
-  });
-  rang.querySelectorAll("select[data-type]").forEach(x => {
-    x.onchange = () => { brouillon.kata[Number(x.dataset.type)].type = x.value; retouche(); };
-  });
-  rang.querySelectorAll("button[data-retirer]").forEach(x => {
-    x.onclick = () => { brouillon.kata.splice(Number(x.dataset.retirer), 1); retouche(); };
-  });
-  rang.querySelectorAll("button[data-inserer]").forEach(x => {
-    x.onclick = () => {
-      const ou = Number(x.dataset.inserer);
-      brouillon.kata.splice(ou, 0, {
-        id: `kata-${brouillon.kata.length + 1}`, nom: "Nouveau kata", type: "kata",
-        livrable: "", amont: [], herite: [], produit: [], emet_options: false
-      });
-      retouche();
-    };
-  });
+  $("f-nom").onchange = (ev) => { k.nom = ev.target.value.trim(); retouche(); };
+  $("f-id").onchange = (ev) => { const neuf = ev.target.value.trim(); if (neuf) { k.id = neuf; kataChoisi = neuf; } retouche(); };
+  $("f-type").onchange = (ev) => { k.type = ev.target.value; retouche(); };
+  $("f-livrable").onchange = (ev) => { k.livrable = ev.target.value.trim(); retouche(); };
+  $("f-avancer").onclick = () => { if (i > 0) { brouillon.kata.splice(i, 1); brouillon.kata.splice(i - 1, 0, k); retouche(); } };
+  $("f-reculer").onclick = () => { if (i < brouillon.kata.length - 1) { brouillon.kata.splice(i, 1); brouillon.kata.splice(i + 1, 0, k); retouche(); } };
+  // Retirer se confirme en deux temps, sur le même bouton : le libellé devient
+  // la confirmation, et un second clic seulement retire (K-22).
+  $("f-retirer").onclick = () => {
+    if (retraitArme !== k.id) { retraitArme = k.id; rendreDesign(); return; }
+    brouillon.kata.splice(i, 1); retraitArme = null;
+    kataChoisi = brouillon.kata.length ? brouillon.kata[Math.max(0, i - 1)].id : null;
+    retouche();
+  };
 }
 
 // --- axe 2 · les contrats : le f♯, avec sa règle sous les yeux ---------------
@@ -1996,6 +2166,7 @@ function ajouterUnKata() {
     livrable: `Livrable de l'étape ${n}`,
     amont: [], herite: [], produit: [{ champ: `${id}.a-nommer`, statut: "fait_etabli" }],
   });
+  kataChoisi = id;
   rendreDesign();
   $("ajout-dit").textContent =
     "Étape ajoutée à la fin, sans amont. Renomme-la, dis ce qu'elle établit, "
@@ -2036,52 +2207,34 @@ async function adopterUneEtape() {
   def = null; await chargerDesign();
 }
 
-function rendreContrats() {
-  const rompus = liensRompus(), g = garanties();
-  const parKata = {};
-  rompus.forEach(r => { (parKata[r.kata] = parKata[r.kata] || []).push(r); });
-  if (!brouillon.kata.some(k => k.id === kataChoisi)) kataChoisi = brouillon.kata[0]?.id || null;
-  const k = brouillon.kata.find(x => x.id === kataChoisi);
-
-  const rail = brouillon.kata.map(x => {
-    const casse = (parKata[x.id] || []).length;
-    const change = JSON.stringify(x) !== JSON.stringify(def.kata.find(o => o.id === x.id) || {});
-    return `<button class="jeton-kata" data-kata="${e(x.id)}"
-             aria-current="${x.id === kataChoisi ? "page" : "false"}">
-        <span class="forme ${x.type === "jalon" ? "jalon" : ""}">
-          ${casse ? `<span class="marque-encre">✕</span>`
-            : change ? `<span class="marque-encre">♯</span>` : ""}
-        </span>
-        <span class="id">${e(x.id)}</span>
-      </button>`;
-  }).join("");
-
-  if (!k) { $("axe-corps").innerHTML = `<div class="rail">${rail}</div>
-    <p class="rien">Aucun kata dans la chaîne.</p>`; return; }
-
+function rendreContrats(k) {
+  const g = garanties();
   const consommateurs = (champ) =>
-    brouillon.kata.filter(x => x.herite.some(h => h.champ === champ)).map(x => x.id);
+    brouillon.kata.filter(x => x.herite.some(h => h.champ === champ)).map(x => nomDe(x.id));
   const seuils = ["", ...def.statuts_champ];
 
   const herite = k.herite.length ? k.herite.map((h, i) => {
     const promesse = g[h.champ];
     const ok = promesse && couvre(promesse.statut, h.minimum);
-    return `<div class="ligne-f ${ok ? "" : "rompue"}">
-      <span class="mono">${e(h.champ)}</span>
+    return `<div class="ligne-f ${ok ? "" : "rompue"}" style="padding:11px 14px;border-radius:var(--radius-md);${ok ? "background:var(--color-neutral-200)" : ""}">
+      <span class="tag ${ok ? "chip-ok" : "chip-encre"}" style="width:20px;height:20px;padding:0;justify-content:center;border-radius:6px">${ok ? "✓" : "✕"}</span>
+      <span style="min-width:200px;flex:1">${e(h.champ.split(".").slice(1).join("."))}
+        <span class="mono" style="font-size:11px;color:var(--color-neutral-700)">${e(h.champ)}</span></span>
       <span class="mot">exige</span>
-      <select class="select-pilule" data-min="${i}">
-        ${seuils.map(s => `<option value="${e(s)}" ${s === h.minimum ? "selected" : ""}
-           >${s ? e(s) : "présence seule"}</option>`).join("")}
+      <select class="select-pilule" data-min="${i}" aria-label="niveau exigé">
+        ${seuils.map(s => `<option value="${e(s)}" ${s === h.minimum ? "selected" : ""}>${s ? e(humain(s)) : "présence seule"}</option>`).join("")}
       </select>
-      <span style="flex:1"></span>
       ${promesse
-        ? `<span class="mot">· ${e(promesse.par)} garantit</span>
-           <span class="tag ${ok ? "chip-ok" : "chip-encre"}">${e(promesse.statut)}</span>`
+        ? `<span class="mot">· « ${e(nomDe(promesse.par))} » garantit</span>
+           <span class="tag ${ok ? "tag-neutral" : "chip-encre"}">${e(humain(promesse.statut))}</span>`
         : `<span class="tag chip-encre">rien ne le produit</span>`}
-      <button class="btn-fantome" data-ret-min="${i}" title="ne plus s'appuyer dessus"
-              style="margin-left:8px">×</button>
+      <button class="btn-fantome" data-ret-min="${i}" title="ne plus s'appuyer dessus">×</button>
+      ${!ok && promesse ? `<span style="flex-basis:100%;display:flex;gap:8px;flex-wrap:wrap;padding-left:32px">
+          <button class="btn-fantome" data-abaisser="${i}">abaisser l'exigence à « ${e(humain(promesse.statut))} »</button>
+          <button class="btn-fantome" data-relever="${i}">relever la garantie de l'amont ♯</button>
+        </span>` : ""}
     </div>`;
-  }).join("") : `<p class="rien">Ne s'appuie sur rien — ce kata ouvre la chaîne.</p>`;
+  }).join("") : `<p class="rien">N'exige rien — ce nœud ouvre la chaîne.</p>`;
 
   // L'adjonction amont : s'appuyer sur un champ qu'un autre kata garantit. La
   // liste n'offre que ce qui existe — un héritage tapé de mémoire donnerait un
@@ -2089,9 +2242,9 @@ function rendreContrats() {
   const heritables = Object.entries(g)
     .filter(([champ, x]) => x.par !== k.id && !k.herite.some(h => h.champ === champ));
   const ajoutHerite = heritables.length ? `<div class="ligne-f">
-      <select class="select-pilule" id="herite-neuf">
+      <select class="select-pilule" id="herite-neuf" aria-label="champ à hériter">
         ${heritables.map(([champ, x]) =>
-          `<option value="${e(champ)}">${e(champ)} — garanti par ${e(x.par)}</option>`).join("")}
+          `<option value="${e(champ)}">${e(champ)} — garanti par « ${e(nomDe(x.par))} »</option>`).join("")}
       </select>
       <button class="btn-fantome" id="herite-ajouter">s'appuyer dessus</button>
       <span style="flex:1"></span>
@@ -2101,25 +2254,23 @@ function rendreContrats() {
 
   const produit = k.produit.length ? k.produit.map((x, i) => {
     const lu = consommateurs(x.champ);
-    return `<div class="ligne-f">
-      <span class="mono">${e(x.champ)}</span>
+    return `<div class="ligne-f" style="padding:11px 14px;border-radius:var(--radius-md);background:var(--color-neutral-200)">
+      <span style="min-width:200px;flex:1">${e(x.champ.split(".").slice(1).join("."))}
+        <span class="mono" style="font-size:11px;color:var(--color-neutral-700)">${e(x.champ)}</span></span>
       <span class="mot">garantit au moins</span>
-      <select class="select-pilule" data-prod="${i}">
-        ${def.statuts_champ.map(s => `<option ${s === x.statut ? "selected" : ""}>${e(s)}</option>`).join("")}
+      <select class="select-pilule" data-prod="${i}" aria-label="garantie minimale">
+        ${def.statuts_champ.map(s => `<option value="${e(s)}" ${s === x.statut ? "selected" : ""}>${e(humain(s))}</option>`).join("")}
       </select>
-      <span style="flex:1"></span>
-      <span class="mot">${lu.length ? "lu par " + lu.map(e).join(", ") : "lu par personne"}</span>
-      <button class="btn-fantome" data-ret-prod="${i}" title="ne plus le garantir"
-              style="margin-left:8px">×</button>
+      <span class="mot">${lu.length ? "lu par " + lu.map(n => `« ${e(n)} »`).join(", ") : "lu par personne encore"}</span>
+      <button class="btn-fantome" data-ret-prod="${i}" title="ne plus le garantir">×</button>
     </div>`;
-  }).join("") : `<p class="rien">N'établit rien — un nœud externe lit la chaîne sans y ajouter.</p>`;
+  }).join("") : `<p class="rien">Ne garantit rien — un nœud externe lit la chaîne sans y ajouter.</p>`;
 
   // L'adjonction aval : promettre un champ de plus. Il naît au statut le plus
-  // faible — sous-promettre est permis, sur-promettre non : monter le seuil
-  // est un geste qu'on fait en connaissance, pas un défaut qu'on subit.
+  // faible — sous-promettre est permis, sur-promettre non.
   const ajoutProduit = `<div class="ligne-f">
       <input class="champ-pilule" id="produit-neuf" style="width:12rem;text-align:left"
-             placeholder="nom du champ — minuscules, tirets">
+             placeholder="nom du champ — minuscules, tirets" aria-label="nom du champ à garantir">
       <button class="btn-fantome" id="produit-ajouter">le garantir</button>
       <span style="flex:1"></span>
       <span class="mot">déclaré au registre lors du scellement</span>
@@ -2129,20 +2280,20 @@ function rendreContrats() {
   const change = origine && JSON.stringify(k) !== JSON.stringify(origine);
   const versions = epreuve?.versions || {};
 
-  $("axe-corps").innerHTML = `<div class="rail">${rail}</div>
-    <p class="mot" style="margin:0 0 12px">${e(k.id)} ${change
-      ? `— version ${versions[k.id] ? "→ " + e(versions[k.id]) + " au scellement ♯" : "modifiée ♯"}`
-      : "· inchangé"}</p>
-    <h3 style="font-size:14px;margin:18px 0 8px">Ce sur quoi il s'appuie</h3>${herite}${ajoutHerite}
-    <h3 style="font-size:14px;margin:18px 0 8px">Ce qu'il établit</h3>${produit}${ajoutProduit}
+  $("axe-corps").innerHTML = `
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px">Contrats f♯ — ${e(k.nom || k.id)}
+      <span class="mot">${change
+        ? `— ${versions[k.id] ? "v" + e(versions[k.id]) + " au sceau ♯" : "modifié ♯"}`
+        : "— inchangé"}</span></h2>
+    <p class="mot" style="margin:0 0 10px">Ce qu'il exige — chaque demande à côté de ce que l'amont promet réellement.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">${herite}</div>${ajoutHerite}
+    <p class="mot" style="margin:18px 0 10px">Ce qu'il garantit — le statut minimal que l'aval peut exiger.</p>
+    <div style="display:flex;flex-direction:column;gap:8px">${produit}</div>${ajoutProduit}
     <p class="diff-val" id="contrat-dit"></p>
     <p class="regle-f">La règle du f♯ : <strong>une exigence de l'aval ne peut jamais dépasser
-      la garantie la plus forte de l'amont</strong> (${def.statuts_champ.map(e).join(" &gt; ")}).
+      la garantie la plus forte de l'amont</strong> (${def.statuts_champ.map(x => e(humain(x))).join(" &gt; ")}).
       Elle se vérifie à chaque retouche ; ses violations sont ce que l'épreuve remonte.</p>`;
 
-  $("axe-corps").querySelectorAll("button[data-kata]").forEach(b => {
-    b.onclick = () => { kataChoisi = b.dataset.kata; rendreDesign(); };
-  });
   $("axe-corps").querySelectorAll("select[data-min]").forEach(s => {
     s.onchange = () => { k.herite[Number(s.dataset.min)].minimum = s.value; retouche(); };
   });
@@ -2154,6 +2305,22 @@ function rendreContrats() {
   });
   $("axe-corps").querySelectorAll("button[data-ret-prod]").forEach(b => {
     b.onclick = () => { k.produit.splice(Number(b.dataset.retProd), 1); retouche(); };
+  });
+  // Les deux issues d'une ligne cassée, sur la ligne : abaisser l'exigence à
+  // ce que l'amont promet, ou relever la garantie de l'amont — un f♯ chez lui.
+  $("axe-corps").querySelectorAll("button[data-abaisser]").forEach(b => {
+    b.onclick = () => {
+      const h = k.herite[Number(b.dataset.abaisser)], promesse = garanties()[h.champ];
+      if (promesse) { h.minimum = promesse.statut; retouche(); }
+    };
+  });
+  $("axe-corps").querySelectorAll("button[data-relever]").forEach(b => {
+    b.onclick = () => {
+      const h = k.herite[Number(b.dataset.relever)], promesse = garanties()[h.champ];
+      const amont = promesse && brouillon.kata.find(x => x.id === promesse.par);
+      const p = amont && amont.produit.find(x => x.champ === h.champ);
+      if (p) { p.statut = h.minimum || def.statuts_champ[0]; retouche(); }
+    };
   });
   if ($("herite-ajouter")) $("herite-ajouter").onclick = () => {
     const champ = $("herite-neuf").value;
@@ -2181,17 +2348,26 @@ function rendreContrats() {
 }
 
 // --- axe 3 · la trempe : jamais un f♯ ---------------------------------------
-function rendreTrempe() {
+function rendreTrempe(k) {
   const tr = brouillon.trempe;
+  const defaut = tr.justesse?.defaut ?? 0;
   $("axe-corps").innerHTML = `
-    <h3 style="font-size:14px;margin:0 0 8px">Vocabulaire interdit</h3>
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 16px">Trempe — ${e(k.nom || k.id)}</h2>
+    <h3 class="mono" style="font-size:13px;margin:0 0 4px">justesse — seuil de ce kata</h3>
+    <p class="mot" style="margin:0 0 10px">Vide : le défaut (${e(defaut)}) s'applique. Un seuil est une promesse sur le harness, jamais une note sur un sujet.</p>
+    <input class="champ-pilule mono" type="number" step="0.05" min="0" max="1" style="width:7rem;text-align:left"
+           data-seuil="${e(k.id)}" aria-label="seuil de justesse" value="${(tr.justesse?.par_kata || {})[k.id] ?? ""}" placeholder="${e(defaut)}">
+    <span class="mot" style="margin-left:10px">défaut du harness :</span>
+    <input class="champ-pilule mono" style="width:5rem;background:var(--color-accent-100);text-align:left" id="just-defaut" value="${e(defaut)}" aria-label="seuil par défaut">
+
+    <h3 style="font-size:14px;margin:22px 0 8px">Vocabulaire interdit <span class="mot">— commun à toute la chaîne</span></h3>
     <div id="mots">${tr.vocabulaire_interdit.map((m, i) =>
       `<span class="puce-mot">${e(m)}<button data-mot="${i}" title="retirer">×</button></span>`).join("")
       || `<span class="rien">Aucun mot banni.</span>`}</div>
     <input class="champ-pilule" id="mot-neuf" style="width:auto;margin-top:10px;text-align:left"
            placeholder="ajouter un mot…">
 
-    <h3 style="font-size:14px;margin:22px 0 8px">Checks de session</h3>
+    <h3 style="font-size:14px;margin:22px 0 8px">Checks de session <span class="mot">— communs à toute la chaîne</span></h3>
     ${tr.checks_session.length ? tr.checks_session.map((c, i) => `<div class="ligne-f">
         <span class="mono">${e(c.id || "?")}</span>
         <span class="mot">${e(c.type || "")}${c.motif ? ` · ${e(c.motif)}` : ""}${
@@ -2237,20 +2413,6 @@ function rendreTrempe() {
     </div>
     <p class="diff-val" id="crit-dit"></p>
 
-    <h3 style="font-size:14px;margin:22px 0 8px">Seuils de justesse</h3>
-    <div class="ligne-f">
-      <span class="mot">défaut</span>
-      <input class="champ-pilule" style="width:5rem;background:var(--color-accent-100)"
-             id="just-defaut" value="${tr.justesse?.defaut ?? 0}">
-      <span style="flex:1"></span>
-      <span class="mot">un seuil vide reprend le défaut</span>
-    </div>
-    ${brouillon.kata.map(k => `<div class="ligne-f">
-        <span class="mono">${e(k.id)}</span>
-        <input class="champ-pilule" style="width:5rem" data-seuil="${e(k.id)}"
-               value="${(tr.justesse?.par_kata || {})[k.id] ?? ""}"
-               placeholder="${tr.justesse?.defaut ?? 0}">
-      </div>`).join("")}
     <p class="regle-f">La trempe dit comment on éprouve ce harness. Elle ne touche jamais un
       contrat : la modifier ne fait pas passer un kata en version majeure.</p>`;
 
@@ -2334,71 +2496,73 @@ const lignes = (liste) => (liste || []).join("\n");
 const depuisLignes = (texte) => texte.split("\n").map(l => l.trim()).filter(Boolean);
 function retoucheCoupe() { coupeRendue = null; coupeDit = ""; retouche(); }
 
-function rendreCoupes() {
+function rendreCoupes(k) {
   const exogene = def.harness.exogene;
-  const k = brouillon.kata.find(x => x.id === kataChoisi) || brouillon.kata[0];
-  if (k && k.id !== kataChoisi) kataChoisi = k.id;
-  const densho = k ? (brouillon.source[k.id] || {}) : {};
-  const variables = def.template ? def.template.variables : [];
-
-  const choixKata = `<select class="select-pilule" id="coupe-kata">${brouillon.kata.map(x =>
-    `<option value="${e(x.id)}" ${x.id === kataChoisi ? "selected" : ""}>${e(x.nom)}</option>`).join("")}</select>`;
+  const densho = brouillon.source[k.id] || {};
   const zone = (cle, libelle, aide, rows = 3) => `
-    <label class="mot" for="densho-${cle}">${libelle}${aide ? ` — <span class="rien">${aide}</span>` : ""}</label>
-    <textarea class="champ-large mono" id="densho-${cle}" data-densho="${cle}" rows="${rows}"
-      style="margin:4px 0 12px">${e(DENSHO_LISTES.includes(cle) ? lignes(densho[cle]) : (densho[cle] ?? ""))}</textarea>`;
+    <div>
+      <label class="mot" for="densho-${cle}" style="font-weight:600;color:var(--color-neutral-800)">${libelle}${aide ? ` <span class="rien">— ${aide}</span>` : ""}</label>
+      <textarea class="densho-zone" id="densho-${cle}" data-densho="${cle}" rows="${rows}" style="margin-top:5px"
+        placeholder="${cle === "passage" ? "À quelle condition ce nœud passe-t-il ?" : ""}">${e(DENSHO_LISTES.includes(cle) ? lignes(densho[cle]) : (densho[cle] ?? ""))}</textarea>
+    </div>`;
+  const incomplet = !exogene && marquesDe(k).densho;
+  const manque = ["role", "questions", "livrable_structure", "passage"].filter(c =>
+    DENSHO_LISTES.includes(c) ? !(densho[c] || []).length : !(densho[c] || "").trim());
 
   const gauche = exogene ? `
-    <h3 style="font-size:14px;margin:0 0 8px">Le texte de l'étape</h3>
     <p class="rien">Un harness adopté n'a ni gabarit ni densho : ses étapes sont des textes
       servis tels quels. Ils se lisent ici ; les éditer est le geste du RFC-011.</p>
-    ${choixKata}
     <pre class="hds" id="densho-texte" style="margin-top:10px">${e(densho.texte || "")}</pre>`
-  : `
-    <h3 style="font-size:14px;margin:0 0 4px">Le gabarit du harness</h3>
-    <p class="rien" style="margin:0 0 8px">La doctrine commune à toute la chaîne. Ses variables
-      — ${variables.length ? variables.map(v => `<code>{{ ${e(v)} }}</code>`).join(", ") : "aucune"} —
-      sont remplies par le densho de chaque kata à la forge.</p>
-    <textarea class="champ-large mono" id="gabarit-texte" rows="14">${e(brouillon.template ?? "")}</textarea>
-
-    <h3 style="font-size:14px;margin:22px 0 8px">Le densho du kata ${choixKata}</h3>
-    ${k ? zone("role", "Rôle", "obligatoire", 4)
-      + zone("questions", "Questions", "une par ligne, obligatoire", 5)
-      + zone("interdits", "Interdits", "un par ligne", 3)
-      + `<label class="mot" for="densho-livrable_nom">Nom du livrable — <span class="rien">sinon celui du manifest</span></label>
-         <input class="champ-large" id="densho-livrable_nom" data-densho="livrable_nom"
-                value="${e(densho.livrable_nom ?? "")}" style="margin:4px 0 12px" autocomplete="off">`
-      + zone("livrable_structure", "Structure du livrable", "une ligne par point, obligatoire", 4)
-      + zone("passage", "Passage", "obligatoire", 3)
-      + zone("natures", "Natures de problème", "une par ligne — RFC-003", 3)
-      : `<p class="rien">Aucun kata.</p>`}`;
+  : `<div style="display:flex;flex-direction:column;gap:16px">
+      ${zone("role", "Rôle", "obligatoire", 4)}
+      ${zone("questions", "Questions", "une par ligne, obligatoire", 5)}
+      ${zone("livrable_structure", "Structure du livrable", "une ligne par point, obligatoire", 4)}
+      ${zone("passage", "Passage", "obligatoire", 3)}
+      ${zone("interdits", "Interdits", "un par ligne", 3)}
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+        <div>
+          <label class="mot" for="densho-livrable_nom" style="font-weight:600;color:var(--color-neutral-800)">Nom du livrable <span class="rien">— sinon celui du manifest</span></label>
+          <input class="champ-large" id="densho-livrable_nom" data-densho="livrable_nom" value="${e(densho.livrable_nom ?? "")}" style="margin-top:5px" autocomplete="off">
+        </div>
+        ${zone("natures", "Natures de problème", "une par ligne — RFC-003", 3)}
+      </div>
+    </div>`;
 
   const cibles = def.cibles || [];
   const droite = `
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <h3 style="font-size:14px;margin:0">La coupe</h3>
-      ${cibles.map(c => `<button class="bascule ${c.id === cibleChoisie ? "exige" : "inactif"}"
-        data-cible="${e(c.id)}">${e(c.id)}${c.etat_structure ? " · état" : ""}</button>`).join("")}
-      <span style="flex:1"></span>
-      <button class="btn-plein" id="coupe-voir">voir la coupe</button>
-    </div>
-    <p class="rien" style="margin:6px 0 10px">Ce que le chat recevrait pour
-      <span class="mono">${e(kataChoisi || "?")}@${e(cibleChoisie || "?")}</span>, forgé depuis le
-      brouillon — rien n'est écrit tant qu'on ne scelle pas.</p>
-    ${coupeRendue ? `
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
-        <span class="diff-val">kata ${e(coupeRendue.estampille.version_kata)} ·
-          coupe ${e(coupeRendue.estampille.version_coupe)}</span>
+    <div class="apercu-coupe">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span class="tag tag-neutral" style="font-size:10.5px">coupe rendue</span>
+        ${cibles.map(c => `<button class="bascule ${c.id === cibleChoisie ? "exige" : "inactif"}"
+          data-cible="${e(c.id)}">${e(c.id)}${c.etat_structure ? " · état" : ""}</button>`).join("")}
         <span style="flex:1"></span>
-        <button class="btn-fantome" id="coupe-copier">copier</button>
-        <button class="btn-fantome" id="coupe-telecharger">télécharger</button>
+        <button class="btn-plein" id="coupe-voir">voir la coupe</button>
       </div>
-      <pre class="hds" id="coupe-texte">${e(coupeRendue.texte)}</pre>`
-    : `<p class="rien" id="coupe-texte">${e(coupeDit || "Pas encore rendue — « voir la coupe ».")}</p>`}`;
+      <h3 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:18px;margin:12px 0 8px">${e(k.nom || k.id)}</h3>
+      <p class="rien" style="margin:0 0 10px">Ce que le chat recevrait pour
+        <span class="mono">${e(k.id)}@${e(cibleChoisie || "?")}</span>, forgé depuis le brouillon —
+        rien n'est écrit tant qu'on ne scelle pas.</p>
+      ${coupeRendue ? `
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+          <span class="diff-val">kata ${e(coupeRendue.estampille.version_kata)} ·
+            coupe ${e(coupeRendue.estampille.version_coupe)}</span>
+          <span style="flex:1"></span>
+          <button class="btn-fantome" id="coupe-copier">copier</button>
+          <button class="btn-fantome" id="coupe-telecharger">télécharger</button>
+        </div>
+        <pre class="hds" id="coupe-texte" style="max-height:60vh;overflow:auto">${e(coupeRendue.texte)}</pre>`
+      : `<p class="rien" id="coupe-texte">${e(coupeDit || "Pas encore rendue — « voir la coupe ».")}</p>`}
+      ${incomplet ? `<p class="mot" style="margin:14px 0 0;border-top:1.5px dashed var(--color-neutral-500);padding-top:10px">
+        Densho incomplet : ${manque.map(c => `« ${c.replace("_", " ")} »`).join(", ")} vide — la coupe ne peut pas être forgée en entier.</p>` : ""}
+    </div>`;
 
-  $("axe-corps").innerHTML = `<div class="deux-colonnes"><div>${gauche}</div><div>${droite}</div></div>`;
+  $("axe-corps").innerHTML = `
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px">Coupes — le densho de « ${e(k.nom || k.id)} »</h2>
+    <p class="mot" style="margin:0 0 16px;max-width:76ch">Le seul endroit du produit où l'on écrit longuement :
+      pleine largeur, hauteur libre, l'aperçu de la coupe rendue à côté. Les adjonctions — ce que le
+      kata hérite, ce qu'il produit — entrent à la forge depuis l'axe Contrats et se lisent dans la coupe.</p>
+    <div class="densho-grille"><div>${gauche}</div><div>${droite}</div></div>`;
 
-  $("coupe-kata").onchange = (ev) => { kataChoisi = ev.target.value; coupeRendue = null; rendreDesign(); };
   $("axe-corps").querySelectorAll("button[data-cible]").forEach(b => {
     b.onclick = () => { cibleChoisie = b.dataset.cible; coupeRendue = null; rendreDesign(); };
   });
@@ -2408,15 +2572,14 @@ function rendreCoupes() {
     $("coupe-telecharger").onclick = () => {
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([coupeRendue.texte], { type: "text/markdown" }));
-      a.download = `${def.harness.id}-${kataChoisi}@${cibleChoisie}.md`;
+      a.download = `${def.harness.id}-${k.id}@${cibleChoisie}.md`;
       a.click(); URL.revokeObjectURL(a.href);
     };
   }
   if (exogene) return;
-  $("gabarit-texte").onchange = (ev) => { brouillon.template = ev.target.value; retoucheCoupe(); };
   $("axe-corps").querySelectorAll("[data-densho]").forEach(x => {
     x.onchange = () => {
-      const cle = x.dataset.densho, src = brouillon.source[kataChoisi] = brouillon.source[kataChoisi] || {};
+      const cle = x.dataset.densho, src = brouillon.source[k.id] = brouillon.source[k.id] || {};
       if (DENSHO_LISTES.includes(cle)) src[cle] = depuisLignes(x.value);
       else src[cle] = x.value;
       retoucheCoupe();
