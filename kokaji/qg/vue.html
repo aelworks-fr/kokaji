@@ -11,10 +11,20 @@
      classe portant un `display` l'écrase silencieusement. C'est arrivé — les
      trois modules et le dialogue de scellement s'affichaient tous à la fois. */
   [hidden] { display: none !important; }
+  /* Contrastes (K-14) : le texte d'un tag « outline » était en accent pur —
+     3 : 1 sur crème. Le texte passe en accent-700 (5,7 : 1), la bordure
+     garde sa teinte. Les gris secondaires de la page sont en neutral-700
+     (5,5 : 1), et aucun texte ne descend sous 12,5 px. La vigie le mesure. */
+  .tag { font-size: 12px; }
+  .tag-outline { color: var(--color-accent-700); }
+  /* Feedback de navigation (K-17) : une vue qui arrive s'annonce d'un
+     fondu léger — et pas du tout pour qui a demandé moins de mouvement. */
+  .contenu > section:not([hidden]) { animation: apparait .18s ease-out; }
+  @keyframes apparait { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
   /* Le lien d'évitement (K-20) : invisible jusqu'au premier Tab, puis posé
      au-dessus de tout pour qu'un clavier saute la barre. */
   .evitement { position: absolute; left: 12px; top: -48px; z-index: 30; padding: 8px 14px;
-               border-radius: 999px; background: var(--color-accent-500); color: var(--color-neutral-100);
+               border-radius: 999px; background: var(--color-neutral-900); color: var(--color-bg);
                font-size: 13px; text-decoration: none; }
   .evitement:focus { top: 12px; }
   /* L'en-tête du QG se replie (K-02) : « pratiquer » — l'action principale —
@@ -55,8 +65,8 @@
      qu'ils montrent tous les trois. Changer de harness change la page entière,
      pas une section : sa place est dans la coque, pas dans un module. */
   .flanc-harness { padding: 0 12px 16px; display: flex; flex-direction: column; gap: 6px; }
-  .flanc-harness label { font-size: 11px; text-transform: uppercase; letter-spacing: .06em;
-                         color: var(--color-neutral-500); }
+  .flanc-harness label { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em;
+                         color: var(--color-neutral-700); }
   .flanc-harness select { width: 100%; font: inherit; font-size: 13.5px; padding: 7px 10px;
                           border-radius: 10px; border: 1px solid var(--color-neutral-300);
                           background: var(--color-bg); color: var(--color-text); }
@@ -100,7 +110,7 @@
   .depense { display: flex; flex-wrap: wrap; gap: 22px; margin-top: 12px; }
   .depense-chiffre { display: flex; flex-direction: column; gap: 3px; }
   .depense-val { font-family: var(--font-heading); font-size: 22px; line-height: 1; }
-  .depense-mot { font-size: 11.5px; color: var(--color-neutral-600); }
+  .depense-mot { font-size: 12.5px; color: var(--color-neutral-700); }
   .depense-kata { margin-top: 16px; font-size: 13px; }
 
   /* 1 · le module Profil */
@@ -112,26 +122,26 @@
             font-weight: var(--font-heading-weight); font-size: 24px; color: var(--color-accent-2-900); }
   .profil-nom { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
                 font-size: 30px; margin: 0; line-height: 1.15; }
-  .profil-meta { font-size: 13px; color: var(--color-neutral-600); margin: 4px 0 0; }
+  .profil-meta { font-size: 13px; color: var(--color-neutral-700); margin: 4px 0 0; }
   .profil h2 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
                font-size: 20px; margin: 0; }
-  .profil-sous { font-size: 12px; color: var(--color-neutral-600); margin: 6px 0 12px; }
+  .profil-sous { font-size: 12px; color: var(--color-neutral-700); margin: 6px 0 12px; }
   .rangee { display: flex; align-items: center; gap: 14px; padding: 16px 20px;
             border-radius: var(--radius-lg); background: var(--color-neutral-100);
             box-shadow: var(--shadow-sm); margin-bottom: 10px; }
   .rangee-nom { font-size: 14.5px; font-weight: 600; }
-  .rangee-meta { font-size: 12px; color: var(--color-neutral-500); margin-top: 2px; }
+  .rangee-meta { font-size: 12px; color: var(--color-neutral-700); margin-top: 2px; }
   .rangee-espace { flex: 1; }
-  .rangee-version { font-weight: 400; color: var(--color-neutral-500); }
+  .rangee-version { font-weight: 400; color: var(--color-neutral-700); }
   .btn-fantome { border-radius: 999px; padding: 7px 14px; font: inherit; font-size: 12px;
                  background: transparent; border: 1px solid var(--color-neutral-300);
                  color: var(--color-neutral-700); cursor: pointer; }
   .btn-fantome:hover { background: var(--color-neutral-200); }
   .btn-fantome[disabled] { opacity: .45; cursor: not-allowed; }
   .btn-plein { border-radius: 999px; padding: 8px 18px; font: inherit; font-size: 13px;
-               background: var(--color-accent-500); border: 1px solid var(--color-accent-600);
+               background: var(--color-accent-700); border: 1px solid var(--color-accent-800);
                color: var(--color-neutral-100); cursor: pointer; }
-  .btn-plein:hover { background: var(--color-accent-600); }
+  .btn-plein:hover { background: var(--color-accent-800); }
   .btn-plein[disabled] { opacity: .45; cursor: not-allowed; }
 
   /* 3 · le design du harness — la seule surface d'écriture du produit.
@@ -142,18 +152,18 @@
   .design { max-width: 1180px; padding: 32px 40px 72px; display: flex;
             flex-direction: column; gap: 18px; }
   .design-tete { display: flex; align-items: flex-start; gap: 16px; }
-  .design-sous { font-size: 13px; color: var(--color-neutral-600); margin: 6px 0 0; }
+  .design-sous { font-size: 13px; color: var(--color-neutral-700); margin: 6px 0 0; }
   .verdict { padding: 20px 24px; }
   .verdict-rang { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .pastille { border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600;
               white-space: nowrap; flex: none; }
-  .pastille.rien { background: var(--color-neutral-200); color: var(--color-neutral-600); }
+  .pastille.rien { background: var(--color-neutral-200); color: var(--color-neutral-700); }
   .pastille.nonepr { background: transparent; color: var(--color-neutral-700);
                      border: 1.5px dashed var(--color-neutral-400); }
   .pastille.casse { background: var(--color-neutral-900); color: var(--color-neutral-100); }
   .pastille.tient { background: var(--color-accent-200); color: var(--color-accent-900); }
-  .verdict-detail { font-size: 12.5px; color: var(--color-neutral-600); margin: 8px 0 0; }
-  .verdict-note { font-size: 11.5px; color: var(--color-neutral-500); margin: 10px 0 0; }
+  .verdict-detail { font-size: 12.5px; color: var(--color-neutral-700); margin: 8px 0 0; }
+  .verdict-note { font-size: 12.5px; color: var(--color-neutral-700); margin: 10px 0 0; }
   .anomalie { border: 1.5px solid var(--color-neutral-900); border-radius: var(--radius-md);
               padding: 12px 16px; margin-top: 10px; background: var(--color-neutral-100); }
   .anomalie-ou { font-family: ui-monospace, monospace; font-size: 12px; font-weight: 600; }
@@ -169,12 +179,12 @@
                               font-weight: 600; }
   .badge-encre { display: inline-grid; place-items: center; min-width: 18px; height: 18px;
                  border-radius: 999px; background: var(--color-neutral-900);
-                 color: var(--color-neutral-100); font-size: 11px; font-weight: 700;
+                 color: var(--color-neutral-100); font-size: 12.5px; font-weight: 700;
                  margin-left: 8px; padding: 0 5px; }
 
   .noeud-def { width: 52px; height: 52px; border-radius: 999px;
                border: 2px solid var(--color-neutral-300); background: var(--color-neutral-100);
-               display: grid; place-items: center; font-size: 11px; color: var(--color-neutral-600); }
+               display: grid; place-items: center; font-size: 12.5px; color: var(--color-neutral-700); }
   .noeud-def.jalon { border-radius: var(--radius-md); }
   .noeud-def.externe { border-style: dashed; }
   .champ-pilule { border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px;
@@ -197,8 +207,8 @@
   .colonne-g[aria-current="true"] .nom-noeud { font-weight: 700; }
   .marques-g { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
   .tag-tirete { background: var(--color-neutral-100); color: var(--color-neutral-800);
-                border: 1.5px dashed var(--color-neutral-500); font-size: 10px; }
-  .tag-doux { background: var(--color-neutral-200); color: var(--color-neutral-700); font-size: 10px; }
+                border: 1.5px dashed var(--color-neutral-500); font-size: 12.5px; }
+  .tag-doux { background: var(--color-neutral-200); color: var(--color-neutral-700); font-size: 12.5px; }
   .lien-g { display: flex; align-items: center; margin-top: 22px; flex: 1; min-width: 48px; }
   .lien-g .trait { flex: 1; min-width: 4px; height: 3px; border-radius: 2px; background: var(--color-neutral-300); }
   .gabarit-pli { padding: 14px 24px; }
@@ -228,11 +238,11 @@
   .jeton-kata .forme.jalon { border-radius: var(--radius-md); }
   .jeton-kata[aria-current="page"] .forme { outline: 2px solid var(--color-neutral-900);
                                             outline-offset: 3px; }
-  .jeton-kata .id { font-family: ui-monospace, monospace; font-size: 11px;
+  .jeton-kata .id { font-family: ui-monospace, monospace; font-size: 12.5px;
                     color: var(--color-neutral-700); }
   .marque-encre { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px;
                   border-radius: 999px; background: var(--color-neutral-900);
-                  color: var(--color-neutral-100); font-size: 10.5px; font-weight: 700;
+                  color: var(--color-neutral-100); font-size: 12.5px; font-weight: 700;
                   display: grid; place-items: center; padding: 0 4px; }
 
   .ligne-f { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -240,20 +250,20 @@
              background: var(--color-neutral-200); font-size: 13px; }
   .ligne-f.rompue { background: var(--color-accent-100); }
   .mono { font-family: ui-monospace, monospace; font-size: 12.5px; }
-  .mot { color: var(--color-neutral-600); font-size: 12px; }
+  .mot { color: var(--color-neutral-700); font-size: 12px; }
   .chip-ok { background: var(--color-accent-200); color: var(--color-accent-900); }
   .chip-encre { background: var(--color-neutral-900); color: var(--color-neutral-100); }
   .select-pilule { border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px;
                    background: var(--color-neutral-100); border: 1px solid var(--color-neutral-300);
                    color: var(--color-text); }
-  .regle-f { font-size: 12px; color: var(--color-neutral-600); margin: 14px 0 0;
+  .regle-f { font-size: 12px; color: var(--color-neutral-700); margin: 14px 0 0;
              padding-top: 10px; border-top: 1px solid var(--color-neutral-200); }
 
   .puce-mot { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px;
               padding: 5px 12px; background: var(--color-neutral-200); font-size: 12px;
               font-family: ui-monospace, monospace; margin: 0 6px 6px 0; }
   .puce-mot button { border: none; background: none; cursor: pointer; font: inherit;
-                     color: var(--color-neutral-600); padding: 0; }
+                     color: var(--color-neutral-700); padding: 0; }
   .bascule { border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 12px;
              border: none; cursor: pointer; }
   .bascule.exige { background: var(--color-accent-200); color: var(--color-accent-900); }
@@ -263,8 +273,8 @@
                 border-radius: var(--radius-md); margin-bottom: 6px; }
   .diff-ligne.contrat { background: var(--color-accent-100); }
   .diff-ou { font-family: ui-monospace, monospace; font-size: 12.5px; font-weight: 600; }
-  .diff-val { font-family: ui-monospace, monospace; font-size: 11.5px;
-              color: var(--color-neutral-600); overflow-wrap: anywhere; }
+  .diff-val { font-family: ui-monospace, monospace; font-size: 12.5px;
+              color: var(--color-neutral-700); overflow-wrap: anywhere; }
   .chip-diese { border: 1.5px solid var(--color-neutral-900); color: var(--color-neutral-900);
                 background: transparent; }
   pre.hds { background: var(--color-neutral-200); border-radius: var(--radius-md); padding: 14px;
@@ -282,6 +292,16 @@
               box-shadow: var(--shadow-lg); max-width: 560px; width: 100%; padding: 28px; }
   /* La zone d'archivage (RFC-013 D13.2) : isolée des gestes courants par sa
      bordure, son titre à l'encre — la troisième voix, jamais du rouge. */
+  /* L'aide contextuelle (K-15) : un « ? » discret par bloc, qui mène au
+     lexique de Découvrir avec l'entrée surlignée. */
+  .aide { width: 26px; height: 26px; border-radius: 999px; border: 1px solid var(--color-neutral-400);
+          background: var(--color-neutral-100); color: var(--color-neutral-800); cursor: pointer;
+          font: inherit; font-size: 13px; font-weight: 700; padding: 0; text-decoration: none;
+          display: inline-grid; place-items: center; flex: none; }
+  .aide:hover { background: var(--color-neutral-200); }
+  #lexique dt.surligne, #lexique dt.surligne + dd { background: var(--color-accent-100); }
+  #lexique dt.surligne { border-radius: var(--radius-md) var(--radius-md) 0 0; padding: 6px 10px 0; margin: 0 -10px; }
+  #lexique dt.surligne + dd { border-radius: 0 0 var(--radius-md) var(--radius-md); padding: 0 10px 8px; margin-left: -10px; margin-right: -10px; }
   .zone-isolee { margin-top: 18px; padding: 16px 18px; border-radius: var(--radius-md);
                  border: 1.5px solid var(--color-neutral-400); display: flex; flex-direction: column; gap: 8px; }
   .zone-isolee-titre { font-size: 13px; font-weight: 700; color: var(--color-neutral-900); }
@@ -302,7 +322,7 @@
   /* 2 · en-tête du sujet */
   .sujet-titre { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
                  font-size: 34px; margin: var(--space-6) 0 var(--space-1); line-height: 1.15; }
-  .sujet-meta { font-size: 13px; color: var(--color-neutral-600); margin: 0 0 var(--space-2); }
+  .sujet-meta { font-size: 13px; color: var(--color-neutral-700); margin: 0 0 var(--space-2); }
   .sujet-ligne { font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; margin: 0; }
   .avis { border-left: 3px solid var(--color-neutral-500); background: var(--color-neutral-100);
           padding: var(--space-2) var(--space-3); margin: var(--space-3) 0; font-size: 13px;
@@ -337,13 +357,13 @@
   .badge-options { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 18px;
                    border-radius: 999px; background: var(--color-accent-2-200);
                    border: 1.5px solid var(--color-accent-2-500); color: var(--color-accent-2-900);
-                   font-size: 11.5px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
+                   font-size: 12.5px; font-weight: 700; display: grid; place-items: center; padding: 0 4px; }
   .marque-refut { position: absolute; bottom: -5px; right: -5px; width: 16px; height: 16px;
                   transform: rotate(45deg); background: var(--color-neutral-100);
                   border: 2px solid var(--color-neutral-800); }
   .nom-noeud { font-size: 13px; font-weight: 600; margin-top: var(--space-2); text-align: center; }
-  .type-noeud { font-size: 11px; color: var(--color-neutral-600); }
-  .fraicheur { font-size: 11px; color: var(--color-neutral-500); }
+  .type-noeud { font-size: 12.5px; color: var(--color-neutral-700); }
+  .fraicheur { font-size: 12.5px; color: var(--color-neutral-700); }
   .fraicheur.ancienne { font-style: italic; }
 
   .legende { border-top: 1px solid var(--color-neutral-200); margin-top: var(--space-4);
@@ -367,19 +387,19 @@
   .dossier-tete { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; }
   .dossier-tete h2 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
                      font-size: 22px; margin: 0; }
-  .etape { font-size: 12px; color: var(--color-neutral-600); }
+  .etape { font-size: 12px; color: var(--color-neutral-700); }
   .deux-colonnes { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: var(--space-4); }
   @media (max-width: 800px) { .deux-colonnes { grid-template-columns: 1fr; } }
-  .titre-bloc { font-size: 11px; text-transform: uppercase; letter-spacing: .08em;
-                color: var(--color-neutral-600); font-weight: 700; margin: 0 0 var(--space-2); }
+  .titre-bloc { font-size: 12.5px; text-transform: uppercase; letter-spacing: .08em;
+                color: var(--color-neutral-700); font-weight: 700; margin: 0 0 var(--space-2); }
   .ligne-champ { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
                  padding: 6px 0; border-bottom: 1px solid var(--color-neutral-200); font-size: 14px; }
-  .conf { font-size: 11px; color: var(--color-neutral-500); }
-  .refutee { text-decoration: line-through; color: var(--color-neutral-600); }
+  .conf { font-size: 12.5px; color: var(--color-neutral-700); }
+  .refutee { text-decoration: line-through; color: var(--color-neutral-700); }
   .tag-etabli { background: var(--color-accent-200); color: var(--color-accent-900); }
   .tag-hypothese { background: var(--color-neutral-100); color: var(--color-neutral-700);
                    border: 1.5px dashed var(--color-neutral-400); }
-  .tag-pause { background: var(--color-neutral-200); color: var(--color-neutral-600); }
+  .tag-pause { background: var(--color-neutral-200); color: var(--color-neutral-700); }
   .tag-refutee { background: var(--color-neutral-100); color: var(--color-neutral-800);
                  border: 2px solid var(--color-neutral-800); }
 
@@ -387,19 +407,19 @@
             padding: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
   .seance-tete { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
   .seance-titre { font-size: 13px; font-weight: 600; }
-  .seance-meta { font-size: 11.5px; color: var(--color-neutral-500); }
-  .lire { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--color-accent-700);
+  .seance-meta { font-size: 12.5px; color: var(--color-neutral-700); }
+  .lire { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--color-accent-700);
           background: none; border: none; cursor: pointer; font-family: inherit; }
   .transcript { max-height: 320px; overflow-y: auto; margin-top: var(--space-2);
                 border-top: 1px solid var(--color-neutral-300); padding-top: var(--space-2); }
   .tour { display: flex; gap: var(--space-2); margin-bottom: var(--space-2); }
-  .role { flex: 0 0 52px; font-size: 10.5px; text-transform: uppercase; font-weight: 700; padding-top: 2px; }
+  .role { flex: 0 0 52px; font-size: 12.5px; text-transform: uppercase; font-weight: 700; padding-top: 2px; }
   .role.kata { color: var(--color-accent-700); }
   .role.humain { color: var(--color-accent-2-800); }
   .dit { font-size: 13px; line-height: 1.5; color: var(--color-neutral-800); white-space: pre-wrap; }
-  .pied-transcript { font-size: 11px; color: var(--color-neutral-500);
+  .pied-transcript { font-size: 12.5px; color: var(--color-neutral-700);
                      border-top: 1px solid var(--color-neutral-300); padding-top: 6px; margin-top: 6px; }
-  .provenance { font-size: 12px; color: var(--color-neutral-500);
+  .provenance { font-size: 12px; color: var(--color-neutral-700);
                 border-top: 1px solid var(--color-neutral-200); padding-top: var(--space-2);
                 margin-top: var(--space-4); }
   .vierge-dit { font-size: 14px; color: var(--color-neutral-700); max-width: 64ch; }
@@ -479,6 +499,23 @@
     .dit { min-width: 0; }
   }
 
+  /* Les cartes de coût (K-16) : sous 480 px, le nom du kata, puis une ligne
+     de chiffres, puis le compteur de carrés — au lieu d'une grille à trois
+     colonnes qui tient jusqu'à ce qu'elle ne tienne plus. */
+  @media (max-width: 480px) {
+    .depense-kata .rangee { flex-direction: column; align-items: flex-start; gap: 6px; }
+    .depense-kata .rangee-espace { display: none; }
+    .depense-kata .rangee .mono { white-space: nowrap; }
+    .depense { gap: 14px; }
+  }
+
+  /* Feedback de navigation (K-17) : rien ne bouge pour qui a demandé moins
+     de mouvement. */
+  @media (prefers-reduced-motion: reduce) {
+    .contenu > section:not([hidden]) { animation: none; }
+    .gabarit-titre .chevron { transition: none; }
+  }
+
   /* Les très grands écrans. Centrer la colonne a supprimé le vide à droite ;
      il restait une colonne de bureau posée au milieu d'un mur. Ce qui gagne à
      s'élargir, ce sont les surfaces **tabulaires** — la chaîne du QG et ses
@@ -501,7 +538,7 @@
   .mono, .diff-val, .anomalie-ou { overflow-wrap: anywhere; }
   .bas h2 { font-family: var(--font-heading); font-weight: var(--font-heading-weight);
             font-size: 20px; margin: 0 0 var(--space-1); }
-  .sous-ligne { font-size: 12px; color: var(--color-neutral-600); margin: 0 0 var(--space-3); }
+  .sous-ligne { font-size: 12px; color: var(--color-neutral-700); margin: 0 0 var(--space-3); }
   .option { display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md);
             padding: var(--space-2) var(--space-3); margin-bottom: 6px; }
   .option.ouverte { background: var(--color-accent-2-100); }
@@ -512,8 +549,8 @@
   .point.ecartee { background: var(--color-neutral-400); }
   .option-corps { flex: 1; min-width: 0; }
   .option-libelle { font-size: 13.5px; }
-  .option.ecartee .option-libelle { text-decoration: line-through; color: var(--color-neutral-500); }
-  .option-meta { font-size: 11.5px; color: var(--color-neutral-500); }
+  .option.ecartee .option-libelle { text-decoration: line-through; color: var(--color-neutral-700); }
+  .option-meta { font-size: 12.5px; color: var(--color-neutral-700); }
 
   .decision { display: flex; gap: var(--space-3); }
   .chrono { flex: 0 0 12px; display: flex; flex-direction: column; align-items: center; }
@@ -521,11 +558,11 @@
   .chrono .fil-vertical { width: 2px; flex: 1; background: var(--color-neutral-200); min-height: 18px; }
   .decision-corps { padding-bottom: var(--space-4); }
   .decision-libelle { font-size: 14px; font-weight: 600; }
-  .decision-meta { font-size: 11.5px; color: var(--color-neutral-500); margin-bottom: 6px; }
+  .decision-meta { font-size: 12.5px; color: var(--color-neutral-700); margin-bottom: 6px; }
   .puces { display: flex; flex-wrap: wrap; gap: 6px; }
-  .puce-fermee { background: var(--color-neutral-200); color: var(--color-neutral-600);
+  .puce-fermee { background: var(--color-neutral-200); color: var(--color-neutral-700);
                  text-decoration: line-through; }
-  .rien { font-size: 13.5px; color: var(--color-neutral-600); max-width: 52ch; }
+  .rien { font-size: 13.5px; color: var(--color-neutral-700); max-width: 52ch; }
 </style>
 
 <a class="evitement" href="#contenu">Aller au contenu</a>
@@ -600,6 +637,35 @@
       <dd>Une conversation, gardée avec ce qu'elle a produit. Vous n'avez rien à faire
         pour en créer : toute séance en devient un. C'est la matière qui permet de
         constater, plus tard, si la méthode tient.</dd>
+    </dl>
+  </div>
+
+  <div>
+    <h2>Lexique</h2>
+    <p>Les mots que le QG et le Design emploient sans les redire. Un « ? » à côté d'un bloc
+      mène ici, l'entrée surlignée.</p>
+    <dl style="margin:0" id="lexique">
+      <dt id="lexique-chaleur">Chaleur</dt>
+      <dd>La part de ce qu'un nœud devait établir sur un sujet qu'il a réellement établi :
+        champs établis et hypothèses validées, rapportés aux champs connus et aux hypothèses
+        hors pause. Descriptive, jamais un objectif ni une note.</dd>
+      <dt id="lexique-possible-vivant">Possible vivant</dt>
+      <dd>Une option née en séance, nommée et tracée, encore ouverte — ni engagée ni écartée.
+        Les possibles se comptent, ils ne se notent pas.</dd>
+      <dt id="lexique-hypothese-infirmee">Hypothèse infirmée</dt>
+      <dd>Une hypothèse que la pratique a démentie. Elle est écartée et gardée : une trempe
+        ratée est une information, et elle ne refroidit jamais le nœud.</dd>
+      <dt id="lexique-contrat">Contrat f♯</dt>
+      <dd>Ce qu'un kata exige de l'amont — ce dont il hérite — et ce qu'il garantit à l'aval —
+        ce qu'il produit —, avec un niveau par donnée. La règle : l'aval n'exige jamais plus que
+        l'amont ne garantit. Un contrat qui bouge change la version majeure du kata.</dd>
+      <dt id="lexique-densho">Densho</dt>
+      <dd>La source d'un kata — son rôle, ses questions, ses interdits, son livrable, son
+        passage — que la forge mêle au gabarit du harness pour donner la coupe, le texte que le
+        chat reçoit.</dd>
+      <dt id="lexique-sceller">Sceller</dt>
+      <dd>Arrêter une version de la définition, sous son nom, avec un motif. Rien n'est écrit
+        avant ; après, la forge régénère les coupes et le chat sert la nouvelle version.</dd>
     </dl>
   </div>
 
@@ -883,6 +949,10 @@
       conversation qui n'est pas close.</p>
 
     <section class="fil">
+      <div style="display:flex;justify-content:flex-end;gap:6px">
+        <a class="aide" href="#/kokaji/decouvrir?terme=chaleur" aria-label="Qu'est-ce que la chaleur ?" title="Qu'est-ce que la chaleur ?">?</a>
+        <a class="aide" href="#/kokaji/decouvrir?terme=hypothese-infirmee" aria-label="Qu'est-ce qu'une hypothèse infirmée ?" title="Qu'est-ce qu'une hypothèse infirmée ?">◇</a>
+      </div>
       <div class="rang" id="rang"></div>
       <div class="legende" id="legende"></div>
     </section>
@@ -891,7 +961,8 @@
 
     <div class="bas">
       <section class="card elev-sm" style="padding:24px">
-        <h2>Possibles vivants</h2>
+        <div style="display:flex;align-items:center;gap:10px"><h2 style="flex:1">Possibles vivants</h2>
+          <a class="aide" href="#/kokaji/decouvrir?terme=possible-vivant" aria-label="Qu'est-ce qu'un possible vivant ?" title="Qu'est-ce qu'un possible vivant ?">?</a></div>
         <p class="sous-ligne" id="possibles-sous"></p>
         <div id="possibles"></div>
       </section>
@@ -1212,7 +1283,7 @@ function lireRoute(hash) {
   else if (parts[0] === "kokaji") { vue = parts[1] || "decouvrir"; }
   else { vue = parts[0] || "qg"; if (vue === "design") axe = parts[1] || null; }
   if (!ONGLETS[vue]) vue = "qg";
-  return { harness, vue, axe, sujet: q.sujet || null, noeud: q.noeud || null };
+  return { harness, vue, axe, sujet: q.sujet || null, noeud: q.noeud || null, terme: q.terme || null };
 }
 
 function routeDe(vue, extra = {}) {
@@ -1261,6 +1332,12 @@ function appliquerRoute() {
   if (r.vue === "qg" && r.sujet && $("sujets").querySelector(`option[value="${CSS.escape(r.sujet)}"]`)
       && $("sujets").value !== r.sujet) { $("sujets").value = r.sujet; charger(r.sujet); }
   montrerOnglet(r.vue);
+  // L'aide contextuelle (K-15) : le lexique, l'entrée surlignée et amenée à l'écran.
+  document.querySelectorAll("#lexique dt.surligne").forEach(d => d.classList.remove("surligne"));
+  if (r.vue === "decouvrir" && r.terme) {
+    const entree = $("lexique-" + r.terme);
+    if (entree) { entree.classList.add("surligne"); entree.scrollIntoView({ block: "center", behavior: "smooth" }); }
+  }
 }
 
 function montrerOnglet(nom) {
@@ -1321,7 +1398,7 @@ function rendreVigie(v) {
       <span aria-hidden="true" style="width:24px;height:24px;border-radius:999px;background:var(--color-neutral-900);color:var(--color-bg);display:flex;align-items:center;justify-content:center;font-size:13px;flex:none">✕</span>
       <div style="flex:1;min-width:0">
         <div style="font-size:14px;font-weight:700">${e(x.quoi)}</div>
-        ${x.detail ? `<div class="mono" style="font-size:11.5px;margin-top:6px;overflow-wrap:anywhere">${e(x.detail)}</div>` : ""}
+        ${x.detail ? `<div class="mono" style="font-size:12.5px;margin-top:6px;overflow-wrap:anywhere">${e(x.detail)}</div>` : ""}
         <div class="mot" style="margin-top:6px">vu le ${e(String(x.le || "").replace("T", " ").slice(0, 16))}</div>
       </div>
     </div>`).join("");
@@ -1358,7 +1435,7 @@ function rendreComptes(d) {
   $("comptes-liste").innerHTML = d.comptes.map(c => `<div class="rangee">
       <div style="flex:1;min-width:0"><div class="rangee-nom">${e(c.nom)}</div>
         <div class="rangee-meta">créé le ${e(jour(c.cree_le))}</div>
-        ${comptesOuverts[c.id] ? `<div class="mono" style="margin-top:8px;padding:8px 10px;border-radius:var(--radius-md);background:var(--color-neutral-200);font-size:11.5px;overflow-wrap:anywhere">${e(c.email)}<br>${e(c.id)}</div>` : ""}
+        ${comptesOuverts[c.id] ? `<div class="mono" style="margin-top:8px;padding:8px 10px;border-radius:var(--radius-md);background:var(--color-neutral-200);font-size:12.5px;overflow-wrap:anywhere">${e(c.email)}<br>${e(c.id)}</div>` : ""}
       </div>
       ${c.admin ? `<span class="tag tag-accent">administration</span>` : ""}
       <button class="btn-fantome" data-compte="${e(c.id)}">${comptesOuverts[c.id] ? "masquer" : "identifiants techniques"}</button>
@@ -1480,7 +1557,7 @@ async function rendreProfil() {
               ${a.sessions} session(s) \u00b7 ${e(derniereFois(a.derniere))}</div>
           </div>
           <div class="rangee-espace"></div>
-          <span class="tag" style="background:${jeton(fond)};color:${jeton(encre)}">${e(a.role)}</span>
+          <span class="tag" style="background:${jeton(fond)};color:${jeton(encre)}">${e(humain(a.role))}</span>
           <button class="btn-fantome" data-sujet="${i}">ouvrir au QG</button>
         </div>`;
       }).join("")
@@ -1504,7 +1581,7 @@ async function rendreProfil() {
           ${h.sujets} sujet(s) en cours</div>
       </div>
       <div class="rangee-espace"></div>
-      <span class="tag tag-accent">${e(h.role)}</span>
+      <span class="tag tag-accent">${e(humain(h.role))}</span>
       <button class="btn-fantome" data-design="${i}">ouvrir le design</button>
     </div>`).join("");
 
@@ -1541,7 +1618,9 @@ const DENSHO_LISTES = ["interdits", "questions", "livrable_structure", "natures"
 // son densho, partout ; l'identifiant technique reste en monospace
 // secondaire. Les statuts se disent en français.
 const HUMAIN = { fait_etabli: "fait établi", hypothese: "hypothèse", en_pause: "en pause",
-                 validee: "validée", en_cours: "en cours", infirmee: "infirmée" };
+                 validee: "validée", en_cours: "en cours", infirmee: "infirmée",
+                 proprietaire: "propriétaire", contributeur: "co-auteur", praticien: "praticien",
+                 observateur: "observateur" };
 const humain = (s) => HUMAIN[s] || String(s || "").replace(/_/g, " ");
 const nomDe = (id) => {
   const k = brouillon && brouillon.kata.find(x => x.id === id);
@@ -2219,7 +2298,7 @@ function rendreContrats(k) {
     return `<div class="ligne-f ${ok ? "" : "rompue"}" style="padding:11px 14px;border-radius:var(--radius-md);${ok ? "background:var(--color-neutral-200)" : ""}">
       <span class="tag ${ok ? "chip-ok" : "chip-encre"}" style="width:20px;height:20px;padding:0;justify-content:center;border-radius:6px">${ok ? "✓" : "✕"}</span>
       <span style="min-width:200px;flex:1">${e(h.champ.split(".").slice(1).join("."))}
-        <span class="mono" style="font-size:11px;color:var(--color-neutral-700)">${e(h.champ)}</span></span>
+        <span class="mono" style="font-size:12.5px;color:var(--color-neutral-700)">${e(h.champ)}</span></span>
       <span class="mot">exige</span>
       <select class="select-pilule" data-min="${i}" aria-label="niveau exigé">
         ${seuils.map(s => `<option value="${e(s)}" ${s === h.minimum ? "selected" : ""}>${s ? e(humain(s)) : "présence seule"}</option>`).join("")}
@@ -2256,7 +2335,7 @@ function rendreContrats(k) {
     const lu = consommateurs(x.champ);
     return `<div class="ligne-f" style="padding:11px 14px;border-radius:var(--radius-md);background:var(--color-neutral-200)">
       <span style="min-width:200px;flex:1">${e(x.champ.split(".").slice(1).join("."))}
-        <span class="mono" style="font-size:11px;color:var(--color-neutral-700)">${e(x.champ)}</span></span>
+        <span class="mono" style="font-size:12.5px;color:var(--color-neutral-700)">${e(x.champ)}</span></span>
       <span class="mot">garantit au moins</span>
       <select class="select-pilule" data-prod="${i}" aria-label="garantie minimale">
         ${def.statuts_champ.map(s => `<option value="${e(s)}" ${s === x.statut ? "selected" : ""}>${e(humain(s))}</option>`).join("")}
@@ -2281,10 +2360,12 @@ function rendreContrats(k) {
   const versions = epreuve?.versions || {};
 
   $("axe-corps").innerHTML = `
-    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px">Contrats f♯ — ${e(k.nom || k.id)}
+    <div style="display:flex;align-items:flex-start;gap:10px">
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px;flex:1">Contrats f♯ — ${e(k.nom || k.id)}
       <span class="mot">${change
         ? `— ${versions[k.id] ? "v" + e(versions[k.id]) + " au sceau ♯" : "modifié ♯"}`
         : "— inchangé"}</span></h2>
+    <a class="aide" href="#/kokaji/decouvrir?terme=contrat" aria-label="Qu'est-ce qu'un contrat f♯ ?" title="Qu'est-ce qu'un contrat f♯ ?">?</a></div>
     <p class="mot" style="margin:0 0 10px">Ce qu'il exige — chaque demande à côté de ce que l'amont promet réellement.</p>
     <div style="display:flex;flex-direction:column;gap:8px">${herite}</div>${ajoutHerite}
     <p class="mot" style="margin:18px 0 10px">Ce qu'il garantit — le statut minimal que l'aval peut exiger.</p>
@@ -2532,7 +2613,7 @@ function rendreCoupes(k) {
   const droite = `
     <div class="apercu-coupe">
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="tag tag-neutral" style="font-size:10.5px">coupe rendue</span>
+        <span class="tag tag-neutral" style="font-size:12.5px">coupe rendue</span>
         ${cibles.map(c => `<button class="bascule ${c.id === cibleChoisie ? "exige" : "inactif"}"
           data-cible="${e(c.id)}">${e(c.id)}${c.etat_structure ? " · état" : ""}</button>`).join("")}
         <span style="flex:1"></span>
@@ -2557,7 +2638,9 @@ function rendreCoupes(k) {
     </div>`;
 
   $("axe-corps").innerHTML = `
-    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px">Coupes — le densho de « ${e(k.nom || k.id)} »</h2>
+    <div style="display:flex;align-items:flex-start;gap:10px">
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px;flex:1">Coupes — le densho de « ${e(k.nom || k.id)} »</h2>
+    <a class="aide" href="#/kokaji/decouvrir?terme=densho" aria-label="Qu'est-ce qu'un densho ?" title="Qu'est-ce qu'un densho ?">?</a></div>
     <p class="mot" style="margin:0 0 16px;max-width:76ch">Le seul endroit du produit où l'on écrit longuement :
       pleine largeur, hauteur libre, l'aperçu de la coupe rendue à côté. Les adjonctions — ce que le
       kata hérite, ce qu'il produit — entrent à la forge depuis l'axe Contrats et se lisent dans la coupe.</p>

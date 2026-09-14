@@ -121,6 +121,18 @@ détail d'un nœud** — à côté des champs et des hypothèses — et non une 
 nouvelle. Une nature n'est pas un score : elle ne colore rien, elle ne classe
 rien, elle se lit.
 
+## La page v2 — la passe 3 (RFC-013)
+
+Écrire et lire mieux. Les gris secondaires sont en `neutral-700` — 5,5 : 1 sur
+crème — et aucun texte ne descend sous 12 px ; le bouton primaire et les tags
+« outline » sont assombris. Un « ? » discret par bloc — la chaîne, les
+possibles, les contrats, le densho — mène au lexique de Découvrir, l'entrée
+surlignée (`#/kokaji/decouvrir?terme=…`). Les cartes de coût s'empilent sous
+480 px. Une vue qui arrive s'annonce d'un fondu léger, et pas du tout sous
+`prefers-reduced-motion`. La vigie mesure désormais les contrastes et les
+tailles de texte, par module et par largeur : la moitié des constats de
+l'audit ne peut plus revenir sans qu'elle le dise.
+
 ## La page v2 — la passe 2 (RFC-013)
 
 Le menu tient en trois territoires : *Harness* — le sélecteur, puis Design et

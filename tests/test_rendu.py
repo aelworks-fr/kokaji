@@ -121,6 +121,15 @@ class Rendu(unittest.TestCase):
             self.assertIn(f"le CTA principal est dans le viewport ({largeur} px)", quoi)
             self.assertIn(f"rien ne se superpose à une modale ouverte ({largeur} px)", quoi)
 
+    def test_les_contrastes_et_les_tailles_sont_mesures(self):
+        """K-14 : la vigie mesure ce que l'audit a mesuré à la main — partout, à chaque largeur."""
+        quoi = [v.quoi for v in self.verdicts]
+        for largeur in ("360", "800", "1280", "2560"):
+            self.assertIn(f"les textes tiennent le contraste ({largeur} px)", quoi)
+            self.assertIn(f"aucun texte sous 12 px ({largeur} px)", quoi)
+        for module in ("decouvrir", "profil", "vigie", "design"):
+            self.assertIn(f"les textes de {module} tiennent le contraste (360 px)", quoi)
+
     def test_chaque_axe_du_design_est_regarde(self):
         """Le module s'ouvre sur le premier axe : sans clic, les trois autres —
         dont les coupes, deux colonnes et un gabarit entier — resteraient

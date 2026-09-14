@@ -457,6 +457,39 @@ class LeGrapheUnique(unittest.TestCase):
         self.assertIn("let gabaritOuvert = false;", PAGE)
 
 
+class LaPasseTrois(unittest.TestCase):
+    """RFC-013, passe 3 — écrire et lire mieux (K-14, K-15, K-16, K-17)."""
+
+    def test_aucun_gris_qui_se_fond_et_aucun_texte_sous_douze_pixels(self):
+        """K-14 : neutral-500 et 600 font 2,4 et 3,6 : 1 sur crème ; neutral-700 fait 5,5."""
+        style = PAGE.split("<style>")[1].split("</style>")[0]
+        self.assertNotIn("color: var(--color-neutral-500)", style)
+        self.assertNotIn("color: var(--color-neutral-600)", style)
+        self.assertNotRegex(PAGE, r"font-size: ?(?:10|10\.5|11|11\.5)px")
+        self.assertIn(".tag-outline { color: var(--color-accent-700); }", PAGE)
+
+    def test_le_lexique_existe_avec_ses_six_entrees(self):
+        for terme in ("chaleur", "possible-vivant", "hypothese-infirmee", "contrat", "densho", "sceller"):
+            self.assertIn(f'<dt id="lexique-{terme}">', PAGE, terme)
+
+    def test_l_aide_mene_au_lexique_l_entree_surlignee(self):
+        """K-15 : un « ? » par bloc — la chaîne, les possibles, les contrats, le densho."""
+        for terme in ("chaleur", "hypothese-infirmee", "possible-vivant", "contrat", "densho"):
+            self.assertIn(f'href="#/kokaji/decouvrir?terme={terme}"', PAGE, terme)
+        self.assertIn('entree.classList.add("surligne")', PAGE)
+        self.assertIn("terme: q.terme || null", PAGE)
+        self.assertIn(".aide { width: 26px; height: 26px;", PAGE)
+
+    def test_les_cartes_de_cout_s_empilent_sous_480_px(self):
+        self.assertIn("@media (max-width: 480px) {", PAGE)
+        self.assertIn(".depense-kata .rangee { flex-direction: column; align-items: flex-start;", PAGE)
+
+    def test_la_navigation_s_annonce_sans_forcer_le_mouvement(self):
+        """K-17 : un fondu léger, et rien pour qui a demandé moins de mouvement."""
+        self.assertIn(".contenu > section:not([hidden]) { animation: apparait .18s ease-out; }", PAGE)
+        self.assertIn("@media (prefers-reduced-motion: reduce)", PAGE)
+
+
 class LesCoupes(unittest.TestCase):
     """L'axe 4 — le gabarit, les densho, la coupe qu'on voit (RFC-010 §4.4)."""
 

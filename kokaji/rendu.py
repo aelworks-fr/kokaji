@@ -134,6 +134,55 @@ MODALE_DEVANT_TOUT = """() => {
   return { tient: intrus.length === 0, detail: intrus.join(' · ') };
 }"""
 
+# Les contrastes (K-14) : chaque feuille de texte visible, sa couleur contre
+# le fond effectif — le premier ancêtre opaque, une couche translucide
+# composée par-dessus. Seuil AA : 4,5 : 1, ou 3 : 1 pour un grand texte
+# (24 px, ou 18,66 px en gras). On rend les pires, nommés.
+CONTRASTES = r"""() => {
+  const parse = (c) => { const m = /rgba?\(([^)]+)\)/.exec(c || ''); if (!m) return null;
+    const v = m[1].split(',').map(x => parseFloat(x)); return { r: v[0], g: v[1], b: v[2], a: v.length > 3 ? v[3] : 1 }; };
+  const lin = (c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+  const lum = (c) => 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b);
+  const sur = (haut, bas) => ({ r: haut.r * haut.a + bas.r * (1 - haut.a), g: haut.g * haut.a + bas.g * (1 - haut.a),
+                                b: haut.b * haut.a + bas.b * (1 - haut.a), a: 1 });
+  const fondDe = (n) => {
+    let couches = [];
+    for (let a = n; a; a = a.parentElement) {
+      const c = parse(getComputedStyle(a).backgroundColor);
+      if (c && c.a > 0) { couches.push(c); if (c.a >= 1) break; }
+    }
+    let fond = { r: 255, g: 255, b: 255, a: 1 };
+    for (let i = couches.length - 1; i >= 0; i--) fond = sur(couches[i], fond);
+    return fond;
+  };
+  const fautes = [];
+  for (const n of document.querySelectorAll('body *')) {
+    if (n.offsetParent === null || n.children.length) continue;
+    const texte = (n.textContent || '').trim();
+    if (!texte) continue;
+    const r = n.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    const s = getComputedStyle(n);
+    const fg = parse(s.color); if (!fg) continue;
+    const taille = parseFloat(s.fontSize), gras = parseInt(s.fontWeight, 10) >= 700;
+    const seuil = (taille >= 24 || (gras && taille >= 18.66)) ? 3 : 4.5;
+    const bg = fondDe(n);
+    const f = fg.a < 1 ? sur(fg, bg) : fg;
+    const l1 = lum(f), l2 = lum(bg);
+    const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+    if (ratio < seuil) fautes.push((n.className || n.tagName) + ' « ' + texte.slice(0, 20) + ' » ' + ratio.toFixed(2) + ':1');
+  }
+  return fautes;
+}"""
+
+# Aucun texte sous 12 px (K-14) : les métas se lisent, elles ne se devinent pas.
+PETITS_TEXTES = """() => [...document.querySelectorAll('body *')]
+    .filter(n => n.offsetParent !== null && !n.children.length && (n.textContent || '').trim())
+    .filter(n => n.getBoundingClientRect().height > 0)
+    .filter(n => parseFloat(getComputedStyle(n).fontSize) < 11.9)
+    .map(n => (n.className || n.tagName) + ' « ' + (n.textContent || '').trim().slice(0, 20) + ' » '
+              + getComputedStyle(n).fontSize)"""
+
 # Les axes du module design, dans l'ordre de la page.
 AXES_DU_DESIGN = ("partition", "contrats", "trempe", "coupes")
 
@@ -218,6 +267,9 @@ def regarder(url: str) -> list[Verdict]:
                     )
                 )
 
+                verdicts.append(_liste(f"les textes tiennent le contraste ({ou})", page, CONTRASTES))
+                verdicts.append(_liste(f"aucun texte sous 12 px ({ou})", page, PETITS_TEXTES))
+
                 visibles = page.evaluate(MODULES_VISIBLES)
                 verdicts.append(
                     Verdict(
@@ -242,6 +294,8 @@ def regarder(url: str) -> list[Verdict]:
                     page.wait_for_selector(module, state="visible")
                     page.wait_for_timeout(300)
                     nom = module.removeprefix("#module-")
+                    verdicts.append(_liste(f"les textes de {nom} tiennent le contraste ({ou})", page, CONTRASTES))
+                    verdicts.append(_liste(f"aucun texte sous 12 px dans {nom} ({ou})", page, PETITS_TEXTES))
                     if module == "#module-design":
                         verdicts.append(
                             _liste(f"rien ne se chevauche dans le design ({ou})", page, CHEVAUCHENT)

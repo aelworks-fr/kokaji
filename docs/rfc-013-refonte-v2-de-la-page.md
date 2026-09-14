@@ -78,9 +78,9 @@ Chaque passe se livre seule, tests et mesures de rendu compris, et la vigie de l
 
 **Sabotages** :
 
-1. Une pastille du QG posée en `z-index` par-dessus la modale ouverte → la vigie refuse.
-2. Un « pratiquer » qui sort du viewport à 800 px → la vigie refuse.
-3. Un texte secondaire sous 4,5 : 1 de contraste → la vigie refuse (passe 3).
+1. Une pastille du QG posée en `z-index` par-dessus la modale ouverte → la vigie refuse. *Mesuré : « rien ne se superpose à une modale ouverte », quatre largeurs.*
+2. Un « pratiquer » qui sort du viewport à 800 px → la vigie refuse. *Mesuré : « le CTA principal est dans le viewport », quatre largeurs.*
+3. Un texte secondaire sous 4,5 : 1 de contraste → la vigie refuse. *Mesuré : « les textes tiennent le contraste » et « aucun texte sous 12 px », par module et par largeur — et vu refuser trois fois en construction : le lien d'évitement, le bouton primaire, les tags à 11 px.*
 4. Archiver depuis un compte contributeur → 403 ; archiver avec un nom qui ne correspond pas → le bouton reste inactif, aucune requête ne part.
 5. Un `<button class="onglet">` sans `href` après la passe 2 → le test de page refuse.
 
@@ -90,7 +90,7 @@ Chaque passe se livre seule, tests et mesures de rendu compris, et la vigie de l
 |---|---|
 | 1 · Correctifs | appliquée — `kokaji/qg/vue.html`, `admin.html`, `kokaji/rendu.py` ; 64 mesures aux quatre largeurs |
 | 2 · Structure | appliquée — trois territoires et routage (796a1a5), Autorat avec Dépôt et archivage (39a2f4f), graphe unique et facettes, vocabulaire unifié ; les nœuds de chaîne qui ne sont pas des kata se lisent dans le graphe sans s'y éditer |
-| 3 · Confort | à faire |
+| 3 · Confort | appliquée — gris secondaires en neutral-700, aucun texte sous 12 px, bouton primaire et tags outline assombris ; lexique et « ? » contextuels ; cartes de coût empilées sous 480 px ; fondu de navigation sous `prefers-reduced-motion` ; la vigie mesure contrastes et tailles, 105 mesures |
 
 ---
 *Note d'établi : l'audit dit ce qu'il faut garder — le lexique, le ton, la promesse rendue visible, la carte des étapes. Ce RFC ne touche à rien de cela : il change la mécanique autour, pour qu'un second utilisateur y arrive.*
