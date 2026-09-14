@@ -246,6 +246,12 @@
   dialog.voile::backdrop { background: rgba(32,30,29,.45); }
   .dialogue { background: var(--color-neutral-100); border-radius: var(--radius-lg);
               box-shadow: var(--shadow-lg); max-width: 560px; width: 100%; padding: 28px; }
+  /* La zone d'archivage (RFC-013 D13.2) : isolée des gestes courants par sa
+     bordure, son titre à l'encre — la troisième voix, jamais du rouge. */
+  .zone-isolee { margin-top: 18px; padding: 16px 18px; border-radius: var(--radius-md);
+                 border: 1.5px solid var(--color-neutral-400); display: flex; flex-direction: column; gap: 8px; }
+  .zone-isolee-titre { font-size: 13px; font-weight: 700; color: var(--color-neutral-900); }
+  .btn-encre { color: var(--color-neutral-900); border-color: var(--color-neutral-400); }
   .consequence { background: var(--color-neutral-200); border-radius: var(--radius-md);
                  padding: 14px 16px; font-size: 13px; margin-bottom: 18px; }
   .champ-large { width: 100%; border-radius: var(--radius-md); padding: 9px 12px; font: inherit;
@@ -681,6 +687,25 @@
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
       <button class="btn-fantome" id="scel-annuler">Annuler</button>
       <button class="btn-plein" id="scel-valider" disabled>Sceller et signer</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog class="voile" id="voile-archive" aria-labelledby="arch-titre">
+  <div class="dialogue">
+    <h2 id="arch-titre" style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);
+               font-size:24px;margin:0 0 16px">Archiver « <span id="arch-nom-titre"></span> »</h2>
+    <div class="consequence">
+      <strong>Le harness cesse d'être servi.</strong> Plus de modèles au chat, plus de pratique. Sa
+      définition, ses sujets, ses cas et son journal restent lisibles, marqués archivés. Le dépôt git
+      reste intact. Réservé au propriétaire.
+    </div>
+    <label class="mot" for="arch-nom">Saisissez le nom exact du harness pour confirmer</label>
+    <input class="champ-large mono" id="arch-nom" style="margin:6px 0 14px" autocomplete="off" autofocus>
+    <p class="diff-val" id="arch-dit"></p>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+      <button class="btn-fantome" id="arch-annuler">Annuler</button>
+      <button class="btn-plein" id="arch-valider" disabled>Archiver</button>
     </div>
   </div>
 </dialog>
@@ -1729,15 +1754,17 @@ function rendreVerdict() {
 function rendreMembres() {
   $("membres").hidden = !membresOuverts;
   if (!membresOuverts) return;
-  if (!def.membres) {
-    $("membres").innerHTML = `<p class="rien">Aucun magasin de comptes : cette installation
-      est mono-praticien, il n'y a personne à lister.</p>`;
-    return;
-  }
+  const nom = def.harness.nom;
+  // Le rôle vient de l'offre, lue au démarrage : le déduire du module Profil
+  // ferait dépendre ce panneau d'un onglet que le propriétaire n'ouvre pas
+  // forcément, et le geste disparaîtrait sans raison visible.
+  const sien = (offreHarness && offreHarness.harness || []).find(h => h.id === def.harness.id);
+  const jeSuisLePatron = !def.membres || (!!sien && sien.role === "proprietaire");
+  const archiveLe = sien ? sien.archive_le : null;
+
   // Le nom d'abord, l'identifiant nulle part : on reconnaît quelqu'un à son
-  // nom, jamais à un UUID. L'email départage deux homonymes, et il est déjà
-  // connu de tout membre du harness — c'est par lui qu'on ajoute.
-  const rangee = (qui, role, fond, encre, retirable) => `<div class="ligne-f">
+  // nom, jamais à un UUID. L'email départage deux homonymes.
+  const rangee = (qui, role, fond, encre, retirable) => `<div class="ligne-f" style="background:var(--color-neutral-200);border-radius:var(--radius-md);padding:9px 14px">
       <div>
         <div class="rangee-nom">${e(qui.nom)}</div>
         ${qui.email ? `<div class="rangee-meta">${e(qui.email)}</div>` : ""}
@@ -1746,39 +1773,106 @@ function rendreMembres() {
         style="margin-right:10px">retirer</button>` : ""}
       <span class="tag" style="background:${jeton(fond)};color:${jeton(encre)}">${role}</span>
     </div>`;
-  const patron = def.membres.proprietaire;
-  // Le rôle vient de l'offre, lue au démarrage : le déduire du module Profil
-  // ferait dépendre ce panneau d'un onglet que le propriétaire n'ouvre pas
-  // forcément, et le geste disparaîtrait sans raison visible.
-  const sien = (offreHarness && offreHarness.harness || [])
-    .find(h => h.id === def.harness.id);
-  const jeSuisLePatron = !!sien && sien.role === "proprietaire";
-  $("membres").innerHTML =
-    `<span class="tag tag-outline">question ouverte — placement selon RFC-004 §4</span>
-     <p class="verdict-detail">L'autorat est ici parce qu'il porte sur l'œuvre, mais reste un
-       volet : il n'entre jamais dans une proposition et ne touche jamais le verdict.</p>`
-    + rangee(patron, "propriétaire", "accent-200", "accent-900", false)
-    + def.membres.contributeurs
-        .map(c => rangee(c, "co-auteur", "neutral-300", "neutral-800", jeSuisLePatron)).join("")
-    + (jeSuisLePatron ? `
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:16px">
-        <select id="membre-email"
-                style="flex:1;min-width:15rem;border-radius:999px;padding:8px 14px;font:inherit;
-                       font-size:13px;background:var(--color-neutral-100);
-                       border:1px solid var(--color-neutral-300)"></select>
-        <button class="btn-fantome" id="membre-ajouter">Ajouter au harness</button>
-      </div>
-      <p class="verdict-detail" id="membre-dit"></p>
-      <p class="verdict-detail">On choisit parmi les comptes du service : inviter quelqu'un
-        qui n'en a pas est un autre geste, et le confondre créerait des comptes depuis un
-        écran qui parle d'autorat.</p>` : "");
+  const membres = !def.membres
+    ? `<p class="rien">Aucun magasin de comptes : cette installation est mono-praticien, il n'y a
+        personne à lister.</p>`
+    : rangee(def.membres.proprietaire, "propriétaire", "accent-200", "accent-900", false)
+      + def.membres.contributeurs
+          .map(c => rangee(c, "co-auteur", "neutral-300", "neutral-800", jeSuisLePatron)).join("")
+      + (jeSuisLePatron ? `
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
+          <select id="membre-email" aria-label="Compte à ajouter"
+                  style="flex:1;min-width:15rem;border-radius:999px;padding:8px 14px;font:inherit;
+                         font-size:13px;background:var(--color-neutral-100);
+                         border:1px solid var(--color-neutral-300)"></select>
+          <button class="btn-fantome" id="membre-ajouter">Inviter un co-auteur</button>
+        </div>
+        <p class="verdict-detail" id="membre-dit"></p>
+        <p class="verdict-detail">On choisit parmi les comptes du service : ouvrir un compte à
+          quelqu'un qui n'en a pas se fait aux Comptes & invitations.</p>` : "");
 
-  if (!jeSuisLePatron) return;
+  // RFC-013 D13.2 : archiver, avec le parcours de supprimer — une zone
+  // isolée, la portée dite précisément, la confirmation par le nom exact.
+  const cycle = archiveLe
+    ? `<div class="zone-isolee">
+        <span class="zone-isolee-titre">Archivé le ${e(String(archiveLe).slice(0, 10))}</span>
+        <span class="mot" style="max-width:70ch">Il n'offre plus de modèles au chat et ne se pratique
+          plus. Sa définition, ses sujets, ses cas et son journal restent lisibles.</span>
+        ${jeSuisLePatron ? `<div><button class="btn-fantome" id="btn-desarchiver">Remettre en service</button></div>` : ""}
+      </div>`
+    : `<div class="zone-isolee">
+        <span class="zone-isolee-titre">Archiver ce harness</span>
+        <span class="mot" style="max-width:70ch">Le harness cesse d'être servi : plus de modèles au chat,
+          plus de pratique. Sa définition, ses sujets, ses cas et son journal restent lisibles, marqués
+          archivés. Le dépôt git reste intact. Réservé au propriétaire.</span>
+        ${jeSuisLePatron ? `<div><button class="btn-fantome btn-encre" id="btn-archiver">Archiver « ${e(nom)} »…</button></div>` : ""}
+      </div>`;
+
+  $("membres").innerHTML =
+    `<h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:18px;margin:0 0 12px">Autorat de « ${e(nom)} »</h2>
+     <div style="display:flex;flex-direction:column;gap:8px">${membres}</div>
+     <div id="depot-panneau" style="margin-top:18px"></div>
+     ${cycle}`;
+
+  rendreDepot();
+  if ($("btn-archiver")) $("btn-archiver").onclick = ouvrirArchivage;
+  if ($("btn-desarchiver")) $("btn-desarchiver").onclick = () => archiver(false);
+  if (!def.membres || !jeSuisLePatron) return;
   $("membre-ajouter").onclick = ajouterUnMembre;
   remplirCandidats();
   $("membres").querySelectorAll("button[data-retirer]").forEach(b => {
     b.onclick = () => retirerUnMembre(b.dataset.retirer);
   });
+}
+
+// Le panneau Dépôt (RFC-012, placé ici par la RFC-013 D13.3) : l'état du
+// dépôt du harness, lu au service. Les gestes — enregistrer, pousser, tirer —
+// arrivent avec le lot B de la RFC-012 ; on ne les dessine pas avant.
+async function rendreDepot() {
+  const zone = $("depot-panneau");
+  if (!zone) return;
+  let d;
+  try { d = await lire("/depot"); }
+  catch { zone.innerHTML = `<p class="rien">L'état du dépôt n'a pas pu être lu.</p>`; return; }
+  const dernier = d.dernier_commit && d.dernier_commit.sha
+    ? `<span class="mono">${e(d.dernier_commit.sha)}</span> — ${e(d.dernier_commit.message)}
+       <span class="mot">· ${e(String(d.dernier_commit.le || "").slice(0, 10))}</span>` : "aucun commit";
+  zone.innerHTML = `<div class="card elev-sm" style="padding:14px 18px;display:flex;flex-direction:column;gap:6px">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="font-size:14px;font-weight:600;flex:1">Dépôt</span>
+        <span class="tag ${d.est_depot && d.propre ? "tag-accent-2" : "tag-outline"}">${e(d.etat)}</span>
+      </div>
+      <div class="mot">${d.est_depot ? `branche <span class="mono">${e(d.branche)}</span> · dernier commit : ${dernier}` :
+        "Ce harness n'est pas un dépôt git : le scellement écrit, mais ne commite rien."}</div>
+      ${d.enregistrement ? `<div class="mot">enregistré auprès de <span class="mono">${e(d.enregistrement.chemin)}</span></div>`
+        : `<div class="mot">Aucun dépôt nu enregistré — enregistrer, pousser et tirer arrivent avec la RFC-012.</div>`}
+    </div>`;
+}
+
+function ouvrirArchivage() {
+  $("arch-nom-titre").textContent = def.harness.nom;
+  $("arch-nom").value = "";
+  $("arch-nom").placeholder = def.harness.nom;
+  $("arch-dit").textContent = "";
+  $("arch-valider").disabled = true;
+  if (!$("voile-archive").open) $("voile-archive").showModal();
+}
+
+async function archiver(archive) {
+  const r = await fetch("/harness/" + encodeURIComponent(def.harness.id) + "/archive", {
+    method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ archive })
+  });
+  if (!r.ok) {
+    const d = await r.json().catch(() => ({}));
+    if (archive) $("arch-dit").textContent = d.detail || "l'archivage a été refusé.";
+    return;
+  }
+  if (archive) $("voile-archive").close();
+  // Le sélecteur, le chat, le titre : tout change. On recharge sur le Design
+  // du même harness, où la zone dit désormais qu'il est archivé.
+  location.hash = routeDe("design");
+  location.reload();
 }
 
 async function remplirCandidats() {
@@ -2618,6 +2712,10 @@ async function creerHarness() {
   $("btn-membres").onclick = () => { membresOuverts = !membresOuverts; rendreDesign(); };
   // Le bouton est reconstruit à chaque rendu de l'axe : on le rebranche là.
   $("scel-annuler").onclick = () => { $("voile").close(); };
+  $("arch-annuler").onclick = () => { $("voile-archive").close(); };
+  // Le bouton reste inactif tant que le nom saisi n'est pas exactement celui du harness.
+  $("arch-nom").oninput = (ev) => { $("arch-valider").disabled = ev.target.value.trim() !== (def ? def.harness.nom : ""); };
+  $("arch-valider").onclick = () => archiver(true);
   $("scel-auteur").oninput = (ev) => { $("scel-valider").disabled = !ev.target.value.trim(); };
   $("scel-valider").onclick = scellerDepuisLaPage;
   try {

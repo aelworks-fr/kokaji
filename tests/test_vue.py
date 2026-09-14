@@ -364,6 +364,44 @@ class LaPasseUn(unittest.TestCase):
         self.assertIn("remonté(s) en premier", PAGE)
 
 
+class LAutoratDansLeHarness(unittest.TestCase):
+    """RFC-013 D13.2 et D13.3 — l'autorat, le dépôt et le cycle de vie, dans le harness."""
+
+    def test_la_section_porte_le_nom_du_harness(self):
+        self.assertIn("Autorat de « ${e(nom)} »", PAGE)
+
+    def test_les_roles_sont_des_etiquettes_et_le_geste_d_invitation_existe(self):
+        self.assertIn('"propriétaire", "accent-200", "accent-900"', PAGE)
+        self.assertIn('"co-auteur", "neutral-300", "neutral-800"', PAGE)
+        self.assertIn(">Inviter un co-auteur</button>", PAGE)
+
+    def test_le_cycle_de_vie_est_archiver_et_la_portee_est_dite(self):
+        """Archiver, pas supprimer (RFC-006 §5) — avec le parcours du prototype."""
+        self.assertIn("Archiver ce harness", PAGE)
+        self.assertIn("reste intact. Réservé au propriétaire.", PAGE)
+        self.assertNotIn("Supprimer définitivement", PAGE)
+        self.assertIn("class=\"zone-isolee\"", PAGE)
+        self.assertIn("border: 1.5px solid var(--color-neutral-400)", PAGE)
+
+    def test_l_archivage_se_confirme_par_le_nom_exact(self):
+        self.assertIn('<dialog class="voile" id="voile-archive" aria-labelledby="arch-titre">', PAGE)
+        self.assertIn('$("arch-valider").disabled = ev.target.value.trim() !== (def ? def.harness.nom : "");', PAGE)
+        self.assertIn('/archive"', PAGE)
+        self.assertIn("JSON.stringify({ archive })", PAGE)
+
+    def test_un_harness_archive_se_dit_et_se_remet_en_service(self):
+        self.assertIn("Archivé le ${e(String(archiveLe).slice(0, 10))}", PAGE)
+        self.assertIn('id="btn-desarchiver"', PAGE)
+
+    def test_le_depot_se_lit_dans_l_autorat(self):
+        self.assertIn('id="depot-panneau"', PAGE)
+        self.assertIn('d = await lire("/depot")', PAGE)
+        self.assertIn("arrivent avec la RFC-012", PAGE)
+
+    def test_les_gestes_de_proprietaire_ne_sont_offerts_qu_au_proprietaire(self):
+        self.assertIn('${jeSuisLePatron ? `<div><button class="btn-fantome btn-encre" id="btn-archiver"', PAGE)
+
+
 class LesCoupes(unittest.TestCase):
     """L'axe 4 — le gabarit, les densho, la coupe qu'on voit (RFC-010 §4.4)."""
 
@@ -460,11 +498,11 @@ class Membres(unittest.TestCase):
 
     def test_les_gestes_ne_sont_offerts_qu_au_proprietaire(self):
         """Offrir un bouton qui refuse vaut moins que ne rien offrir."""
-        self.assertIn("if (!jeSuisLePatron) return;", RENDU)
+        self.assertIn("if (!def.membres || !jeSuisLePatron) return;", RENDU)
 
     def test_le_propietaire_ne_se_retire_pas_lui_meme(self):
         """Le modèle le refuse ; la page ne doit pas proposer le geste."""
-        self.assertIn('rangee(patron, "propriétaire", "accent-200", "accent-900", false)', RENDU)
+        self.assertIn('rangee(def.membres.proprietaire, "propriétaire", "accent-200", "accent-900", false)', RENDU)
 
     def test_on_choisit_dans_une_liste_et_non_de_memoire(self):
         self.assertIn('<select id="membre-email"', RENDU)
@@ -477,7 +515,9 @@ class Membres(unittest.TestCase):
         self.assertIn("liste indisponible", RENDU)
 
     def test_ajouter_n_est_pas_inviter(self):
-        self.assertIn("inviter quelqu'un", RENDU)
+        """On choisit parmi les comptes du service ; ouvrir un compte est un autre geste."""
+        self.assertIn("On choisit parmi les comptes du service", RENDU)
+        self.assertIn("se fait aux Comptes & invitations", RENDU)
 
 
 class PageD_Invitation(unittest.TestCase):
