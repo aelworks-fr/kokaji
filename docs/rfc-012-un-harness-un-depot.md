@@ -136,7 +136,7 @@ Les chemins admis sont ceux d'un dossier déclaré au déploiement (`KOKAJI_DEPO
 |---|---|
 | A — le dépôt local et l'état | appliqué — `kokaji/depot`, naître et adopter initient, `harness_depot`, `GET /depot` |
 | B — le dépôt nu et les trois gestes | appliqué — `chemin_admis`, `lier`, `pousser`, `tirer`, `cloner` ; `PUT`/`DELETE /depot`, `POST /depot/pousser`, `/depot/tirer` ; le scellement pousse si le harness le demande ; `POST /harness` accepte `depot` et `cloner_depuis` ; CLI `kokaji enregistrer`, `pousser`, `tirer` ; `KOKAJI_DEPOTS` remplace `KOKAJI_DEPOT_PUSH` ; sabotages 1 à 5 en tests |
-| C — la page | à faire — le panneau Dépôt lit l'état ; les gestes ne sont pas encore dessinés |
+| C — la page | appliqué — le panneau Dépôt enregistre, désenregistre, pousse, tire, règle le push au scellement ; la naissance clone un dépôt nu ou en lie un ; la trace du scellement dit poussé ou pourquoi non ; le Profil et l'offre portent l'état du dépôt |
 | D — la première instance | à faire — migration par `git subtree split`, `harness/` ignoré, cinq dépôts nus |
 
 ---

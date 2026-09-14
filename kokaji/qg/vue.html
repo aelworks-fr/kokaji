@@ -851,6 +851,15 @@
       <p class="rien" style="margin:0 0 14px">Chaque texte devient une étape, servie telle
         quelle — rien n'est réécrit, et l'empreinte des textes est gardée au manifest.</p>
     </div>
+    <div id="ne-clone" hidden>
+      <label class="mot" for="ne-clone-chemin">Le dépôt nu — un chemin sous le dossier des dépôts</label>
+      <div style="display:flex;gap:8px;margin:6px 0 4px">
+        <input class="champ-large mono" id="ne-clone-chemin" style="flex:1" autocomplete="off" placeholder="venu.git">
+        <input class="champ-pilule mono" id="ne-clone-branche" value="main" style="width:6rem;text-align:left" aria-label="branche">
+      </div>
+      <p class="rien" style="margin:0 0 14px">Le dépôt est lu et validé avant que quoi que ce soit ne
+        s'enregistre : un dépôt qui n'est pas un harness ne laisse rien. Son nom vient du manifest.</p>
+    </div>
     <label class="mot" for="ne-id">Identifiant — définitif, et jamais montré</label>
     <input class="champ-large" id="ne-id" style="margin:6px 0 4px" autocomplete="off"
            placeholder="devis">
@@ -859,6 +868,13 @@
     <label class="mot" for="ne-nom">Nom — celui qu'on verra</label>
     <input class="champ-large" id="ne-nom" style="margin:6px 0 14px" autocomplete="off"
            placeholder="Réponses à devis">
+    <div id="ne-depot">
+      <label class="mot" for="ne-depot-chemin">Un dépôt nu à enregistrer tout de suite — facultatif</label>
+      <input class="champ-large mono" id="ne-depot-chemin" style="margin:6px 0 4px" autocomplete="off"
+             placeholder="devis.git">
+      <p class="rien" style="margin:0 0 14px">Créé sous le dossier des dépôts, l'historique y est poussé,
+        et le scellement y poussera ensuite. Vide : le harness naît en dépôt local, non enregistré.</p>
+    </div>
     <p class="diff-val" id="ne-dit"></p>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
       <button class="btn-fantome" id="ne-annuler">Annuler</button>
@@ -1581,6 +1597,12 @@ async function rendreProfil() {
           ${h.sujets} sujet(s) en cours</div>
       </div>
       <div class="rangee-espace"></div>
+      ${(() => {
+        // L'état du dépôt, en badge (RFC-012 D12.5) — lu dans l'offre, la même
+        // source que le sélecteur.
+        const o = (offreHarness && offreHarness.harness || []).find(x => x.id === h.id);
+        return o && o.depot ? `<span class="tag ${o.depot === "à jour" ? "tag-accent-2" : "tag-neutral"}" title="l'état du dépôt du harness">${e(o.depot)}</span>` : "";
+      })()}
       <span class="tag tag-accent">${e(humain(h.role))}</span>
       <button class="btn-fantome" data-design="${i}">ouvrir le design</button>
     </div>`).join("");
@@ -2092,19 +2114,79 @@ async function rendreDepot() {
   let d;
   try { d = await lire("/depot"); }
   catch { zone.innerHTML = `<p class="rien">L'état du dépôt n'a pas pu être lu.</p>`; return; }
+  const sien = (offreHarness && offreHarness.harness || []).find(h => h.id === def.harness.id);
+  const jeSuisLePatron = !def.membres || (!!sien && sien.role === "proprietaire");
   const dernier = d.dernier_commit && d.dernier_commit.sha
     ? `<span class="mono">${e(d.dernier_commit.sha)}</span> — ${e(d.dernier_commit.message)}
        <span class="mot">· ${e(String(d.dernier_commit.le || "").slice(0, 10))}</span>` : "aucun commit";
-  zone.innerHTML = `<div class="card elev-sm" style="padding:14px 18px;display:flex;flex-direction:column;gap:6px">
+  const enr = d.enregistrement;
+  zone.innerHTML = `<div class="card elev-sm" style="padding:14px 18px;display:flex;flex-direction:column;gap:8px">
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:14px;font-weight:600;flex:1">Dépôt</span>
         <span class="tag ${d.est_depot && d.propre ? "tag-accent-2" : "tag-outline"}">${e(d.etat)}</span>
       </div>
       <div class="mot">${d.est_depot ? `branche <span class="mono">${e(d.branche)}</span> · dernier commit : ${dernier}` :
         "Ce harness n'est pas un dépôt git : le scellement écrit, mais ne commite rien."}</div>
-      ${d.enregistrement ? `<div class="mot">enregistré auprès de <span class="mono">${e(d.enregistrement.chemin)}</span></div>`
-        : `<div class="mot">Aucun dépôt nu enregistré — enregistrer, pousser et tirer se font par l'API et la ligne de commande (RFC-012) ; le panneau suit.</div>`}
+      ${enr ? `
+        <div class="mot">enregistré auprès de <span class="mono">${e(enr.chemin)}</span>
+          · branche <span class="mono">${e(enr.branche)}</span>
+          · ${enr.pousser_au_scellement ? "poussé à chaque scellement" : "poussé à la main"}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <button class="btn-fantome" id="depot-pousser">pousser</button>
+          <button class="btn-fantome" id="depot-tirer">tirer</button>
+          ${jeSuisLePatron ? `<label class="mot" style="display:flex;align-items:center;gap:6px;margin-left:6px">
+            <input type="checkbox" id="depot-auto" ${enr.pousser_au_scellement ? "checked" : ""}> pousser à chaque scellement</label>
+          <span style="flex:1"></span>
+          <button class="btn-fantome btn-encre" id="depot-desenregistrer">désenregistrer</button>` : ""}
+        </div>
+        <p class="rien" style="margin:0">Depuis un poste : <span class="mono">git clone &lt;machine&gt;:${e(enr.chemin)}</span>.
+          Tirer exige un clone propre et va en avance rapide — jamais de fusion.</p>`
+      : jeSuisLePatron ? `
+        <div class="mot">Aucun dépôt nu enregistré. En enregistrer un le crée sous le dossier des dépôts,
+          y pousse l'historique, et le scellement y poussera ensuite.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input class="champ-large mono" id="depot-chemin" style="flex:1;min-width:12rem" autocomplete="off"
+                 placeholder="${e(def.harness.id)}.git" aria-label="chemin du dépôt nu">
+          <input class="champ-pilule mono" id="depot-branche" value="main" style="width:6rem;text-align:left" aria-label="branche">
+          <button class="btn-fantome" id="depot-enregistrer">enregistrer</button>
+        </div>`
+      : `<div class="mot">Aucun dépôt nu enregistré — c'est un geste de propriétaire.</div>`}
+      <p class="diff-val" id="depot-dit"></p>
     </div>`;
+
+  const dire = (texte) => { $("depot-dit").textContent = texte; };
+  const geste = async (methode, url, corps) => {
+    try {
+      const r = await fetch(url, { method: methode, headers: { "content-type": "application/json" },
+        body: corps === undefined ? undefined : JSON.stringify(corps) });
+      const rep = await r.json().catch(() => ({}));
+      if (!r.ok) { dire(rep.detail || "refusé"); return null; }
+      return rep;
+    } catch { dire("le middleware n'a pas répondu."); return null; }
+  };
+  if ($("depot-enregistrer")) $("depot-enregistrer").onclick = async () => {
+    const chemin = $("depot-chemin").value.trim() || `${def.harness.id}.git`;
+    const rep = await geste("PUT", "/depot", { chemin, branche: $("depot-branche").value.trim() || "main" });
+    if (rep) rendreDepot();
+  };
+  if ($("depot-desenregistrer")) $("depot-desenregistrer").onclick = async () => {
+    const rep = await geste("DELETE", "/depot");
+    if (rep) rendreDepot();
+  };
+  if ($("depot-auto")) $("depot-auto").onchange = async (ev) => {
+    const rep = await geste("PUT", "/depot", { chemin: enr.chemin, branche: enr.branche,
+      pousser_au_scellement: ev.target.checked });
+    if (rep) rendreDepot();
+  };
+  if ($("depot-pousser")) $("depot-pousser").onclick = async () => {
+    const rep = await geste("POST", "/depot/pousser");
+    if (rep) { dire(`poussé — ${rep.pousse}`); rendreDepot(); }
+  };
+  if ($("depot-tirer")) $("depot-tirer").onclick = async () => {
+    const rep = await geste("POST", "/depot/tirer");
+    // La définition servie vient peut-être de changer : on la relit.
+    if (rep) { def = null; await chargerDesign(); membresOuverts = true; rendreDesign(); }
+  };
 }
 
 function ouvrirArchivage() {
@@ -2777,7 +2859,8 @@ async function scellerDepuisLaPage() {
       ${CHAT ? `<a href="${e(CHAT)}" target="_blank" rel="noopener">pratiquer ↗</a>` : ""}
       <br>${trace.commit
         ? `Commité dans le dépôt du harness : <span class="mono">${e(trace.commit)}</span>${
-            trace.commit_motif ? ` — ${e(trace.commit_motif)}` : ""}`
+            trace.commit_motif ? ` — ${e(trace.commit_motif)}` : ""}${
+            trace.pousse ? ` — et poussé au dépôt nu.` : trace.pousse_motif ? ` — non poussé : ${e(trace.pousse_motif)}.` : ""}`
         : `Non commité — ${e(trace.commit_motif || "raison inconnue")}.`}
       <br>Les ha déjà capturés peuvent être périmés : \`kokaji regression\`.
     </div>`;
@@ -2853,10 +2936,12 @@ function ouvrirNaissance() {
   // La troisième voie (RFC-008) : des textes faits main, adoptés tels quels.
   // Le marqueur ne peut pas heurter un id de harness — un slug n'a pas de @.
   sources.push(["@adopter", "adopter des textes faits main"]);
+  // Et la voie de la RFC-012 : cloner un dépôt nu qui est déjà un harness.
+  sources.push(["@cloner", "cloner un dépôt nu de la machine"]);
   $("ne-source").innerHTML = sources
     .map(([v, l]) => `<option value="${e(v)}">${e(l)}</option>`).join("");
   $("ne-id").value = ""; $("ne-nom").value = ""; $("ne-dit").textContent = "";
-  $("ne-provenance").value = "";
+  $("ne-provenance").value = ""; $("ne-clone-chemin").value = ""; $("ne-depot-chemin").value = "";
   $("ne-prompts").innerHTML = "";
   ajouterUnTexte();
   $("ne-valider").disabled = true;
@@ -2866,7 +2951,13 @@ function ouvrirNaissance() {
 }
 
 function basculerAdoption() {
-  $("ne-adoption").hidden = $("ne-source").value !== "@adopter";
+  const voie = $("ne-source").value;
+  $("ne-adoption").hidden = voie !== "@adopter";
+  $("ne-clone").hidden = voie !== "@cloner";
+  // Copier ou semer : on peut lier un dépôt nu tout de suite, ou plus tard.
+  $("ne-depot").hidden = voie === "@adopter" || voie === "@cloner";
+  // Un clone apporte son nom : le manifest le porte.
+  $("ne-nom").disabled = voie === "@cloner";
   naissancePrete();
 }
 
@@ -2899,8 +2990,9 @@ function naissancePrete() {
     ? "l'identifiant s'écrit en minuscules, chiffres et tirets."
     : "";
   // La source vide est un choix légitime — semer — et non un champ non rempli.
-  let pret = bon && $("ne-nom").value.trim();
-  if ($("ne-source").value === "@adopter")
+  const voie = $("ne-source").value;
+  let pret = bon && (voie === "@cloner" ? $("ne-clone-chemin").value.trim() : $("ne-nom").value.trim());
+  if (voie === "@adopter")
     pret = pret && textesAdoptes().every(p => p.nom && p.texte.trim())
                 && textesAdoptes().length > 0;
   $("ne-valider").disabled = !pret;
@@ -2916,10 +3008,15 @@ async function creerHarness() {
       nom: $("ne-nom").value.trim(),
       provenance: $("ne-provenance").value.trim(),
       prompts: textesAdoptes(),
+    } : $("ne-source").value === "@cloner" ? {
+      id_harness: $("ne-id").value.trim(),
+      cloner_depuis: { chemin: $("ne-clone-chemin").value.trim(), branche: $("ne-clone-branche").value.trim() || "main" },
     } : {
       source: $("ne-source").value,
       id_harness: $("ne-id").value.trim(),
       nom: $("ne-nom").value.trim(),
+      ...($("ne-depot-chemin").value.trim()
+        ? { depot: { chemin: $("ne-depot-chemin").value.trim(), branche: "main" } } : {}),
     })
   });
   if (!r.ok) {
@@ -2950,6 +3047,7 @@ async function creerHarness() {
   $("ne-annuler").onclick = () => { $("voile-naissance").close(); };
   $("ne-id").oninput = naissancePrete;
   $("ne-nom").oninput = naissancePrete;
+  $("ne-clone-chemin").oninput = naissancePrete;
   $("ne-un-texte").onclick = ajouterUnTexte;
   $("ne-valider").onclick = creerHarness;
   await chargerHarness();

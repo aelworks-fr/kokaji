@@ -223,7 +223,7 @@ class CreerUnHarness(unittest.TestCase):
 
     def test_une_source_vide_n_empeche_pas_de_valider(self):
         """C'est un choix, pas un champ non rempli."""
-        self.assertIn('bon && $("ne-nom").value.trim()', RENDU)
+        self.assertIn('let pret = bon && (voie === "@cloner" ? $("ne-clone-chemin").value.trim() : $("ne-nom").value.trim());', RENDU)
 
     def test_la_voie_de_l_adoption_est_offerte(self):
         """RFC-008 : sans elle, l'import n'existe pas pour qui n'a pas de shell."""
@@ -396,7 +396,7 @@ class LAutoratDansLeHarness(unittest.TestCase):
     def test_le_depot_se_lit_dans_l_autorat(self):
         self.assertIn('id="depot-panneau"', PAGE)
         self.assertIn('d = await lire("/depot")', PAGE)
-        self.assertIn("(RFC-012) ; le panneau suit", PAGE)
+        self.assertIn("Aucun dépôt nu enregistré. En enregistrer un le crée", PAGE)
 
     def test_les_gestes_de_proprietaire_ne_sont_offerts_qu_au_proprietaire(self):
         self.assertIn('${jeSuisLePatron ? `<div><button class="btn-fantome btn-encre" id="btn-archiver"', PAGE)
@@ -488,6 +488,46 @@ class LaPasseTrois(unittest.TestCase):
         """K-17 : un fondu léger, et rien pour qui a demandé moins de mouvement."""
         self.assertIn(".contenu > section:not([hidden]) { animation: apparait .18s ease-out; }", PAGE)
         self.assertIn("@media (prefers-reduced-motion: reduce)", PAGE)
+
+
+class LeDepotDansLaPage(unittest.TestCase):
+    """RFC-012, lot C — le panneau Dépôt et ses gestes, la naissance, la trace, le badge."""
+
+    def test_le_panneau_offre_les_trois_gestes_et_les_droits_qui_vont_avec(self):
+        self.assertIn('id="depot-pousser"', PAGE)
+        self.assertIn('id="depot-tirer"', PAGE)
+        self.assertIn('id="depot-enregistrer"', PAGE)
+        self.assertIn('id="depot-desenregistrer"', PAGE)
+        self.assertIn('geste("PUT", "/depot", { chemin, branche:', PAGE)
+        self.assertIn('geste("DELETE", "/depot")', PAGE)
+        self.assertIn('geste("POST", "/depot/pousser")', PAGE)
+        self.assertIn('geste("POST", "/depot/tirer")', PAGE)
+        # Enregistrer et désenregistrer : propriétaire ; pousser et tirer : co-auteur.
+        self.assertIn('c\'est un geste de propriétaire', PAGE)
+        self.assertIn('id="depot-auto"', PAGE)
+
+    def test_tirer_relit_la_definition(self):
+        self.assertIn("if (rep) { def = null; await chargerDesign();", PAGE)
+
+    def test_le_panneau_dit_comment_cloner_depuis_un_poste_et_qu_il_ne_fusionne_jamais(self):
+        self.assertIn("git clone &lt;machine&gt;:${e(enr.chemin)}", PAGE)
+        self.assertIn("jamais de fusion", PAGE)
+
+    def test_la_naissance_clone_ou_lie_un_depot_nu(self):
+        self.assertIn('sources.push(["@cloner", "cloner un dépôt nu de la machine"]);', PAGE)
+        self.assertIn('id="ne-clone-chemin"', PAGE)
+        self.assertIn('id="ne-depot-chemin"', PAGE)
+        self.assertIn("cloner_depuis: { chemin: $(\"ne-clone-chemin\").value.trim()", PAGE)
+        self.assertIn("? { depot: { chemin: $(\"ne-depot-chemin\").value.trim(), branche: \"main\" } } : {}", PAGE)
+        self.assertIn("un dépôt qui n'est pas un harness ne laisse rien", PAGE)
+
+    def test_la_trace_du_scellement_dit_pousse_ou_pourquoi_non(self):
+        self.assertIn("et poussé au dépôt nu.", PAGE)
+        self.assertIn("non poussé : ${e(trace.pousse_motif)}", PAGE)
+
+    def test_le_profil_porte_l_etat_du_depot_en_badge(self):
+        self.assertIn('title="l\'état du dépôt du harness"', PAGE)
+        self.assertIn("o && o.depot ?", PAGE)
 
 
 class LesCoupes(unittest.TestCase):

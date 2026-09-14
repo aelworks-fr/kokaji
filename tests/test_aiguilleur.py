@@ -518,6 +518,14 @@ class Naissance(Bac):
             )
         )
 
+    def test_l_offre_dit_l_etat_du_depot_de_chaque_harness(self):
+        """RFC-012 D12.5 — le badge du Profil et du sélecteur lit l'offre."""
+        client = self.client_avec_naissance()
+        offre = client.get("/harness", headers=self.cle(self.un)).json()
+        self.assertTrue(offre["harness"], offre)
+        for h in offre["harness"]:
+            self.assertIn(h["depot"], ("sans dépôt", "non enregistré", "à jour", "modifications non scellées"))
+
     def test_naitre_avec_un_depot_nu_l_enregistre_et_y_pousse(self):
         """RFC-012 D12.4 — enregistrer un dépôt nu tout de suite."""
         import os

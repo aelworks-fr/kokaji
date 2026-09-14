@@ -153,8 +153,11 @@ violé, densho incomplet, seuil par défaut. Le gabarit, commun à toute la
 chaîne, se replie au-dessus du graphe.
 
 L'autorat vit dans le harness, ouvert par « qui forge avec moi » : les
-membres, inviter un co-auteur, le panneau Dépôt (RFC-012), et la zone
-d'archivage — archiver, jamais supprimer, confirmé par le nom exact.
+membres, inviter un co-auteur, le panneau Dépôt (RFC-012) — l'état du dépôt,
+enregistrer un dépôt nu ou le désenregistrer (propriétaire), pousser et tirer
+en avance rapide (co-auteurs), pousser à chaque scellement —, et la zone
+d'archivage — archiver, jamais supprimer, confirmé par le nom exact. La
+naissance sait aussi cloner un dépôt nu, ou en lier un tout de suite.
 
 ## La page v2 — la passe 1 (RFC-013)
 
