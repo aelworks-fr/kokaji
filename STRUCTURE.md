@@ -34,6 +34,7 @@ dojo/                Le kit d'une instance — Docker Compose           (§3)
 atelier/             Le harness de démonstration, domaine fictif      (§9)
 trempe/              La trempe du produit : check.sh, exemptions, gabarit
 docs/                SPECS, RFC 001→009, HDS v0, et la doc de chaque commande
+  carnet.md          Le carnet de vigilances — ce qui peut mal tourner, et ce qu'on lui oppose
 .github/workflows/   La CI : trempe du produit, tests, Atelier, style
 
 dist/coupes/<harness>/<cible>/   Coupes forgées — généré, jamais suivi  (D9.1)

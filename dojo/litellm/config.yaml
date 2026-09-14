@@ -12,47 +12,8 @@
 #       --moteurs dojo/litellm/moteurs.yaml --nu banc/persona
 
 # >>> engendré par `kokaji passerelle --config` — ne pas éditer à la main
-model_list:
-- model_name: atelier/idee
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/idee@sobre
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/idee@instrumentee
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/cadrage
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/cadrage@sobre
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/cadrage@instrumentee
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/decoupage
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/decoupage@sobre
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: atelier/decoupage@instrumentee
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
-- model_name: banc/persona
-  litellm_params:
-    model: anthropic/claude-haiku-4-5-20251001
-    api_key: os.environ/ANTHROPIC_API_KEY
+# Vide dans le produit : la liste se dérive des harness de l'instance (README).
+model_list: []
 # <<< fin de la part engendrée
 litellm_settings:
   callbacks:

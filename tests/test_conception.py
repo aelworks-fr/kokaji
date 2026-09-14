@@ -183,7 +183,7 @@ class Versions(unittest.TestCase):
 
 
 class Scellement(Bac):
-    def sceller(self, proposition, auteur="npelloux", motif="parce que"):
+    def sceller(self, proposition, auteur="forgeron", motif="parce que"):
         return sceller(
             self.racine, proposition, auteur=auteur, motif=motif,
             quand=datetime(2026, 1, 2, tzinfo=UTC),
@@ -243,7 +243,7 @@ class Scellement(Bac):
 
         self.assertEqual(self.source("k2")["version"], "2.0.0")
         self.assertEqual(self.manifest()["harness"]["version"], "2.0.0")
-        self.assertEqual(trace.auteur, "npelloux")
+        self.assertEqual(trace.auteur, "forgeron")
 
     def test_une_retouche_reste_mineure(self):
         self.sceller(Proposition(kata=[{"id": "k2", "nom": "Autre"}]))
@@ -261,7 +261,7 @@ class Scellement(Bac):
         self.sceller(Proposition(kata=[{"id": "k2", "nom": "Autre"}]), motif="pour lire mieux")
         ligne = json.loads((self.racine / JOURNAL).read_text(encoding="utf-8").strip())
 
-        self.assertEqual(ligne["auteur"], "npelloux")
+        self.assertEqual(ligne["auteur"], "forgeron")
         self.assertEqual(ligne["motif"], "pour lire mieux")
         self.assertTrue(ligne["le"].startswith("2026-01-02"))
         self.assertIn("k2", ligne["versions"])
@@ -452,20 +452,20 @@ class SurfaceHttp(Bac):
     def test_sceller_ecrit_versionne_et_journalise(self):
         r = self.client.post("/conception/scellement", json={
             "proposition": {"kata": [{"id": "k2", "nom": "Autre"}]},
-            "auteur": "npelloux", "motif": "pour lire mieux"})
+            "auteur": "forgeron", "motif": "pour lire mieux"})
 
         self.assertEqual(r.status_code, 200)
-        self.assertEqual(r.json()["auteur"], "npelloux")
+        self.assertEqual(r.json()["auteur"], "forgeron")
         self.assertEqual(self.manifest()["harness"]["version"], "1.3.0")
         self.assertTrue((self.racine / JOURNAL).is_file())
 
         relu = self.client.get("/conception").json()
-        self.assertEqual(relu["harness"]["dernier_scellement"]["auteur"], "npelloux")
+        self.assertEqual(relu["harness"]["dernier_scellement"]["auteur"], "forgeron")
 
     def test_un_scellement_qui_ne_tient_pas_est_un_conflit(self):
         r = self.client.post("/conception/scellement", json={
             "proposition": {"kata": [{"id": "k2", "herite": [{"k1.c2": "fait_etabli"}]}]},
-            "auteur": "npelloux"})
+            "auteur": "forgeron"})
 
         self.assertEqual(r.status_code, 409)
         self.assertEqual(self.manifest()["harness"]["version"], "1.2.3")

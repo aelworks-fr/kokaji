@@ -65,7 +65,7 @@ L'API d'observation sert : la structure (manifest), les contrats, les résultats
 | SPECS | v1.5 → v1.6 : l'app web se structure en trois espaces (§2) ; l'Épure rejoint la brique QG (même app, deux pages d'observation : sujets / harness) |
 | API middleware | Famille de routes « observation » (agrégats, checks, Hasse de D) — lecture seule |
 | Carte de conviction | Ajouter la preuve « le carré rougit à l'écran » (sabotage 1) |
-| Design | Un brief dédié à produire pour l'équipe design (Claude Design + Nicolas) — les questions ouvertes : rendu du mou (laxité), les trois encres, la lisibilité d'un carré par kata sans surcharge |
+| Design | Un brief dédié à produire pour l'équipe design (Claude Design + le forgeron) — les questions ouvertes : rendu du mou (laxité), les trois encres, la lisibilité d'un carré par kata sans surcharge |
 
 ---
 *Note d'établi : ce RFC ferme une boucle ouverte il y a longtemps — « je crois fermement à la puissance de la représentation visuelle ». Le QG montrait déjà le métal qui chauffe ; l'Épure montre la forge elle-même : ses gabarits, ses tolérances, et l'écart entre ce que les lames promettent et ce qu'elles coupent. Le forgeron qui voit ses carrés rougir n'a plus besoin de croire son outillage sur parole.*

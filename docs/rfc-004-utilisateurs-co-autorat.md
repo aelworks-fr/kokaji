@@ -66,7 +66,7 @@ Contenu contractuel : **ma liste de harness** avec mon rôle badgé (propriétai
 ## 6. Impacts infrastructure
 
 - **Middleware** : authentifie (session token) ; attribue chaque session à son praticien.
-- **Dojo** : les clés virtuelles LiteLLM passent de « par usage » à **« par utilisateur et usage »** (`chat-nicolas`, `banc-nicolas`…) — c'est le mécanisme d'attribution du praticien, sans toucher à LiteLLM. Un compte Open WebUI par utilisateur ; mapping clé ↔ utilisateur dans le middleware.
+- **Dojo** : les clés virtuelles LiteLLM passent de « par usage » à **« par utilisateur et usage »** (`chat-<qui>`, `banc-<qui>`…) — c'est le mécanisme d'attribution du praticien, sans toucher à LiteLLM. Un compte Open WebUI par utilisateur ; mapping clé ↔ utilisateur dans le middleware.
 - **Sécurité (SPECS §12 amendée)** : isolation par ACL **testée par sabotage** (cf. §8) ; secrets d'auth hors git ; HTTPS déjà requis.
 
 ## 7. Non-objectifs de ce RFC

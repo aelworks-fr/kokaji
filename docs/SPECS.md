@@ -194,7 +194,7 @@ Service léger (FastAPI) adossé aux logs du Dojo.
 - R8.3 — v1 : un sujet, une vue, détail d'un nœud au clic (champs, hypothèses, horodatage du dernier état). Le QG lit l'état du middleware, n'interprète ni ne modifie rien.
 - R8.4 — **Seconde lecture du fil d'ariane : la santé des options.** Par nœud et par sujet : le compte d'options vivantes, leur liste, leur âge ; par décision : son delta (fermées / ouvertes). Visuel v1 : un badge numérique par nœud + un panneau « possibles vivants » du sujet. Pas de halo ni d'animation en v1.
   - Métriques v1, et rien de plus : nombre d'options ouvertes (par nœud, par sujet), âge médian des options ouvertes, delta par décision. **Aucun indice composite, aucun score de fécondité** — un chiffre agrégé magique inviterait au pilotage aveugle.
-  - La mesure est descriptive, jamais un objectif — [carnet de vigilances #8](docs/carnet.md).
+  - La mesure est descriptive, jamais un objectif — [carnet de vigilances #8](carnet.md).
 
 **Juste assez :** dérouler une session en chat et voir le nœud se colorer sans saisie manuelle. Pour R8.4 : dérouler une session `<demo>/<kata émettant des options>`, voir le nœud afficher ses n options vivantes, prendre une décision en session, et voir son delta apparaître — sans aucune saisie manuelle.
 

@@ -77,7 +77,7 @@ Deux conséquences :
 - **Veille** — itère sur les harness ; un processus, N harness, leurs corpus respectifs.
 - **QG** — `/qg/profil` renvoie déjà une liste de harness bâtie avec un seul élément ; elle se remplit depuis `harness_de()`. Un sélecteur, et une route pour changer de harness courant. **L'URL ne change pas** : le harness courant est un état du compte, pas un segment d'adresse.
 - **Dojo** — le montage passe du dossier d'un harness au dossier des harness ; Open WebUI pointe sur Kokaji ; un secret partagé pour le JWT d'identité.
-- **RFC-004 §6, amendé** — il prévoyait des clés LiteLLM « par utilisateur et usage » (`chat-nicolas`) comme mécanisme d'attribution du praticien. L'identité signée transmise par le chat rend ce mécanisme inutile pour le chat : le praticien vient de l'identité, pas de la clé. Les clés par usage (`chat-public`, `banc`) restent — elles disent *quel appelant*, ce qui range le ha dans le bon corpus, et cela reste vrai.
+- **RFC-004 §6, amendé** — il prévoyait des clés LiteLLM « par utilisateur et usage » (`chat-<qui>`) comme mécanisme d'attribution du praticien. L'identité signée transmise par le chat rend ce mécanisme inutile pour le chat : le praticien vient de l'identité, pas de la clé. Les clés par usage (`chat-public`, `banc`) restent — elles disent *quel appelant*, ce qui range le ha dans le bon corpus, et cela reste vrai.
 
 ## 6. Non-objectifs de ce RFC
 
