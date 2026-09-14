@@ -585,6 +585,7 @@
     <button class="axe" id="axe-contrats">2 · Contrats f♯<span class="badge-encre"
       id="badge-contrats" hidden></span></button>
     <button class="axe" id="axe-trempe">3 · Trempe</button>
+    <button class="axe" id="axe-coupes">4 · Coupes</button>
   </div>
 
   <div class="card elev-sm" id="axe-corps" style="padding:24px"></div>
@@ -1099,6 +1100,13 @@ let def = null;            // la définition scellée, telle que le middleware l
 let brouillon = null;      // ce que la page propose
 let epreuve = null;        // le verdict rendu par le serveur, ou null si non éprouvé
 let axe = "partition", kataChoisi = null, membresOuverts = false, montreYaml = false;
+// L'axe « Coupes » (RFC-010) : la cible regardée, et la coupe rendue par le
+// serveur — nulle tant qu'on ne l'a pas demandée, et dès qu'on retouche.
+let cibleChoisie = null, coupeRendue = null, coupeDit = "";
+// Ce que la forge lit dans un densho, et rien d'autre (HDS : `source`).
+const AXES = { partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe", coupes: "axe-coupes" };
+const DENSHO = ["role", "interdits", "questions", "livrable_nom", "livrable_structure", "passage", "natures"];
+const DENSHO_LISTES = ["interdits", "questions", "livrable_structure", "natures"];
 
 const RANG = (s) => (def ? def.statuts_champ.indexOf(s) : -1);
 const couvre = (garanti, exige) => {
@@ -1166,6 +1174,23 @@ function proposition() {
   if (JSON.stringify(brouillon.trempe.grille_judge) !== JSON.stringify(def.trempe.grille_judge))
     tr.grille_judge = brouillon.trempe.grille_judge;
   if (Object.keys(tr).length) p.trempe = tr;
+
+  // Le gabarit, s'il a bougé ; les densho, variable par variable — seulement
+  // ce qui change, comme le reste. Un harness adopté n'a ni l'un ni l'autre.
+  if (!def.harness.exogene) {
+    if (def.template && brouillon.template !== def.template.texte) p.template = brouillon.template;
+    const src = {};
+    brouillon.kata.forEach(k => {
+      const origine = def.kata.find(o => o.id === k.id);
+      if (!origine) return;
+      const avant = origine.source || {}, apres = brouillon.source[k.id] || {};
+      DENSHO.forEach(cle => {
+        if (JSON.stringify(apres[cle] ?? null) !== JSON.stringify(avant[cle] ?? null))
+          (src[k.id] = src[k.id] || {})[cle] = apres[cle];
+      });
+    });
+    if (Object.keys(src).length) p.source = src;
+  }
   return p;
 }
 
@@ -1199,9 +1224,15 @@ async function chargerDesign() {
       service est revenu.</p>`;
     return;
   }
-  brouillon = { kata: copie(def.kata), trempe: copie(def.trempe) };
-  epreuve = null;
+  brouillon = {
+    kata: copie(def.kata), trempe: copie(def.trempe),
+    // Le gabarit et les densho, tels que la forge les lit (RFC-010 D10.1, D10.2).
+    template: def.template ? def.template.texte : null,
+    source: Object.fromEntries(def.kata.map(k => [k.id, copie(k.source || {})])),
+  };
+  epreuve = null; coupeRendue = null; coupeDit = "";
   kataChoisi = brouillon.kata.length ? brouillon.kata[0].id : null;
+  cibleChoisie = (def.cibles || []).length ? def.cibles[0].id : null;
   rendreDesign();
 }
 
@@ -1268,9 +1299,9 @@ function rendreDesign() {
   const rompus = liensRompus();
   $("badge-contrats").hidden = rompus.length === 0;
   $("badge-contrats").textContent = rompus.length;
-  for (const [nom, id] of Object.entries({ partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe" }))
+  for (const [nom, id] of Object.entries(AXES))
     $(id).setAttribute("aria-current", axe === nom ? "page" : "false");
-  ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe })[axe]();
+  ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe, coupes: rendreCoupes })[axe]();
   // Reconstruit avec l'axe : sans ce rebranchement, le bouton existerait sans agir.
   // Deux natures d'étape, deux gestes : dans un harness adopté, une étape est
   // un texte qui entre tel quel — pas une source de forge à remplir.
@@ -1283,7 +1314,8 @@ function rendreDesign() {
 function rendreVerdict() {
   const p = proposition();
   const combien = Object.keys(p).length ? (p.kata || []).length + (p.retirer || []).length
-    + (p.trempe ? Object.keys(p.trempe).length : 0) : 0;
+    + (p.trempe ? Object.keys(p.trempe).length : 0)
+    + (p.template !== undefined ? 1 : 0) + (p.source ? Object.keys(p.source).length : 0) : 0;
   const rompus = liensRompus();
   let pastille, detail, scellable = false;
 
@@ -1847,6 +1879,126 @@ function rendreTrempe() {
   });
 }
 
+// --- l'axe 4 : le gabarit, les densho, la coupe qu'on voit (RFC-010) ---------
+//
+// À gauche ce qu'on écrit — le gabarit du ryū, puis le densho du kata choisi ;
+// à droite ce qu'on obtient — la coupe rendue par le serveur pour une cible,
+// forgée en mémoire depuis le brouillon, jamais écrite. Les adjonctions
+// (amont, aval) n'ont pas de zone ici : elles entrent à la forge depuis l'axe
+// « Contrats », et se lisent dans la coupe.
+const lignes = (liste) => (liste || []).join("\n");
+const depuisLignes = (texte) => texte.split("\n").map(l => l.trim()).filter(Boolean);
+function retoucheCoupe() { coupeRendue = null; coupeDit = ""; retouche(); }
+
+function rendreCoupes() {
+  const exogene = def.harness.exogene;
+  const k = brouillon.kata.find(x => x.id === kataChoisi) || brouillon.kata[0];
+  if (k && k.id !== kataChoisi) kataChoisi = k.id;
+  const densho = k ? (brouillon.source[k.id] || {}) : {};
+  const variables = def.template ? def.template.variables : [];
+
+  const choixKata = `<select class="select-pilule" id="coupe-kata">${brouillon.kata.map(x =>
+    `<option value="${e(x.id)}" ${x.id === kataChoisi ? "selected" : ""}>${e(x.nom)}</option>`).join("")}</select>`;
+  const zone = (cle, libelle, aide, rows = 3) => `
+    <label class="mot" for="densho-${cle}">${libelle}${aide ? ` — <span class="rien">${aide}</span>` : ""}</label>
+    <textarea class="champ-large mono" id="densho-${cle}" data-densho="${cle}" rows="${rows}"
+      style="margin:4px 0 12px">${e(DENSHO_LISTES.includes(cle) ? lignes(densho[cle]) : (densho[cle] ?? ""))}</textarea>`;
+
+  const gauche = exogene ? `
+    <h3 style="font-size:14px;margin:0 0 8px">Le texte de l'étape</h3>
+    <p class="rien">Un harness adopté n'a ni gabarit ni densho : ses étapes sont des textes
+      servis tels quels. Ils se lisent ici ; les éditer est le geste du RFC-011.</p>
+    ${choixKata}
+    <pre class="hds" id="densho-texte" style="margin-top:10px">${e(densho.texte || "")}</pre>`
+  : `
+    <h3 style="font-size:14px;margin:0 0 4px">Le gabarit du harness</h3>
+    <p class="rien" style="margin:0 0 8px">La doctrine commune à toute la chaîne. Ses variables
+      — ${variables.length ? variables.map(v => `<code>{{ ${e(v)} }}</code>`).join(", ") : "aucune"} —
+      sont remplies par le densho de chaque kata à la forge.</p>
+    <textarea class="champ-large mono" id="gabarit-texte" rows="14">${e(brouillon.template ?? "")}</textarea>
+
+    <h3 style="font-size:14px;margin:22px 0 8px">Le densho du kata ${choixKata}</h3>
+    ${k ? zone("role", "Rôle", "obligatoire", 4)
+      + zone("questions", "Questions", "une par ligne, obligatoire", 5)
+      + zone("interdits", "Interdits", "un par ligne", 3)
+      + `<label class="mot" for="densho-livrable_nom">Nom du livrable — <span class="rien">sinon celui du manifest</span></label>
+         <input class="champ-large" id="densho-livrable_nom" data-densho="livrable_nom"
+                value="${e(densho.livrable_nom ?? "")}" style="margin:4px 0 12px" autocomplete="off">`
+      + zone("livrable_structure", "Structure du livrable", "une ligne par point, obligatoire", 4)
+      + zone("passage", "Passage", "obligatoire", 3)
+      + zone("natures", "Natures de problème", "une par ligne — RFC-003", 3)
+      : `<p class="rien">Aucun kata.</p>`}`;
+
+  const cibles = def.cibles || [];
+  const droite = `
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <h3 style="font-size:14px;margin:0">La coupe</h3>
+      ${cibles.map(c => `<button class="bascule ${c.id === cibleChoisie ? "exige" : "inactif"}"
+        data-cible="${e(c.id)}">${e(c.id)}${c.etat_structure ? " · état" : ""}</button>`).join("")}
+      <span style="flex:1"></span>
+      <button class="btn-plein" id="coupe-voir">voir la coupe</button>
+    </div>
+    <p class="rien" style="margin:6px 0 10px">Ce que le chat recevrait pour
+      <span class="mono">${e(kataChoisi || "?")}@${e(cibleChoisie || "?")}</span>, forgé depuis le
+      brouillon — rien n'est écrit tant qu'on ne scelle pas.</p>
+    ${coupeRendue ? `
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
+        <span class="diff-val">kata ${e(coupeRendue.estampille.version_kata)} ·
+          coupe ${e(coupeRendue.estampille.version_coupe)}</span>
+        <span style="flex:1"></span>
+        <button class="btn-fantome" id="coupe-copier">copier</button>
+        <button class="btn-fantome" id="coupe-telecharger">télécharger</button>
+      </div>
+      <pre class="hds" id="coupe-texte">${e(coupeRendue.texte)}</pre>`
+    : `<p class="rien" id="coupe-texte">${e(coupeDit || "Pas encore rendue — « voir la coupe ».")}</p>`}`;
+
+  $("axe-corps").innerHTML = `<div class="deux-colonnes"><div>${gauche}</div><div>${droite}</div></div>`;
+
+  $("coupe-kata").onchange = (ev) => { kataChoisi = ev.target.value; coupeRendue = null; rendreDesign(); };
+  $("axe-corps").querySelectorAll("button[data-cible]").forEach(b => {
+    b.onclick = () => { cibleChoisie = b.dataset.cible; coupeRendue = null; rendreDesign(); };
+  });
+  $("coupe-voir").onclick = voirLaCoupe;
+  if (coupeRendue) {
+    $("coupe-copier").onclick = () => navigator.clipboard?.writeText(coupeRendue.texte);
+    $("coupe-telecharger").onclick = () => {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([coupeRendue.texte], { type: "text/markdown" }));
+      a.download = `${def.harness.id}-${kataChoisi}@${cibleChoisie}.md`;
+      a.click(); URL.revokeObjectURL(a.href);
+    };
+  }
+  if (exogene) return;
+  $("gabarit-texte").onchange = (ev) => { brouillon.template = ev.target.value; retoucheCoupe(); };
+  $("axe-corps").querySelectorAll("[data-densho]").forEach(x => {
+    x.onchange = () => {
+      const cle = x.dataset.densho, src = brouillon.source[kataChoisi] = brouillon.source[kataChoisi] || {};
+      if (DENSHO_LISTES.includes(cle)) src[cle] = depuisLignes(x.value);
+      else src[cle] = x.value;
+      retoucheCoupe();
+    };
+  });
+}
+
+async function voirLaCoupe() {
+  if (!kataChoisi || !cibleChoisie) return;
+  const p = proposition();
+  try {
+    const r = await fetch("/conception/coupe", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ kata: kataChoisi, cible: cibleChoisie,
+                             ...(Object.keys(p).length ? { proposition: p } : {}) })
+    });
+    if (!r.ok) {
+      let detail = ""; try { detail = (await r.json()).detail; } catch { detail = await r.text(); }
+      coupeRendue = null; coupeDit = `la forge refuse : ${detail || r.status}`;
+    } else { coupeRendue = await r.json(); coupeDit = ""; }
+  } catch {
+    coupeRendue = null; coupeDit = "le middleware n'a pas répondu.";
+  }
+  rendreDesign();
+}
+
 // --- la proposition, toujours au bas de la page -----------------------------
 function rendreProposition() {
   const p = proposition();
@@ -2094,7 +2246,7 @@ async function creerHarness() {
   $("ne-un-texte").onclick = ajouterUnTexte;
   $("ne-valider").onclick = creerHarness;
   await chargerHarness();
-  for (const [nom, id] of Object.entries({ partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe" }))
+  for (const [nom, id] of Object.entries(AXES))
     $(id).onclick = () => { axe = nom; rendreDesign(); };
   $("btn-membres").onclick = () => { membresOuverts = !membresOuverts; rendreDesign(); };
   // Le bouton est reconstruit à chaque rendu de l'axe : on le rebranche là.

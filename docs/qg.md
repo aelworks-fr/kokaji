@@ -86,6 +86,22 @@ sur un corpus qui a quelque chose à montrer** plutôt que sur un écran vide. U
 corpus sans sujet le dit en clair : un sujet n'apparaît que si une session a émis
 un bloc d'état, ce que seules les cibles instrumentées font.
 
+## Design du harness — le quatrième axe : les coupes (RFC-010)
+
+L'onglet « Design du harness » édite la définition en quatre axes :
+partitionnement, contrats f♯, trempe, et **coupes**. Le quatrième est celui du
+texte : à gauche le gabarit du harness, texte brut avec ses variables, puis le
+densho du kata choisi — rôle, questions, interdits, livrable, passage, natures ;
+à droite la coupe rendue pour une cible, telle que le chat la recevrait,
+forgée en mémoire depuis le brouillon par `POST /conception/coupe`. Rien n'est
+écrit tant qu'on ne scelle pas ; une retouche périme la coupe rendue, qu'on
+redemande. Elle se copie et se télécharge telle quelle, avec son estampille.
+
+Les adjonctions — ce que le kata hérite de l'amont, ce qu'il produit pour
+l'aval — n'ont pas de zone sur cet axe : elles vivent à l'axe « Contrats » et
+entrent à la forge, où on les lit dans la coupe. Un harness adopté (RFC-008) y
+montre le texte de ses étapes sans l'éditer : c'est le geste du RFC-011.
+
 ## Au backlog, non bloquant — la nature au détail du nœud (RFC-003 §5.5)
 
 Le bloc d'état peut désormais porter un champ `nature` : dans quel genre de

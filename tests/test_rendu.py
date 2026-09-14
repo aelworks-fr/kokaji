@@ -112,6 +112,15 @@ class Rendu(unittest.TestCase):
         self.assertTrue(any("design" in q for q in quoi), quoi)
         self.assertGreaterEqual(len(self.verdicts), 10, quoi)
 
+    def test_chaque_axe_du_design_est_regarde(self):
+        """Le module s'ouvre sur le premier axe : sans clic, les trois autres —
+        dont les coupes, deux colonnes et un gabarit entier — resteraient
+        invisibles à la mesure."""
+        quoi = [v.quoi for v in self.verdicts]
+        for axe in ("partition", "contrats", "trempe", "coupes"):
+            self.assertIn(f"rien ne se chevauche dans l'axe {axe} (360 px)", quoi)
+            self.assertIn(f"l'axe {axe} tient dans l'écran (360 px)", quoi)
+
 
 class SansNavigateur(unittest.TestCase):
     def test_l_absence_de_navigateur_ne_tient_pas(self):

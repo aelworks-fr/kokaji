@@ -257,6 +257,55 @@ class LaTrempeS_Ajoute(unittest.TestCase):
         self.assertIn('data-ret-crit="${i}"', RENDU)
 
 
+class LesCoupes(unittest.TestCase):
+    """L'axe 4 — le gabarit, les densho, la coupe qu'on voit (RFC-010 §4.4)."""
+
+    def test_l_axe_existe_et_se_rend(self):
+        self.assertIn('id="axe-coupes"', RENDU)
+        self.assertIn('coupes: "axe-coupes"', RENDU)
+        self.assertIn("coupes: rendreCoupes", RENDU)
+
+    def test_le_gabarit_et_le_densho_s_editent(self):
+        self.assertIn('id="gabarit-texte"', RENDU)
+        # Les zones sont engendrées : on vérifie que chaque variable du densho
+        # en reçoit une, et que la liste est celle que la forge lit (HDS).
+        for variable in ("role", "questions", "interdits", "livrable_structure", "passage", "natures"):
+            self.assertIn(f'zone("{variable}",', RENDU)
+        self.assertIn('data-densho="livrable_nom"', RENDU)
+        self.assertIn(
+            'const DENSHO = ["role", "interdits", "questions", "livrable_nom", '
+            '"livrable_structure", "passage", "natures"]', RENDU)
+
+    def test_le_gabarit_et_les_densho_entrent_dans_la_proposition(self):
+        """Sans ce diff, l'écran éditerait et le scellement n'écrirait rien."""
+        self.assertIn("p.template = brouillon.template", RENDU)
+        self.assertIn("p.source = src", RENDU)
+
+    def test_la_coupe_se_demande_au_serveur_et_ne_s_invente_pas(self):
+        self.assertIn('fetch("/conception/coupe"', RENDU)
+        self.assertIn("rien n'est écrit tant qu'on ne scelle pas", RENDU)
+        self.assertIn("Pas encore rendue", RENDU)
+
+    def test_un_refus_de_la_forge_se_dit(self):
+        self.assertIn("la forge refuse :", RENDU)
+
+    def test_la_coupe_se_copie_et_se_telecharge(self):
+        self.assertIn('id="coupe-copier"', RENDU)
+        self.assertIn('id="coupe-telecharger"', RENDU)
+
+    def test_une_retouche_perime_la_coupe_rendue(self):
+        self.assertIn("function retoucheCoupe() { coupeRendue = null;", RENDU)
+
+    def test_un_harness_adopte_se_lit_sans_s_editer(self):
+        self.assertIn("ses étapes sont des textes\n      servis tels quels", RENDU)
+        self.assertIn("if (exogene) return;", RENDU)
+
+    def test_les_adjonctions_ne_s_editent_pas_ici(self):
+        """Elles vivent à l'axe Contrats et se lisent dans la coupe (RFC-010 §2)."""
+        self.assertNotIn('data-densho="herite"', RENDU)
+        self.assertNotIn('data-densho="produit"', RENDU)
+
+
 class LaDepense(unittest.TestCase):
     """Le coût se lit là où l'on modifie la forme — pas au terminal."""
 

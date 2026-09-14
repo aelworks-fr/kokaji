@@ -59,6 +59,25 @@ justifications citent ce qu'elles exemptent. Le fichier s'exempte
 désormais lui-même, et ce refus-là a payé sa place : un vérificateur qui
 crie faux apprend à être ignoré.
 
+## D — Le gabarit, les densho, la coupe qu'on voit (RFC-010)
+
+Les six sabotages du RFC-010 §7 sont joués **en tests**, à chaque commit, et
+chacun a été vu refuser avant que le geste ne soit tenu pour acquis
+(14 septembre 2026) :
+
+| # | Sabotage | Vu refuser dans |
+|---|---|---|
+| 1 | un gabarit qui cite `{{ inconnue }}` | `test_conception.Jugement` — la variable est nommée, `template.md` intact |
+| 2 | un densho dont `questions` est vidé | `test_conception.Jugement` — variable obligatoire vide |
+| 3 | un mot du vocabulaire interdit dans le gabarit | `test_conception.Jugement` — la trempe statique refuse dans l'épreuve |
+| 4 | `POST /conception/coupe` avec une proposition | `test_conception.Rendu` — gabarit, `kata/` et `dist/` identiques après l'appel |
+| 5 | un non-membre demande une coupe | `test_conception.SurfaceGardee` — 403, comme le reste |
+| 6 | `template` ou `source` sur un harness adopté | `test_adoption` — refusé, nommé, gabarit neutre intact |
+
+Le nominal — voir la coupe porter une retouche avant tout scellement, puis la
+forge régénérer à l'identique — est tenu par `test_conception.Rendu` : la coupe
+rendue est, octet pour octet, celle que `kokaji forge` écrit.
+
 ## Boot de référence
 
 Fait le 13 septembre 2026, depuis une copie des seuls fichiers versionnés de

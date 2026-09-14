@@ -170,5 +170,18 @@ Trois lots, chacun livrable seul, dans cet ordre.
 
 Puis les six sabotages du §7, joués et consignés dans la carte de conviction.
 
+## 9. Tableau d'application
+
+| Section | Décision | Où | État (14 septembre 2026) |
+|---|---|---|---|
+| D10.1 | le gabarit entre à la proposition | `conception/modele.py`, `brouillon.py`, `sceller.py` | appliqué — lot 1 |
+| D10.2 | le densho s'édite par ses variables | `/conception`, axe « 4 · Coupes » | appliqué — lots 1 et 3 |
+| D10.3 | la coupe se voit, s'exporte, la lecture n'écrit rien | `rendre_coupe`, `POST /conception/coupe`, copier et télécharger | appliqué — lots 2 et 3 |
+| D10.4 | un adopté se lit, ne s'édite pas par cet axe | `juger`, `rendre_coupe`, la page | appliqué — lot 1 |
+| D10.5 | rien ne s'enregistre qui ne tient | l'épreuve, reconduite | appliqué |
+| §7 | six sabotages, vus refuser | `docs/carte-de-conviction.md` §D | joués en tests |
+| §5 | SPECS §1.2 « densho », R4.4 | `docs/SPECS.md` | **à faire** — amendement des SPECS |
+| §4.4 | la vigie mesure l'axe aux trois largeurs | `kokaji/rendu.py` | appliqué — chaque axe est cliqué |
+
 ---
 *Note d'établi : la forge savait tout faire, et le forgeron n'en voyait rien. Ce RFC ne lui donne pas un nouvel outil ; il lui rend la vue sur sa lame, et la main sur le rouleau qui la décrit.*

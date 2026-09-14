@@ -98,6 +98,9 @@ CHEVAUCHENT = """() => {
   return chevauchent;
 }"""
 
+# Les axes du module design, dans l'ordre de la page.
+AXES_DU_DESIGN = ("partition", "contrats", "trempe", "coupes")
+
 MODULES_VISIBLES = """() => ['module-decouvrir','module-profil','module-qg','module-design']
     .filter(id => document.getElementById(id).getBoundingClientRect().height > 0)"""
 
@@ -182,6 +185,26 @@ def regarder(url: str) -> list[Verdict]:
                         verdicts.append(
                             _liste(f"rien ne se chevauche dans le design ({ou})", page, CHEVAUCHENT)
                         )
+                        # Chaque axe, un par un : le module s'ouvre sur le
+                        # premier, et un axe qu'on ne clique pas n'est pas
+                        # regardé — le quatrième (RFC-010) pose deux colonnes
+                        # et un gabarit entier, ce que les trois autres n'ont pas.
+                        for axe in AXES_DU_DESIGN:
+                            page.click(f"#axe-{axe}")
+                            page.wait_for_timeout(200)
+                            deborde_axe = page.evaluate("document.documentElement.scrollWidth")
+                            verdicts.append(
+                                Verdict(
+                                    f"l'axe {axe} tient dans l'écran ({ou})",
+                                    deborde_axe <= largeur,
+                                    "" if deborde_axe <= largeur else f"déborde de {deborde_axe} px",
+                                )
+                            )
+                            verdicts.append(
+                                _liste(f"rien ne se chevauche dans l'axe {axe} ({ou})", page, CHEVAUCHENT)
+                            )
+                        page.click("#axe-partition")
+                        page.wait_for_timeout(200)
                     if (largeur, hauteur) != TRES_LARGE:
                         continue
                     vu = page.evaluate(DESEQUILIBRE)
