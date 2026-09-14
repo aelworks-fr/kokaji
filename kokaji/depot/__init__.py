@@ -111,11 +111,19 @@ class Etat:
 
 
 def etat(racine: Path, reference: str | None = None) -> Etat:
+    """Sans référence donnée, celle du clone lui-même : ce que `origin` a
+    de cette branche à la dernière poussée ou tirée. C'est ce qui permet à la
+    ligne de commande — qui ne lit pas le magasin — de dire « à jour » plutôt
+    que « non enregistré » quand un dépôt nu est bien lié."""
     racine = Path(racine)
     if not est_depot(racine):
         return Etat(est_depot=False)
     propre = git(racine, "status", "--porcelain").stdout.strip() == ""
     branche = git(racine, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    if reference is None and git(racine, "remote", "get-url", "origin").returncode == 0:
+        distante = git(racine, "rev-parse", "--short", f"refs/remotes/origin/{branche}")
+        if distante.returncode == 0:
+            reference = distante.stdout.strip()
     dernier = git(racine, "log", "-1", "--format=%h%x1f%s%x1f%cI").stdout.strip().split("\x1f")
     sha, message, quand = (dernier + ["", "", ""])[:3] if dernier != [""] else ("", "", "")
     avance: int | None = None

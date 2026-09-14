@@ -197,6 +197,18 @@ class LeDepotNu(Bac):
             cloner(self.depots / "absent.git", Path(self._tmp.name) / "rien")
         self.assertFalse((Path(self._tmp.name) / "rien").exists())
 
+    def test_sans_reference_donnee_l_etat_lit_celle_du_clone(self):
+        """La ligne de commande ne lit pas le magasin : « à jour » vient d'`origin`."""
+        from kokaji.depot import etat, lier
+
+        self.assertEqual(etat(self.racine).mot, "non enregistré")
+        lier(self.racine, self.depots / "h.git")
+        self.assertEqual(etat(self.racine).mot, "à jour")
+        (self.racine / "template.md").write_text("{{ role }} !", encoding="utf-8")
+        _git(self.racine, "add", "-A")
+        _git(self.racine, "-c", "user.name=T", "-c", "user.email=t@e.test", "commit", "-q", "-m", "scellement")
+        self.assertEqual(etat(self.racine).mot, "en avance de 1")
+
     def test_sans_depot_nu_pousser_et_tirer_le_disent(self):
         from kokaji.depot import DepotRefuse, pousser, tirer
 
