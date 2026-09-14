@@ -621,6 +621,21 @@ class SurfaceHttp(Bac):
         self.assertEqual([c["ou"] for c in v["changements"]], ["template"])
         self.assertEqual(v["versions"], {"h": "1.3.0"})
 
+    def test_l_etat_du_depot_se_lit(self):
+        """RFC-012 lot A : sans dépôt, la surface le dit ; avec, elle le décrit."""
+        d = self.client.get("/depot").json()
+        self.assertEqual(d["etat"], "sans dépôt")
+        self.assertFalse(d["est_depot"])
+        self.assertIsNone(d["enregistrement"])
+
+        from kokaji.depot import initier
+
+        initier(self.racine, "naissance : h")
+        d = self.client.get("/depot").json()
+        self.assertEqual(d["etat"], "non enregistré")
+        self.assertEqual(d["dernier_commit"]["message"], "naissance : h")
+        self.assertTrue(d["propre"])
+
     def test_la_coupe_se_rend_par_la_surface_sans_rien_ecrire(self):
         avant = (self.racine / "template.md").read_text(encoding="utf-8")
         r = self.client.post("/conception/coupe", json={
@@ -721,6 +736,7 @@ class SurfaceGardee(Bac):
         propose = {"proposition": {"kata": [{"id": "k2", "nom": "Autre"}]}}
 
         self.assertEqual(self.client.get("/conception", headers=cle).status_code, 403)
+        self.assertEqual(self.client.get("/depot", headers=cle).status_code, 403)
         # Sabotage 5 du RFC-010 : la coupe se refuse comme le reste.
         self.assertEqual(
             self.client.post(

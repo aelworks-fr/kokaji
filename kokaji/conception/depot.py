@@ -23,16 +23,12 @@ from pathlib import Path
 
 import yaml
 
+from ..depot import git
+
 __all__ = ["commiter"]
 
 
-def _git(depot: Path, *args: str) -> subprocess.CompletedProcess:
-    # `safe.directory` : le dépôt est monté dans un conteneur qui n'en est pas
-    # le propriétaire, et git refuserait de le lire sans le dire clairement.
-    return subprocess.run(
-        ["git", "-c", "safe.directory=*", "-C", str(depot), *args],
-        capture_output=True, text=True, timeout=60, check=False,
-    )
+_git = git  # le même appel que le module des dépôts (RFC-012)
 
 
 def _id_du_harness(racine: Path) -> str:

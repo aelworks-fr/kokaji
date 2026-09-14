@@ -23,7 +23,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
 from .droits import exiger
-from .modele import ETRANGER, Acl, AclInvalide, Utilisateur, email_plausible
+from .modele import ETRANGER, Acl, AclInvalide, Enregistrement, Utilisateur, email_plausible
 
 __all__ = ["Comptes", "IdentiteInconnue"]
 
@@ -89,6 +89,16 @@ CREATE TABLE IF NOT EXISTS contributeurs (
     harness_id     TEXT NOT NULL REFERENCES harness_acl(harness_id) ON DELETE CASCADE,
     utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
     PRIMARY KEY (harness_id, utilisateur_id)
+);
+
+-- RFC-012 D12.2 : le dépôt nu d'un harness — métadonnée d'instance.
+CREATE TABLE IF NOT EXISTS harness_depot (
+    harness_id            TEXT PRIMARY KEY REFERENCES harness_acl(harness_id) ON DELETE CASCADE,
+    chemin                TEXT NOT NULL,
+    branche               TEXT NOT NULL DEFAULT 'main',
+    commit_reference      TEXT NOT NULL DEFAULT '',
+    pousser_au_scellement INTEGER NOT NULL DEFAULT 1,
+    enregistre_le         TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS sessions (
@@ -365,6 +375,58 @@ class Comptes:
             raise AclInvalide(f"harness déjà enregistré : {harness_id}") from err
         self._db.commit()
         return acl
+
+    # --- le dépôt nu d'un harness (RFC-012) ---------------------------------
+
+    def depot(self, harness_id: str) -> Enregistrement | None:
+        ligne = self._db.execute(
+            "SELECT * FROM harness_depot WHERE harness_id = ?", (harness_id,)
+        ).fetchone()
+        if ligne is None:
+            return None
+        return Enregistrement(
+            harness_id=ligne["harness_id"], chemin=ligne["chemin"], branche=ligne["branche"],
+            commit_reference=ligne["commit_reference"],
+            pousser_au_scellement=bool(ligne["pousser_au_scellement"]),
+            enregistre_le=ligne["enregistre_le"],
+        )
+
+    def enregistrer_depot(
+        self, harness_id: str, chemin: str, branche: str = "main",
+        pousser_au_scellement: bool = True, commit_reference: str = "",
+    ) -> Enregistrement:
+        """Lie un harness à un dépôt nu. Un harness n'en a qu'un : relier remplace."""
+        if self.acl(harness_id) is None:
+            raise AclInvalide(f"harness inconnu : {harness_id}")
+        if not chemin.strip():
+            raise AclInvalide("un enregistrement sans chemin n'enregistre rien")
+        quand = datetime.now(UTC).isoformat()
+        self._db.execute(
+            "INSERT INTO harness_depot (harness_id, chemin, branche, commit_reference, "
+            "pousser_au_scellement, enregistre_le) VALUES (?,?,?,?,?,?) "
+            "ON CONFLICT(harness_id) DO UPDATE SET chemin=excluded.chemin, "
+            "branche=excluded.branche, commit_reference=excluded.commit_reference, "
+            "pousser_au_scellement=excluded.pousser_au_scellement, "
+            "enregistre_le=excluded.enregistre_le",
+            (harness_id, chemin.strip(), branche.strip() or "main", commit_reference,
+             1 if pousser_au_scellement else 0, quand),
+        )
+        self._db.commit()
+        return self.depot(harness_id)
+
+    def desenregistrer_depot(self, harness_id: str) -> bool:
+        """Efface la ligne — le clone reste, le dépôt nu vit sa vie (D12.2)."""
+        fait = self._db.execute("DELETE FROM harness_depot WHERE harness_id = ?", (harness_id,))
+        self._db.commit()
+        return fait.rowcount > 0
+
+    def poser_reference(self, harness_id: str, commit_reference: str) -> None:
+        """Le dernier commit connu du dépôt nu — posé après chaque pousser ou tirer."""
+        self._db.execute(
+            "UPDATE harness_depot SET commit_reference = ? WHERE harness_id = ?",
+            (commit_reference, harness_id),
+        )
+        self._db.commit()
 
     def acl(self, harness_id: str) -> Acl | None:
         ligne = self._db.execute(

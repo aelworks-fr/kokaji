@@ -22,6 +22,7 @@ from pathlib import Path
 import yaml
 
 from .conception import JOURNAL
+from .depot import DepotIndisponible, initier
 from .hds import Harness, charger
 
 __all__ = [
@@ -145,10 +146,17 @@ def naitre(source: Harness, vers: Path, identifiant: str, nom: str) -> Harness:
     """
     dossier = copier(source, vers, identifiant, nom)
     try:
-        return charger(dossier)
+        harness = charger(dossier)
     except Exception as err:
         shutil.rmtree(dossier, ignore_errors=True)
         raise NaissanceRefusee(f"la copie ne tient pas : {err}") from err
+    # Un harness qui naît est aussitôt un dépôt (RFC-012 D12.1). Sans git sur
+    # la machine, il naît quand même : le scellement dira qu'il ne commite pas.
+    try:
+        initier(dossier, f"naissance : {identifiant} — « {nom} »")
+    except DepotIndisponible:
+        pass
+    return harness
 
 
 def scelle(harness: Harness) -> bool:

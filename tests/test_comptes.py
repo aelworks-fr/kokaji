@@ -168,6 +168,45 @@ class Magasin(unittest.TestCase):
         self.deux = self.comptes.creer_utilisateur("Deux", "deux@exemple.test", MOT_DE_PASSE)
         self.comptes.enregistrer_harness("h", self.un.id)
 
+    # --- le dépôt nu d'un harness (RFC-012 D12.2) -----------------------------
+
+    def test_un_harness_n_a_pas_de_depot_avant_d_etre_enregistre(self):
+        self.assertIsNone(self.comptes.depot("h"))
+
+    def test_enregistrer_puis_relire(self):
+        e = self.comptes.enregistrer_depot("h", "/depots/h.git", branche="main")
+        self.assertEqual(e.chemin, "/depots/h.git")
+        self.assertEqual(e.branche, "main")
+        self.assertTrue(e.pousser_au_scellement)
+        self.assertEqual(e.commit_reference, "")
+        self.assertTrue(e.enregistre_le.startswith("20"))
+        self.assertEqual(self.comptes.depot("h"), e)
+
+    def test_relier_remplace_un_harness_n_a_qu_un_depot(self):
+        self.comptes.enregistrer_depot("h", "/depots/h.git")
+        e = self.comptes.enregistrer_depot("h", "/ailleurs/h.git", pousser_au_scellement=False)
+        self.assertEqual(e.chemin, "/ailleurs/h.git")
+        self.assertFalse(e.pousser_au_scellement)
+
+    def test_la_reference_se_pose_apres_coup(self):
+        self.comptes.enregistrer_depot("h", "/depots/h.git")
+        self.comptes.poser_reference("h", "abc1234")
+        self.assertEqual(self.comptes.depot("h").commit_reference, "abc1234")
+
+    def test_desenregistrer_efface_la_ligne_et_rien_d_autre(self):
+        self.comptes.enregistrer_depot("h", "/depots/h.git")
+        self.assertTrue(self.comptes.desenregistrer_depot("h"))
+        self.assertIsNone(self.comptes.depot("h"))
+        self.assertFalse(self.comptes.desenregistrer_depot("h"))
+        # L'ACL du harness, elle, est intacte.
+        self.assertEqual(self.comptes.acl("h").proprietaire, self.un.id)
+
+    def test_un_harness_inconnu_ou_un_chemin_vide_ne_s_enregistrent_pas(self):
+        with self.assertRaises(AclInvalide):
+            self.comptes.enregistrer_depot("inconnu", "/depots/x.git")
+        with self.assertRaises(AclInvalide):
+            self.comptes.enregistrer_depot("h", "   ")
+
     def test_l_id_est_un_uuid_stable_independant_du_fournisseur(self):
         """§2.1 — prêt pour OAuth sans le coder."""
         self.assertEqual(len(self.un.id), 36)

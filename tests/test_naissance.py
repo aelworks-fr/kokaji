@@ -250,3 +250,28 @@ class Semer(unittest.TestCase):
         semer(self.vers, "neuf", "Neuf")
         with self.assertRaises(NaissanceRefusee):
             semer(self.vers, "neuf", "Encore")
+
+
+class UnHarnessNaitDepot(unittest.TestCase):
+    """RFC-012 D12.1 — un harness qui naît est aussitôt un dépôt git."""
+
+    def test_la_copie_est_un_depot_avec_un_premier_commit(self):
+        import subprocess
+
+        from test_hds import MINIMAL, _ecrire_harness
+
+        from kokaji.depot import est_depot
+        from kokaji.hds import charger
+        from kokaji.naissance import naitre
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = _ecrire_harness(Path(tmp) / "source", MINIMAL)
+            ne = naitre(charger(source), Path(tmp) / "harness", "neuf", "Le neuf")
+            self.assertTrue(est_depot(ne.racine))
+            journal = subprocess.run(
+                ["git", "-C", str(ne.racine), "log", "--format=%s"],
+                capture_output=True, text=True, check=True,
+            ).stdout.strip()
+            self.assertEqual(journal, "naissance : neuf — « Le neuf »")
+            # La source, elle, n'est pas devenue un dépôt.
+            self.assertFalse(est_depot(source))

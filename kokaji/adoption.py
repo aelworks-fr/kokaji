@@ -26,6 +26,7 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
+from .depot import DepotIndisponible, initier
 from .hds import Harness, charger
 from .yaml_source import charger_source, ecrire_source
 
@@ -190,7 +191,13 @@ def adopter_textes(
             ),
             encoding="utf-8",
         )
-        return charger(dossier)
+        harness = charger(dossier)
+        # Un harness adopté est un dépôt comme un autre (RFC-012 D12.1).
+        try:
+            initier(dossier, f"adoption : {identifiant} — « {nom} »")
+        except DepotIndisponible:
+            pass
+        return harness
     except AdoptionRefusee:
         raise
     except Exception as err:

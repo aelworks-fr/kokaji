@@ -572,6 +572,31 @@ def creer_harness(
         lignes = [l for l in fichier.read_text(encoding="utf-8").splitlines() if l.strip()]
         return json.loads(lignes[-1]) if lignes else None
 
+    @app.get("/depot", summary="Le dépôt du harness — son état, sans rien toucher (RFC-012)")
+    def depot_du_harness(qui_role: tuple = Depends(membre)) -> dict:
+        from ..depot import etat as etat_du_depot
+
+        enregistrement = comptes.depot(harness.id) if comptes is not None else None
+        lu = etat_du_depot(_racine(), enregistrement.commit_reference if enregistrement else None)
+        return {
+            "harness": harness.id,
+            "etat": lu.mot,
+            "est_depot": lu.est_depot,
+            "propre": lu.propre,
+            "branche": lu.branche,
+            "dernier_commit": {
+                "sha": lu.dernier_commit, "message": lu.dernier_message, "le": lu.dernier_le,
+            },
+            "avance": lu.avance,
+            "enregistrement": None if enregistrement is None else {
+                "chemin": enregistrement.chemin,
+                "branche": enregistrement.branche,
+                "commit_reference": enregistrement.commit_reference,
+                "pousser_au_scellement": enregistrement.pousser_au_scellement,
+                "le": enregistrement.enregistre_le,
+            },
+        }
+
     @app.get("/conception", summary="La définition, en forme éditable")
     def conception(qui_role: tuple = Depends(membre)) -> dict:
         """Ce que le module 3 met à l'écran. Lecture seule : éditer se propose."""

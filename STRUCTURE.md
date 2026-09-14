@@ -19,6 +19,7 @@ kokaji/              La forge — paquet Python, CLI `kokaji`
   comptes/           Comptes locaux, droits, portail            (RFC-004)
   conception/        Concevoir et sceller une définition        (RFC-006)
   adoption.py        Adopter un harness né hors de la forge     (RFC-008)
+  depot/             Un harness, un dépôt git — init, état      (RFC-012)
   semence/           Le gabarit d'un harness neuf               (RFC-006)
 
 tests/               Tests du produit — jamais de fixture de domaine  (§0)

@@ -156,3 +156,21 @@ class Acl:
         if garder_ancien:
             restants.append(self.proprietaire)
         return Acl(self.harness_id, utilisateur_id, tuple(restants))
+
+
+@dataclass(frozen=True)
+class Enregistrement:
+    """RFC-012 D12.2 — le dépôt nu auquel un harness est enregistré.
+
+    Une métadonnée d'instance, jamais du manifest : le dépôt ne sait pas où il
+    est enregistré. `commit_reference` est le dernier commit connu du dépôt nu
+    pour cette branche — ce qui permet de dire « à jour » ou « en avance » sans
+    le relire à chaque page.
+    """
+
+    harness_id: str
+    chemin: str
+    branche: str = "main"
+    commit_reference: str = ""
+    pousser_au_scellement: bool = True
+    enregistre_le: str = ""
