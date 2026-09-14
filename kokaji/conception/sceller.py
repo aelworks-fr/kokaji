@@ -28,6 +28,7 @@ from .brouillon import (
     _poser_au_registre,
     a_declarer_au_registre,
     appliquer,
+    chemin_du_template,
     juger,
     source_neuve,
 )
@@ -151,6 +152,16 @@ def sceller(
         for cle, valeur in (proposition.source.get(id_kata) or {}).items():
             source[cle] = valeur
         ecrire_source(fichier, source)
+
+    # Le gabarit : écrit tel quel, à l'endroit que le manifest désigne. Sa
+    # version est celle du harness — c'est la doctrine commune qui bouge, aucun
+    # kata en particulier (RFC-010 D10.1).
+    if proposition.template is not None:
+        fichier_template = racine / chemin_du_template(apres)
+        if not fichier_template.is_file() or (
+            fichier_template.read_text(encoding="utf-8") != proposition.template
+        ):
+            fichier_template.write_text(proposition.template, encoding="utf-8")
 
     # Le harness suit ses kata : majeur si l'un d'eux l'est devenu.
     apres["harness"] = dict(apres.get("harness") or {})

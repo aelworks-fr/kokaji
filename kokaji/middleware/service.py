@@ -584,6 +584,13 @@ def creer_harness(
                 "dernier_scellement": _dernier_scellement(),
             },
             "statuts_champ": list(harness.etat.statuts_champ),
+            # Le gabarit et les cibles : ce que la forge lit au-dessus des kata
+            # (RFC-010 §4.1). Un harness adopté n'a pas de gabarit.
+            "template": None if harness.exogene else _gabarit(),
+            "cibles": [
+                {"id": c.id, "etat_structure": c.etat_structure, "en_tete": c.en_tete}
+                for c in harness.cibles
+            ],
             "kata": [
                 {
                     "id": k.id,
@@ -595,6 +602,9 @@ def creer_harness(
                     ],
                     "produit": [{"champ": r, "statut": s} for r, s in k.produit],
                     "emet_options": k.emet_options,
+                    # Le densho, tel que la forge le lit ; un texte tel quel
+                    # pour un kata adopté (RFC-010 D10.2, D10.4).
+                    "source": _densho(k),
                 }
                 for k in harness.kata
             ],
@@ -616,6 +626,26 @@ def creer_harness(
             },
             "membres": _membres(acl),
         }
+
+    def _gabarit() -> dict:
+        from ..forge.coupe import VARIABLE
+
+        texte = harness.template.read_text(encoding="utf-8") if harness.template.is_file() else ""
+        return {
+            "chemin": harness.template.name,
+            "texte": texte,
+            # Celles que le gabarit cite, dans l'ordre où il les cite : la page
+            # les montre, la forge exige qu'elles aient toutes une valeur.
+            "variables": list(dict.fromkeys(VARIABLE.findall(texte))),
+        }
+
+    def _densho(kata) -> dict:
+        if not kata.source.is_file():
+            return {}
+        if harness.exogene:
+            return {"texte": kata.source.read_text(encoding="utf-8")}
+        lu = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
+        return dict(lu) if isinstance(lu, dict) else {}
 
     def _qui(utilisateur_id: str) -> dict:
         """Un membre, tel qu'on peut le nommer.

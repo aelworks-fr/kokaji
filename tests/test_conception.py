@@ -164,6 +164,43 @@ class Jugement(Bac):
         verdict = juger(self.racine, Proposition(kata=[{"id": "k2", "nom": "Autre"}]))
         self.assertFalse(verdict.touche_contrat)
 
+    def test_un_gabarit_qui_tient_est_un_changement_nomme(self):
+        v = juger(self.racine, Proposition(template="Doctrine.\n{{ role }}{{ etat }}"))
+        self.assertTrue(v.tient, v)
+        self.assertEqual([c.ou for c in v.changements], ["template"])
+        self.assertFalse(v.touche_contrat)
+
+    def test_un_gabarit_identique_ne_change_rien(self):
+        v = juger(self.racine, Proposition(template="{{ role }}{{ etat }}"))
+        self.assertTrue(v.tient)
+        self.assertEqual(v.changements, ())
+
+    def test_un_gabarit_qui_cite_une_variable_inconnue_est_refuse(self):
+        """Sabotage 1 du RFC-010 : la forge nomme la variable, rien n'est écrit."""
+        v = juger(self.racine, Proposition(template="{{ role }}{{ inconnue }}"))
+        self.assertFalse(v.tient)
+        self.assertTrue(any("inconnue" in f for f in v.fautes), v.fautes)
+        self.assertEqual((self.racine / "template.md").read_text(encoding="utf-8"), "{{ role }}{{ etat }}")
+
+    def test_un_densho_qui_vide_une_variable_obligatoire_est_refuse(self):
+        """Sabotage 2 : `questions` vidé — variable obligatoire vide."""
+        (self.racine / "template.md").write_text("{{ role }}{{ questions }}{{ etat }}", encoding="utf-8")
+        v = juger(self.racine, Proposition(source={"k1": {"questions": []}}))
+        self.assertFalse(v.tient)
+        self.assertTrue(any("questions" in f for f in v.fautes), v.fautes)
+
+    def test_un_mot_interdit_dans_le_gabarit_est_refuse_par_la_trempe(self):
+        """Sabotage 3 : le vocabulaire interdit du harness s'applique au gabarit."""
+        v = juger(
+            self.racine,
+            Proposition(
+                template="tabou {{ role }}{{ etat }}",
+                trempe={"vocabulaire_interdit": ["tabou"]},
+            ),
+        )
+        self.assertFalse(v.tient)
+        self.assertTrue(any("tabou" in a for a in v.anomalies), v.anomalies)
+
     def test_juger_n_ecrit_rien(self):
         avant = (self.racine / "harness.yaml").read_text(encoding="utf-8")
         juger(self.racine, Proposition(kata=[{"id": "k2", "nom": "Autre"}]))
@@ -251,6 +288,22 @@ class Scellement(Bac):
         self.assertEqual(self.source("k2")["version"], "1.1.0")
         self.assertEqual(self.manifest()["harness"]["version"], "1.3.0")
 
+    def test_le_gabarit_s_ecrit_au_scellement_et_monte_le_harness_en_mineure(self):
+        self.sceller(Proposition(template="Doctrine.\n{{ role }}{{ etat }}"))
+
+        self.assertEqual(
+            (self.racine / "template.md").read_text(encoding="utf-8"), "Doctrine.\n{{ role }}{{ etat }}"
+        )
+        self.assertEqual(self.manifest()["harness"]["version"], "1.3.0")
+        # Aucun kata n'a bougé : leurs versions non plus.
+        self.assertEqual(self.source("k1")["version"], "1.0.0")
+
+    def test_un_gabarit_qui_ne_tient_pas_n_ecrit_rien(self):
+        with self.assertRaises(ScellementRefuse):
+            self.sceller(Proposition(template="{{ inconnue }}"))
+        self.assertEqual((self.racine / "template.md").read_text(encoding="utf-8"), "{{ role }}{{ etat }}")
+        self.assertEqual(self.manifest()["harness"]["version"], "1.2.3")
+
     def test_la_source_d_un_kata_se_modifie_aussi(self):
         self.sceller(Proposition(source={"k1": {"role": "un autre rôle"}}))
 
@@ -276,6 +329,12 @@ class Scellement(Bac):
 
 
 class VocabulaireDeProposition(unittest.TestCase):
+    def test_le_gabarit_est_un_texte(self):
+        with self.assertRaises(TypeError):
+            Proposition.depuis({"template": {"texte": "x"}})
+        self.assertEqual(Proposition.depuis({"template": "x"}).template, "x")
+        self.assertFalse(Proposition.depuis({"template": "x"}).vide)
+
     def test_une_cle_hors_vocabulaire_est_refusee(self):
         """Une proposition parle le HDS, et rien d'autre."""
         with self.assertRaises(ValueError):
@@ -426,6 +485,25 @@ class SurfaceHttp(Bac):
         self.assertEqual(d["kata"][1]["herite"], [{"champ": "k1.c1", "minimum": ""}])
         self.assertIn("vocabulaire_interdit", d["trempe"])
         self.assertIsNone(d["harness"]["dernier_scellement"])
+
+    def test_la_definition_expose_le_gabarit_les_cibles_et_les_densho(self):
+        d = self.client.get("/conception").json()
+
+        self.assertEqual(d["template"]["chemin"], "template.md")
+        self.assertEqual(d["template"]["texte"], "{{ role }}{{ etat }}")
+        self.assertEqual(d["template"]["variables"], ["role", "etat"])
+        self.assertEqual([c["id"] for c in d["cibles"]], ["c1"])
+        self.assertEqual(d["kata"][0]["source"]["role"], "r")
+        self.assertEqual(d["kata"][0]["source"]["questions"], ["q"])
+
+    def test_l_epreuve_accepte_le_gabarit_et_annonce_la_version_du_harness(self):
+        v = self.client.post(
+            "/conception/epreuve",
+            json={"proposition": {"template": "Doctrine.\n{{ role }}{{ etat }}"}},
+        ).json()
+        self.assertTrue(v["tient"], v)
+        self.assertEqual([c["ou"] for c in v["changements"]], ["template"])
+        self.assertEqual(v["versions"], {"h": "1.3.0"})
 
     def test_l_epreuve_n_ecrit_rien_et_rend_le_verdict(self):
         avant = (self.racine / "harness.yaml").read_text(encoding="utf-8")

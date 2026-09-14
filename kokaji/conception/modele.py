@@ -22,6 +22,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import ClassVar
 
 __all__ = ["Changement", "Proposition", "Verdict"]
 
@@ -105,7 +106,12 @@ class Proposition:
     - `trempe` — vocabulaire interdit, checks de session, seuils de justesse.
 
     `source` porte les variables de template d'un kata (rôle, questions,
-    interdits, natures…) : c'est le fichier `kata/<id>.yaml`, pas le manifest.
+    interdits, natures…) : c'est le fichier `kata/<id>.yaml`, pas le manifest —
+    le densho du kata (RFC-010 D10.2).
+
+    `template` porte le gabarit entier, texte brut avec ses variables : c'est le
+    fichier que le manifest désigne, la doctrine commune à toute la chaîne
+    (RFC-010 D10.1). Absent, le gabarit ne bouge pas.
     """
 
     kata: list[dict] = field(default_factory=list)
@@ -113,27 +119,46 @@ class Proposition:
     chaine: dict = field(default_factory=dict)
     trempe: dict = field(default_factory=dict)
     source: dict[str, dict] = field(default_factory=dict)
+    template: str | None = None
 
     @property
     def vide(self) -> bool:
-        return not (self.kata or self.retirer or self.chaine or self.trempe or self.source)
+        return not (
+            self.kata
+            or self.retirer
+            or self.chaine
+            or self.trempe
+            or self.source
+            or self.template is not None
+        )
+
+    @property
+    def touche_le_texte(self) -> bool:
+        """Le gabarit ou un densho bougent — ce qu'un harness adopté ne sait pas recevoir."""
+        return self.template is not None or bool(self.source)
+
+    CLES: ClassVar[tuple[str, ...]] = ("kata", "retirer", "chaine", "trempe", "source", "template")
 
     @classmethod
     def depuis(cls, donnees: dict) -> Proposition:
         if not isinstance(donnees, dict):
             raise TypeError("une proposition est une section, pas une valeur")
-        inconnues = set(donnees) - {"kata", "retirer", "chaine", "trempe", "source"}
+        inconnues = set(donnees) - set(cls.CLES)
         if inconnues:
             raise ValueError(
                 f"clé(s) hors du vocabulaire d'une proposition : {', '.join(sorted(inconnues))} "
-                "(attendu : kata, retirer, chaine, trempe, source)"
+                f"(attendu : {', '.join(cls.CLES)})"
             )
+        template = donnees.get("template")
+        if template is not None and not isinstance(template, str):
+            raise TypeError("`template` est le texte du gabarit, pas une structure")
         return cls(
             kata=list(donnees.get("kata") or []),
             retirer=[str(x) for x in (donnees.get("retirer") or [])],
             chaine=dict(donnees.get("chaine") or {}),
             trempe=dict(donnees.get("trempe") or {}),
             source={str(k): dict(v) for k, v in (donnees.get("source") or {}).items()},
+            template=template,
         )
 
 

@@ -200,9 +200,22 @@ def appliquer(manifest: dict, proposition: Proposition, copier: bool = True) -> 
     return apres
 
 
-def _changements(avant: dict, apres: dict, proposition: Proposition) -> list[Changement]:
+def chemin_du_template(manifest: dict) -> str:
+    """Le fichier que le manifest désigne comme gabarit — `template.md` sans lui."""
+    return str(manifest.get("template") or "template.md")
+
+
+def _changements(
+    avant: dict, apres: dict, proposition: Proposition, template_avant: str | None = None
+) -> list[Changement]:
     """Ce qui a bougé, nommé assez précisément pour être relu."""
     trouves: list[Changement] = []
+
+    # Le gabarit ne se diffe pas ligne à ligne ici : il est long, et ce qui
+    # compte pour la relecture est qu'il a bougé — la coupe rendue montre le
+    # reste (RFC-010 D10.3). Un gabarit renvoyé identique n'est pas un changement.
+    if proposition.template is not None and proposition.template != template_avant:
+        trouves.append(Changement("template", "…", "…"))
 
     ids_avant = [str(k.get("id")) for k in (avant.get("kata") or [])]
     ids_apres = [str(k.get("id")) for k in (apres.get("kata") or [])]
@@ -255,7 +268,26 @@ def juger(racine: Path, proposition: Proposition) -> Verdict:
     racine = Path(racine)
     avant = yaml.safe_load((racine / "harness.yaml").read_text(encoding="utf-8")) or {}
     apres = appliquer(avant, proposition)
-    changements = tuple(_changements(avant, apres, proposition))
+
+    # Un harness adopté n'a ni gabarit ni densho : ses kata sont des textes
+    # servis tels quels (RFC-008). Y écrire l'un ou l'autre lui inventerait une
+    # forme qu'il n'a pas — c'est le geste du RFC-011, pas de celui-ci.
+    if bool((apres.get("harness") or {}).get("exogene")) and proposition.touche_le_texte:
+        return Verdict(
+            fautes=(
+                (
+                    "un harness adopté n'a ni gabarit ni densho : rien à écrire par cet axe "
+                    "(RFC-010 D10.4)"
+                ),
+            ),
+            changements=tuple(_changements(avant, apres, proposition)),
+        )
+
+    fichier_template = racine / chemin_du_template(apres)
+    template_avant = (
+        fichier_template.read_text(encoding="utf-8") if fichier_template.is_file() else None
+    )
+    changements = tuple(_changements(avant, apres, proposition, template_avant))
 
     with tempfile.TemporaryDirectory() as tmp:
         copie = Path(tmp) / racine.name
@@ -263,6 +295,8 @@ def juger(racine: Path, proposition: Proposition) -> Verdict:
         (copie / "harness.yaml").write_text(
             yaml.safe_dump(apres, allow_unicode=True, sort_keys=False), encoding="utf-8"
         )
+        if proposition.template is not None:
+            (copie / chemin_du_template(apres)).write_text(proposition.template, encoding="utf-8")
         # Un kata neuf n'a pas de source : on la sème, sinon la forge s'arrête
         # sur une variable sans valeur et le verdict accuse le kata au lieu de
         # dire qu'il lui manque une page à remplir.

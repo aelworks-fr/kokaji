@@ -224,6 +224,22 @@ class LesContratsArrivent(Bac):
         self.assertEqual(verdict.fautes, ())
         self.assertEqual(verdict.anomalies, ())
 
+    def test_ni_gabarit_ni_densho_ne_s_ecrivent_sur_un_adopte(self):
+        """Sabotage 6 du RFC-010 : le texte d'un adopté se lit, ne s'édite pas par cet axe."""
+        from kokaji.conception import Proposition, juger
+
+        racine = self.grandi().racine
+        # L'adoption engendre un gabarit neutre : il doit rester tel quel.
+        gabarit_avant = (racine / "template.md").read_text(encoding="utf-8")
+        for proposition in (
+            Proposition(template="Une doctrine"),
+            Proposition(source={"ouvrir": {"role": "x"}}),
+        ):
+            verdict = juger(racine, proposition)
+            self.assertFalse(verdict.tient)
+            self.assertIn("harness adopté", verdict.fautes[0])
+        self.assertEqual((racine / "template.md").read_text(encoding="utf-8"), gabarit_avant)
+
     def test_le_scellement_ecrit_le_contrat_sans_inventer_de_source(self):
         from kokaji.conception import Proposition, sceller
         from kokaji.hds import charger
