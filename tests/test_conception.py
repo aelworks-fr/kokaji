@@ -207,6 +207,53 @@ class Jugement(Bac):
         self.assertEqual((self.racine / "harness.yaml").read_text(encoding="utf-8"), avant)
 
 
+class Rendu(Bac):
+    """La coupe qu'on voit avant de sceller — RFC-010 D10.3."""
+
+    def test_la_coupe_rendue_est_celle_que_la_forge_ecrit(self):
+        from kokaji.conception import rendre_coupe
+        from kokaji.forge import forger_harness
+        from kokaji.hds import charger
+
+        sortie = Path(self._tmp.name) / "dist"
+        forger_harness(charger(self.racine), sortie)
+        ecrite = (sortie / "h" / "c1" / "k1.md").read_text(encoding="utf-8")
+
+        rendue = rendre_coupe(self.racine, "k1", "c1")
+        self.assertEqual(rendue.texte, ecrite)
+        self.assertEqual(rendue.estampille.cible, "c1")
+
+    def test_un_brouillon_se_voit_dans_la_coupe_sans_etre_ecrit(self):
+        """Sabotage 4 : après le rendu, `kata/` et `template.md` sont intacts."""
+        from kokaji.conception import rendre_coupe
+
+        avant = {f.name: f.read_text(encoding="utf-8") for f in self.racine.rglob("*") if f.is_file()}
+        rendue = rendre_coupe(
+            self.racine, "k1", "c1",
+            Proposition(template="Doctrine.\n{{ role }}{{ etat }}", source={"k1": {"role": "neuf"}}),
+        )
+        self.assertIn("Doctrine.", rendue.texte)
+        self.assertIn("neuf", rendue.texte)
+        apres = {f.name: f.read_text(encoding="utf-8") for f in self.racine.rglob("*") if f.is_file()}
+        self.assertEqual(apres, avant)
+        self.assertFalse((Path(self._tmp.name) / "dist").exists())
+
+    def test_un_kata_ou_une_cible_inconnus_sont_nommes(self):
+        from kokaji.conception import CoupeIntrouvable, rendre_coupe
+
+        with self.assertRaises(CoupeIntrouvable):
+            rendre_coupe(self.racine, "k9", "c1")
+        with self.assertRaises(CoupeIntrouvable):
+            rendre_coupe(self.racine, "k1", "c9")
+
+    def test_un_gabarit_impossible_a_forger_le_dit(self):
+        from kokaji.conception import rendre_coupe
+        from kokaji.forge import ForgeImpossible
+
+        with self.assertRaises(ForgeImpossible):
+            rendre_coupe(self.racine, "k1", "c1", Proposition(template="{{ inconnue }}"))
+
+
 class Versions(unittest.TestCase):
     def test_un_contrat_qui_bouge_donne_une_majeure(self):
         self.assertEqual(version_suivante("1.2.3", majeure=True), "2.0.0")
@@ -505,6 +552,26 @@ class SurfaceHttp(Bac):
         self.assertEqual([c["ou"] for c in v["changements"]], ["template"])
         self.assertEqual(v["versions"], {"h": "1.3.0"})
 
+    def test_la_coupe_se_rend_par_la_surface_sans_rien_ecrire(self):
+        avant = (self.racine / "template.md").read_text(encoding="utf-8")
+        r = self.client.post("/conception/coupe", json={
+            "kata": "k1", "cible": "c1",
+            "proposition": {"template": "Doctrine.\n{{ role }}{{ etat }}"}})
+
+        self.assertEqual(r.status_code, 200, r.text)
+        self.assertIn("Doctrine.", r.json()["texte"])
+        self.assertEqual(r.json()["estampille"]["kata"], "k1")
+        self.assertEqual((self.racine / "template.md").read_text(encoding="utf-8"), avant)
+
+    def test_une_coupe_introuvable_ou_impossible_se_dit(self):
+        self.assertEqual(
+            self.client.post("/conception/coupe", json={"kata": "k9", "cible": "c1"}).status_code, 404
+        )
+        r = self.client.post("/conception/coupe", json={
+            "kata": "k1", "cible": "c1", "proposition": {"template": "{{ inconnue }}"}})
+        self.assertEqual(r.status_code, 422)
+        self.assertIn("inconnue", r.json()["detail"])
+
     def test_l_epreuve_n_ecrit_rien_et_rend_le_verdict(self):
         avant = (self.racine / "harness.yaml").read_text(encoding="utf-8")
         r = self.client.post("/conception/epreuve", json={"proposition": {
@@ -585,6 +652,13 @@ class SurfaceGardee(Bac):
         propose = {"proposition": {"kata": [{"id": "k2", "nom": "Autre"}]}}
 
         self.assertEqual(self.client.get("/conception", headers=cle).status_code, 403)
+        # Sabotage 5 du RFC-010 : la coupe se refuse comme le reste.
+        self.assertEqual(
+            self.client.post(
+                "/conception/coupe", json={"kata": "k1", "cible": "c1"}, headers=cle
+            ).status_code,
+            403,
+        )
         self.assertEqual(
             self.client.post("/conception/epreuve", json=propose, headers=cle).status_code, 403
         )

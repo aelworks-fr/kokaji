@@ -13,17 +13,19 @@ from __future__ import annotations
 
 import shutil
 import tempfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 import yaml
 
 from ..forge import ForgeImpossible
-from ..forge.coupe import charger_registre, forger
+from ..forge.coupe import Coupe, charger_registre, forger
 from ..hds import ManifestInvalide, charger
 from ..trempe.statique import verifier
 from .modele import Changement, Proposition, Verdict
 
-__all__ = ["appliquer", "juger"]
+__all__ = ["CoupeIntrouvable", "appliquer", "copie_eprouvee", "juger", "rendre_coupe"]
 
 # Les clés d'un kata qui portent son contrat. Les toucher est un changement de
 # version majeure (RFC-002 §3) — le reste ne l'est pas.
@@ -259,36 +261,17 @@ def _changements(
     return trouves
 
 
-def juger(racine: Path, proposition: Proposition) -> Verdict:
-    """Applique la proposition sur une copie, charge, forge, trempe, rend le verdict.
+@contextmanager
+def copie_eprouvee(racine: Path, apres: dict, proposition: Proposition) -> Iterator[Path]:
+    """Le harness tel que la proposition le ferait, sur une copie jetable.
 
-    Rien n'est écrit dans `racine`. Les corpus ne sont pas copiés — ils peuvent
-    peser lourd et la conception ne les regarde pas.
+    L'épreuve et le rendu d'une coupe (RFC-010 D10.3) partagent ce geste :
+    rien n'est écrit dans `racine`, et ce qui manque à un kata neuf — sa page,
+    ses champs au registre — est semé pour que la forge parle de la bonne
+    faute. Les corpus ne sont pas copiés : ils peuvent peser lourd et la
+    conception ne les regarde pas.
     """
     racine = Path(racine)
-    avant = yaml.safe_load((racine / "harness.yaml").read_text(encoding="utf-8")) or {}
-    apres = appliquer(avant, proposition)
-
-    # Un harness adopté n'a ni gabarit ni densho : ses kata sont des textes
-    # servis tels quels (RFC-008). Y écrire l'un ou l'autre lui inventerait une
-    # forme qu'il n'a pas — c'est le geste du RFC-011, pas de celui-ci.
-    if bool((apres.get("harness") or {}).get("exogene")) and proposition.touche_le_texte:
-        return Verdict(
-            fautes=(
-                (
-                    "un harness adopté n'a ni gabarit ni densho : rien à écrire par cet axe "
-                    "(RFC-010 D10.4)"
-                ),
-            ),
-            changements=tuple(_changements(avant, apres, proposition)),
-        )
-
-    fichier_template = racine / chemin_du_template(apres)
-    template_avant = (
-        fichier_template.read_text(encoding="utf-8") if fichier_template.is_file() else None
-    )
-    changements = tuple(_changements(avant, apres, proposition, template_avant))
-
     with tempfile.TemporaryDirectory() as tmp:
         copie = Path(tmp) / racine.name
         shutil.copytree(racine, copie, ignore=shutil.ignore_patterns("CAS-*"))
@@ -330,6 +313,75 @@ def juger(racine: Path, proposition: Proposition) -> Verdict:
                 yaml.safe_dump(source, allow_unicode=True, sort_keys=False), encoding="utf-8"
             )
 
+        yield copie
+
+
+def rendre_coupe(
+    racine: Path, id_kata: str, id_cible: str, proposition: Proposition | None = None
+) -> Coupe:
+    """La coupe d'un kata pour une cible, forgée en mémoire — RFC-010 D10.3.
+
+    Depuis la définition en place, ou depuis une proposition non scellée : c'est
+    la forge ordinaire, sur la copie de l'épreuve. Rien n'est écrit, rien n'est
+    servi — on voit la lame avant de la tremper. Les refus sont ceux de la
+    forge (`ForgeImpossible`) et du manifest (`ManifestInvalide`), tels quels.
+    """
+    racine = Path(racine)
+    proposition = proposition or Proposition()
+    avant = yaml.safe_load((racine / "harness.yaml").read_text(encoding="utf-8")) or {}
+    apres = appliquer(avant, proposition)
+    if bool((apres.get("harness") or {}).get("exogene")) and proposition.touche_le_texte:
+        raise ForgeImpossible(
+            "un harness adopté n'a ni gabarit ni densho : rien à écrire par cet axe (RFC-010 D10.4)"
+        )
+    with copie_eprouvee(racine, apres, proposition) as copie:
+        harness = charger(copie)
+        kata = harness.kata_par_id(id_kata)
+        cible = harness.cible_par_id(id_cible)
+        if kata is None:
+            raise CoupeIntrouvable(f"kata inconnu : {id_kata}")
+        if cible is None:
+            raise CoupeIntrouvable(f"cible inconnue : {id_cible}")
+        template = harness.template.read_text(encoding="utf-8") if not harness.exogene else ""
+        registre = {} if harness.exogene else charger_registre(harness.trempe.registre)
+        return forger(harness, kata, cible, template, registre)
+
+
+class CoupeIntrouvable(LookupError):
+    """Un kata ou une cible que le harness ne déclare pas."""
+
+
+def juger(racine: Path, proposition: Proposition) -> Verdict:
+    """Applique la proposition sur une copie, charge, forge, trempe, rend le verdict.
+
+    Rien n'est écrit dans `racine`. Les corpus ne sont pas copiés — ils peuvent
+    peser lourd et la conception ne les regarde pas.
+    """
+    racine = Path(racine)
+    avant = yaml.safe_load((racine / "harness.yaml").read_text(encoding="utf-8")) or {}
+    apres = appliquer(avant, proposition)
+
+    # Un harness adopté n'a ni gabarit ni densho : ses kata sont des textes
+    # servis tels quels (RFC-008). Y écrire l'un ou l'autre lui inventerait une
+    # forme qu'il n'a pas — c'est le geste du RFC-011, pas de celui-ci.
+    if bool((apres.get("harness") or {}).get("exogene")) and proposition.touche_le_texte:
+        return Verdict(
+            fautes=(
+                (
+                    "un harness adopté n'a ni gabarit ni densho : rien à écrire par cet axe "
+                    "(RFC-010 D10.4)"
+                ),
+            ),
+            changements=tuple(_changements(avant, apres, proposition)),
+        )
+
+    fichier_template = racine / chemin_du_template(apres)
+    template_avant = (
+        fichier_template.read_text(encoding="utf-8") if fichier_template.is_file() else None
+    )
+    changements = tuple(_changements(avant, apres, proposition, template_avant))
+
+    with copie_eprouvee(racine, apres, proposition) as copie:
         try:
             harness = charger(copie)
         except ManifestInvalide as err:

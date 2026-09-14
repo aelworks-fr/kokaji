@@ -35,15 +35,17 @@ from ..comptes.chat import Chat
 from ..comptes.modele import PROPRIETAIRE, VISIBILITES
 from ..conception import (
     JOURNAL,
+    CoupeIntrouvable,
     Proposition,
     ScellementRefuse,
     juger,
+    rendre_coupe,
     sceller,
     versions_prevues,
 )
 from ..corpus.visibilite import acces, lisible_par, regler_visibilite
 from ..forge import ForgeImpossible, TrempeEchouee, forger_harness
-from ..hds import Harness, charger_valides
+from ..hds import Harness, ManifestInvalide, charger_valides
 from ..qg import activites, composer, composition, sujets
 from .chat import Passerelle, routeur_chat
 from .exploitation import routeur_exploitation
@@ -61,6 +63,7 @@ __all__ = ["creer", "creer_harness", "servir"]
 # Un corps de requête déclaré une fois : appeler `Body()` dans un défaut
 # d'argument construit l'objet à chaque définition de route.
 CORPS = Body(embed=True)
+CORPS_FACULTATIF = Body(default=None, embed=True)
 
 
 def _fiche(dossier: Path) -> dict:
@@ -673,6 +676,37 @@ def creer_harness(
             return Proposition.depuis(brut or {})
         except (TypeError, ValueError) as err:
             raise HTTPException(status_code=400, detail=str(err)) from err
+
+    @app.post("/conception/coupe", summary="La coupe d'un kata, forgée en mémoire — rien n'est écrit")
+    def coupe(
+        kata: str = Body(embed=True),
+        cible: str = Body(embed=True),
+        proposition: dict | None = CORPS_FACULTATIF,
+        qui_role: tuple = Depends(membre),
+    ) -> dict:
+        """Ce que le chat recevrait — depuis la définition en place, ou depuis
+        un brouillon (RFC-010 D10.3). C'est la forge ordinaire, sur la copie de
+        l'épreuve : `dist/` et `kata/` ne bougent pas. On voit la lame avant de
+        la tremper.
+        """
+        try:
+            rendue = rendre_coupe(
+                _racine(), kata, cible, _proposition(proposition) if proposition else None
+            )
+        except CoupeIntrouvable as err:
+            raise HTTPException(status_code=404, detail=str(err)) from err
+        except ManifestInvalide as err:
+            raise HTTPException(
+                status_code=422, detail="; ".join(str(f) for f in err.fautes)
+            ) from err
+        except ForgeImpossible as err:
+            raise HTTPException(status_code=422, detail=str(err)) from err
+        return {
+            "kata": rendue.kata,
+            "cible": rendue.cible,
+            "texte": rendue.texte,
+            "estampille": rendue.estampille.as_dict(),
+        }
 
     @app.post("/conception/epreuve", summary="Éprouver une proposition — rien n'est écrit")
     def epreuve(requete: Request, proposition: dict = CORPS) -> dict:
