@@ -180,7 +180,7 @@ Puis les six sabotages du §7, joués et consignés dans la carte de conviction.
 | D10.4 | un adopté se lit, ne s'édite pas par cet axe | `juger`, `rendre_coupe`, la page | appliqué — lot 1 |
 | D10.5 | rien ne s'enregistre qui ne tient | l'épreuve, reconduite | appliqué |
 | §7 | six sabotages, vus refuser | `docs/carte-de-conviction.md` §D | joués en tests |
-| §5 | SPECS §1.2 « densho », R4.4 | `docs/SPECS.md` | **à faire** — amendement des SPECS |
+| §5 | SPECS §1.2 « densho », R4.4 | `docs/SPECS.md` | appliqué — 14 septembre 2026 |
 | §4.4 | la vigie mesure l'axe aux trois largeurs | `kokaji/rendu.py` | appliqué — chaque axe est cliqué |
 
 ---

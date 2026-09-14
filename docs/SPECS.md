@@ -51,6 +51,7 @@ Ce que la distinction kata/coupe permet de dire : *« le kata n'a pas changé, o
 | L'unité d'observation (session + identité + kin) | **cas** (`CAS-XXXX`) | ha |
 | Le sujet travaillé, matière première de la pratique | **sujet** | kin |
 | La source du harness (template + configs) | **source** | tamahagane |
+| La source d'un kata — les variables que le gabarit remplit | **source** (`kata/<id>.yaml`) | densho |
 | Le build | **build** | la forge |
 | Lint statique + banc d'évaluation | **checks / bench** | la trempe |
 | La stack d'exécution | **runtime** | le dojo |
@@ -133,6 +134,7 @@ corpus: corpus/               # les ha capturés et promus (standard §6)
 - R4.1 — `kokaji forge <harness> [--cible <id>]` : assemble template + configs kata → coupes, pour chaque cible du manifest. Déterministe ; aucun édit manuel dans `dist/`.
 - R4.2 — Les cibles `etat_structure: true` reçoivent l'instruction d'émission du bloc d'état aux points d'étape ; les autres n'en portent aucune trace.
 - R4.3 — Chaque coupe est stampée `(harness, kata, version_kata, version_coupe, cible)` ; changelog généré par diff de source.
+- R4.4 — **La coupe se voit avant d'être scellée.** La coupe d'un kata pour une cible se rend en mémoire depuis une définition non scellée — le gabarit, les densho et les contrats tels qu'on les propose — sans rien écrire dans `dist/` ni dans la source ([RFC-010](docs/rfc-010-gabarit-et-densho.md) D10.3). Ce rendu est la forge ordinaire sur une copie : ce qu'on voit est ce qui serait servi.
 
 **Juste assez :** le harness d'exemple se régénère intégralement dans ses deux cibles, à l'identique sur deux builds successifs.
 
