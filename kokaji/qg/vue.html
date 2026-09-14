@@ -2016,6 +2016,7 @@ function rendreVerdict() {
          rel="noopener" href="${e(CHAT)}">pratiquer ↗</a>` : ""}
     </div>
     <p class="verdict-detail">${e(detail)}</p>
+    ${(epreuve && epreuve.avis || []).map(a => `<p class="verdict-detail" style="border-left:3px solid var(--color-neutral-400);padding-left:10px">Avis — ${e(a)}</p>`).join("")}
     ${dits.map(d => {
       const m = /^\[([\w-]+)\]\s+([^:]+)\s*:\s*(.*)$/.exec(d);
       return `<div class="anomalie">

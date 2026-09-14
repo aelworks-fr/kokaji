@@ -110,7 +110,8 @@ facultatif (le nom en tient lieu), et il déclare d'où il vient :
 
 Un kata natif ne déclare pas de `provenance` ; un harness `exogene: true`
 (RFC-008) est le cas où tous les kata sont orphelins, et la provenance est
-alors celle du harness.
+alors celle du harness. Un gabarit importé tel quel porte la sienne au
+manifest, sous `provenance_du_gabarit:` — mêmes clés.
 
 ### `cibles` — les profils de forge
 

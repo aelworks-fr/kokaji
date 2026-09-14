@@ -163,6 +163,13 @@ def sceller(
             source[cle] = valeur
         ecrire_source(fichier, source)
 
+    # Les textes importés (RFC-011) : écrits tels quels — octet pour octet,
+    # sabotage 6 — à la place que le manifest leur donne.
+    for id_kata, texte in proposition.textes.items():
+        fichier = racine / "kata" / f"{id_kata}.md"
+        fichier.parent.mkdir(parents=True, exist_ok=True)
+        fichier.write_text(texte, encoding="utf-8")
+
     # Le gabarit : écrit tel quel, à l'endroit que le manifest désigne. Sa
     # version est celle du harness — c'est la doctrine commune qui bouge, aucun
     # kata en particulier (RFC-010 D10.1).

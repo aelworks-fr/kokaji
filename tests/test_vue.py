@@ -530,6 +530,14 @@ class LeDepotDansLaPage(unittest.TestCase):
         self.assertIn("o && o.depot ?", PAGE)
 
 
+class LesAvisDeLEpreuve(unittest.TestCase):
+    """RFC-011 D11.4 — ce que l'épreuve dit sans refuser se lit dans le verdict."""
+
+    def test_l_avis_se_lit_sans_bloquer(self):
+        self.assertIn('(epreuve && epreuve.avis || []).map(a =>', PAGE)
+        self.assertIn(">Avis — ${e(a)}</p>", PAGE)
+
+
 class LesCoupes(unittest.TestCase):
     """L'axe 4 — le gabarit, les densho, la coupe qu'on voit (RFC-010 §4.4)."""
 

@@ -56,6 +56,9 @@ class Verdict:
     fautes: tuple[str, ...] = ()
     anomalies: tuple[str, ...] = ()
     changements: tuple[Changement, ...] = ()
+    # Ce qui se dit sans refuser (RFC-011 D11.4) : un gabarit qui ne cite
+    # aucune variable rend les densho inertes — une information, pas une faute.
+    avis: tuple[str, ...] = ()
 
     @property
     def tient(self) -> bool:
@@ -120,6 +123,10 @@ class Proposition:
     trempe: dict = field(default_factory=dict)
     source: dict[str, dict] = field(default_factory=dict)
     template: str | None = None
+    # RFC-011 D11.1 — la provenance d'un texte importé, par kata ou pour le
+    # gabarit (`template`) : `source` obligatoire, `version_source` et
+    # `date_import` libres. Un texte de kata voyage dans `source.<id>.texte`.
+    importe: dict[str, dict] = field(default_factory=dict)
 
     @property
     def vide(self) -> bool:
@@ -130,14 +137,24 @@ class Proposition:
             or self.trempe
             or self.source
             or self.template is not None
+            or self.importe
         )
 
     @property
     def touche_le_texte(self) -> bool:
         """Le gabarit ou un densho bougent — ce qu'un harness adopté ne sait pas recevoir."""
-        return self.template is not None or bool(self.source)
+        return self.template is not None or bool(self.source) or bool(self.importe)
 
-    CLES: ClassVar[tuple[str, ...]] = ("kata", "retirer", "chaine", "trempe", "source", "template")
+    @property
+    def textes(self) -> dict[str, str]:
+        """Les kata dont la proposition apporte un texte, servi tel quel."""
+        return {
+            id_kata: str(variables["texte"])
+            for id_kata, variables in self.source.items()
+            if isinstance(variables, dict) and "texte" in variables
+        }
+
+    CLES: ClassVar[tuple[str, ...]] = ("kata", "retirer", "chaine", "trempe", "source", "template", "importe")
 
     @classmethod
     def depuis(cls, donnees: dict) -> Proposition:
@@ -152,6 +169,11 @@ class Proposition:
         template = donnees.get("template")
         if template is not None and not isinstance(template, str):
             raise TypeError("`template` est le texte du gabarit, pas une structure")
+        importe = {str(k): dict(v or {}) for k, v in (donnees.get("importe") or {}).items()}
+        # Sabotage 3 du RFC-011 : une provenance sans `source` n'enregistre rien.
+        for quoi, prov in importe.items():
+            if not str(prov.get("source") or "").strip():
+                raise ValueError(f"importe.{quoi} : une provenance dit d'où vient le texte (`source`)")
         return cls(
             kata=list(donnees.get("kata") or []),
             retirer=[str(x) for x in (donnees.get("retirer") or [])],
@@ -159,6 +181,7 @@ class Proposition:
             trempe=dict(donnees.get("trempe") or {}),
             source={str(k): dict(v) for k, v in (donnees.get("source") or {}).items()},
             template=template,
+            importe=importe,
         )
 
 

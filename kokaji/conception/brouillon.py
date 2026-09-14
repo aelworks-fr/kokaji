@@ -20,7 +20,7 @@ from pathlib import Path
 import yaml
 
 from ..forge import ForgeImpossible
-from ..forge.coupe import Coupe, charger_registre, forger
+from ..forge.coupe import VARIABLE, Coupe, charger_registre, forger
 from ..hds import ManifestInvalide, charger
 from ..trempe.statique import verifier
 from .modele import Changement, Proposition, Verdict
@@ -147,6 +147,26 @@ def appliquer(manifest: dict, proposition: Proposition, copier: bool = True) -> 
         else:
             existant.update(propose)
 
+    # RFC-011 D11.1 — un texte importé devient la source d'un kata orphelin :
+    # `kata/<id>.md`, une provenance estampillée (empreinte comprise), pas de
+    # contrat. Le gabarit importé pose sa provenance au manifest.
+    for id_kata, texte in proposition.textes.items():
+        entree = _entree(liste, id_kata)
+        if entree is None:
+            entree = {"id": id_kata, "nom": id_kata}
+            liste.append(entree)
+            if id_kata not in connus:
+                arrivants.append(entree)
+        entree["source"] = f"kata/{id_kata}.md"
+        entree.setdefault("amont", [])
+        entree["herite"] = []
+        entree["produit"] = []
+        entree["provenance"] = _provenance(proposition.importe.get(id_kata) or {}, texte)
+    if "template" in proposition.importe and proposition.template is not None:
+        apres["provenance_du_gabarit"] = _provenance(
+            proposition.importe["template"], proposition.template
+        )
+
     if proposition.retirer:
         partants = set(proposition.retirer)
         liste = [k for k in liste if str(k.get("id")) not in partants]
@@ -200,6 +220,20 @@ def appliquer(manifest: dict, proposition: Proposition, copier: bool = True) -> 
         else:
             apres[section] = dict(propose)
     return apres
+
+
+def _provenance(declaree: dict, texte: str) -> dict:
+    """La provenance d'un texte importé : ce qu'on déclare, plus ce qu'on mesure."""
+    import hashlib
+    from datetime import UTC, datetime
+
+    return {
+        "source": str(declaree.get("source") or "").strip() or "inconnue",
+        "version_source": str(declaree.get("version_source") or "").strip(),
+        "checksum_import": hashlib.sha256(texte.encode("utf-8")).hexdigest(),
+        "date_import": str(declaree.get("date_import") or "").strip()
+        or datetime.now(UTC).date().isoformat(),
+    }
 
 
 def chemin_du_template(manifest: dict) -> str:
@@ -257,7 +291,12 @@ def _changements(
 
     for id_kata, variables in proposition.source.items():
         for cle in sorted(variables):
-            trouves.append(Changement(f"source.{id_kata}.{cle}", "…", "…"))
+            if cle == "texte":
+                trouves.append(Changement(f"importe.{id_kata}", "…", "un texte, tel quel"))
+            else:
+                trouves.append(Changement(f"source.{id_kata}.{cle}", "…", "…"))
+    if "template" in proposition.importe and proposition.template is not None:
+        trouves.append(Changement("importe.template", "…", "un texte, tel quel"))
     return trouves
 
 
@@ -301,7 +340,11 @@ def copie_eprouvee(racine: Path, apres: dict, proposition: Proposition) -> Itera
                     encoding="utf-8",
                 )
 
-        for id_kata in sorted(neufs | set(proposition.source)):
+        for id_kata, texte in proposition.textes.items():
+            fichier = copie / "kata" / f"{id_kata}.md"
+            fichier.parent.mkdir(parents=True, exist_ok=True)
+            fichier.write_text(texte, encoding="utf-8")
+        for id_kata in sorted((neufs | set(proposition.source)) - set(proposition.textes)):
             variables = proposition.source.get(id_kata) or {}
             fichier = copie / "kata" / f"{id_kata}.yaml"
             source = (
@@ -383,6 +426,28 @@ def juger(racine: Path, proposition: Proposition) -> Verdict:
     )
     changements = tuple(_changements(avant, apres, proposition, template_avant))
 
+    # Un texte importé dit d'où il vient (RFC-011, sabotage 3) — même par
+    # l'appel direct, sans passer par `Proposition.depuis`.
+    for quoi in (*proposition.textes, *(["template"] if "template" in proposition.importe else [])):
+        if not str((proposition.importe.get(quoi) or {}).get("source") or "").strip():
+            return Verdict(
+                fautes=(f"importe.{quoi} : une provenance dit d'où vient le texte (`source`)",),
+                changements=changements,
+            )
+
+    # D11.4 — un gabarit sans variable rend les densho inertes ; on le dit.
+    avis: list[str] = []
+    if proposition.template is not None and not VARIABLE.findall(proposition.template):
+        inertes = [
+            str(k.get("id")) for k in (apres.get("kata") or [])
+            if str(k.get("source") or "").endswith(".yaml")
+        ]
+        if inertes:
+            avis.append(
+                f"le gabarit ne cite aucune variable ; {len(inertes)} kata gardent un densho que "
+                f"rien ne lit ({', '.join(inertes)}) — poser des variables leur rendra vie"
+            )
+
     with copie_eprouvee(racine, apres, proposition) as copie:
         try:
             harness = charger(copie)
@@ -414,4 +479,5 @@ def juger(racine: Path, proposition: Proposition) -> Verdict:
             if harness.exogene
             else tuple(str(a) for a in verifier(harness, coupes, registre)),
             changements=changements,
+            avis=tuple(avis),
         )

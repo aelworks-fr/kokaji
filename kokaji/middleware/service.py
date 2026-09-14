@@ -832,6 +832,7 @@ def creer_harness(
             "anomalies": list(verdict.anomalies),
             "touche_contrat": verdict.touche_contrat,
             "kata_touches": list(verdict.kata_touches),
+            "avis": list(verdict.avis),
             "changements": [
                 {
                     "ou": c.ou,

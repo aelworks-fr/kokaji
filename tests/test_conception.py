@@ -458,6 +458,87 @@ class UnOrphelinAuScellement(Scellement):
         self.assertEqual((self.racine / "kata" / "venu.md").read_text(encoding="utf-8"), "Tu accompagnes.\n")
 
 
+class ImporterUnTexte(Scellement):
+    """RFC-011 D11.1 — importer est une proposition : éprouvée, scellée, jamais réécrite."""
+
+    PROVENANCE: ClassVar[dict] = {"source": "manuel", "version_source": "v3", "date_import": "2026-09-14"}
+
+    def test_un_texte_devient_un_kata_orphelin_avec_sa_provenance(self):
+        texte = "Tu réponds à un devis.\n\nQuestions :\n- combien ?\n"
+        v = juger(self.racine, Proposition(
+            kata=[{"id": "devis", "nom": "Devis", "amont": []}],
+            source={"devis": {"texte": texte}},
+            importe={"devis": self.PROVENANCE},
+        ))
+        self.assertTrue(v.tient, v)
+        self.assertIn("importe.devis", [c.ou for c in v.changements])
+        self.assertFalse((self.racine / "kata" / "devis.md").exists())
+
+    def test_apres_scellement_le_fichier_est_identique_octet_pour_octet(self):
+        """Sabotage 6 — et le manifest porte la source `.md`, l'empreinte, la date."""
+        import hashlib
+
+        texte = "Tu réponds à un devis.\n\nEt une seconde ligne, telle quelle.\n"
+        self.sceller(Proposition(
+            kata=[{"id": "devis", "nom": "Devis", "amont": []}],
+            source={"devis": {"texte": texte}},
+            importe={"devis": self.PROVENANCE},
+        ))
+        self.assertEqual((self.racine / "kata" / "devis.md").read_bytes(), texte.encode("utf-8"))
+        self.assertFalse((self.racine / "kata" / "devis.yaml").exists())
+        entree = next(k for k in self.manifest()["kata"] if k["id"] == "devis")
+        self.assertEqual(entree["source"], "kata/devis.md")
+        self.assertEqual(entree["provenance"]["source"], "manuel")
+        self.assertEqual(entree["provenance"]["checksum_import"], hashlib.sha256(texte.encode()).hexdigest())
+        self.assertEqual(entree["provenance"]["date_import"], "2026-09-14")
+        self.assertEqual(entree["herite"], [])
+        # Et le harness se charge : l'orphelin est un kata comme un autre.
+        from kokaji.hds import charger
+
+        self.assertTrue(charger(self.racine).kata_par_id("devis").orphelin)
+
+    def test_une_provenance_sans_source_n_enregistre_rien(self):
+        """Sabotage 3 — à la frontière, et à l'appel direct."""
+        with self.assertRaises(ValueError):
+            Proposition.depuis({"source": {"devis": {"texte": "x"}}, "importe": {"devis": {"version_source": "v1"}}})
+        v = juger(self.racine, Proposition(
+            kata=[{"id": "devis", "nom": "Devis", "amont": []}],
+            source={"devis": {"texte": "x"}}, importe={"devis": {}},
+        ))
+        self.assertFalse(v.tient)
+        self.assertIn("provenance", v.fautes[0])
+        with self.assertRaises(ScellementRefuse):
+            self.sceller(Proposition(
+                kata=[{"id": "devis", "nom": "Devis", "amont": []}],
+                source={"devis": {"texte": "x"}}, importe={"devis": {}},
+            ))
+        self.assertFalse((self.racine / "kata" / "devis.md").exists())
+
+    def test_un_texte_avec_un_marqueur_est_refuse_par_la_trempe(self):
+        """Sabotage 1 — le texte se trempe à l'épreuve, comme une coupe."""
+        v = juger(self.racine, Proposition(
+            kata=[{"id": "devis", "nom": "Devis", "amont": []}],
+            source={"devis": {"texte": "Tu réponds — TBD.\n"}},
+            importe={"devis": self.PROVENANCE},
+        ))
+        self.assertFalse(v.tient)
+        self.assertTrue(any("marqueur" in a for a in v.anomalies), v.anomalies)
+
+    def test_un_gabarit_sans_variable_rend_les_densho_inertes_et_le_dit(self):
+        """D11.4 — une information, pas un refus."""
+        v = juger(self.racine, Proposition(template="Une doctrine sans variable.", importe={"template": self.PROVENANCE}))
+        self.assertTrue(v.tient, v)
+        self.assertTrue(any("densho que rien ne lit" in a for a in v.avis), v.avis)
+        self.assertIn("importe.template", [c.ou for c in v.changements])
+        self.sceller(Proposition(template="Une doctrine sans variable.", importe={"template": self.PROVENANCE}))
+        self.assertEqual(self.manifest()["provenance_du_gabarit"]["source"], "manuel")
+        self.assertEqual((self.racine / "template.md").read_text(encoding="utf-8"), "Une doctrine sans variable.")
+
+    def test_un_gabarit_avec_variables_n_emet_pas_d_avis(self):
+        v = juger(self.racine, Proposition(template="Doctrine.\n{{ role }}{{ etat }}"))
+        self.assertEqual(v.avis, ())
+
+
 class VocabulaireDeProposition(unittest.TestCase):
     def test_le_gabarit_est_un_texte(self):
         with self.assertRaises(TypeError):
@@ -679,6 +760,12 @@ class SurfaceHttp(Bac):
             "kata": "k1", "cible": "c1", "proposition": {"template": "{{ inconnue }}"}})
         self.assertEqual(r.status_code, 422)
         self.assertIn("inconnue", r.json()["detail"])
+
+    def test_l_epreuve_rend_l_avis_des_densho_inertes(self):
+        v = self.client.post("/conception/epreuve", json={"proposition": {
+            "template": "Sans variable.", "importe": {"template": {"source": "manuel"}}}}).json()
+        self.assertTrue(v["tient"], v)
+        self.assertTrue(any("densho" in a for a in v["avis"]), v)
 
     def test_l_epreuve_n_ecrit_rien_et_rend_le_verdict(self):
         avant = (self.racine / "harness.yaml").read_text(encoding="utf-8")

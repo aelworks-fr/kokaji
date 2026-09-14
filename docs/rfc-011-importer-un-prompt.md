@@ -127,7 +127,7 @@ Remplacer le gabarit par un texte sans variables rend les densho **inertes** : l
 | Lot | État (14 septembre 2026) |
 |---|---|
 | A — le kata orphelin dans un harness natif | appliqué — `Kata.orphelin` et `Kata.provenance` ; une source `.md` fait l'orphelin ; sa provenance est exigée, un contrat refusé (sabotage 4), la provenance interdite à un natif ; la forge choisit par kata, une cible instrumentée le sert sans bloc (D11.3) ; la trempe statique trempe le texte (sabotages 1, 2) et ne consulte pas le registre pour lui ; le scellement ne lui sème pas de densho ; la page le lit sans l'éditer |
-| B — l'import comme proposition | à faire |
+| B — l'import comme proposition | appliqué — `Proposition.importe` (provenance, `source` exigée : sabotage 3) et `source.<kata>.texte` ; l'épreuve pose le texte sur la copie et le trempe (sabotage 1) ; le scellement l'écrit octet pour octet (sabotage 6), pose `source: kata/<id>.md` et la provenance avec empreinte au manifest, `provenance_du_gabarit` pour un gabarit ; l'avis D11.4 sur les densho inertes, rendu par l'épreuve |
 | C — la page et les observatoires | à faire — les trois encres par kata, le geste « remplacer par un densho » |
 
 ---
