@@ -357,7 +357,8 @@ def _normaliser(texte: str) -> str:
 
 
 def forger(harness: Harness, kata: Kata, cible: Cible, template: str, registre: dict) -> Coupe:
-    if harness.exogene:
+    # La forge choisit par kata, non par harness (RFC-011 D11.2).
+    if harness.exogene or kata.orphelin:
         return _forger_orpheline(harness, kata, cible)
     source = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
     if not isinstance(source, dict):
@@ -427,13 +428,17 @@ def _forger_orpheline(harness: Harness, kata: Kata, cible: Cible) -> Coupe:
     # instrumentés parlent la même langue, natif ou adopté.
     if cible.etat_structure:
         champs = champs_du_kata(harness, kata, {}, {})
-        if not champs:
+        if not champs and harness.exogene:
             raise ForgeImpossible(
                 f"{kata.id} : cible `{cible.id}` sans vocabulaire de champs — "
                 "déclare `etat.champs` au manifest, on n'invente jamais de champs "
                 "(RFC-008 §6)"
             )
-        texte += "\n" + _bloc_etat(harness, kata, cible, champs).strip() + "\n"
+        # Un orphelin dans un harness natif n'a ni contrat ni champs (RFC-011
+        # D11.3) : la cible instrumentée le sert tel quel, sans bloc d'état —
+        # ce qui n'est pas déclaré ne s'invente pas, et le QG l'affiche éteint.
+        if champs:
+            texte += "\n" + _bloc_etat(harness, kata, cible, champs).strip() + "\n"
 
     empreinte = hashlib.sha256(texte.encode("utf-8")).hexdigest()[:12]
     estampille = Estampille(

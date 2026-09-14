@@ -444,6 +444,20 @@ class LeScellementCommite(Scellement):
         self.assertEqual(self.git(self.racine, "status", "--porcelain"), "")
 
 
+class UnOrphelinAuScellement(Scellement):
+    """RFC-011 — un kata en texte n'a pas de page kata/<id>.yaml à semer."""
+
+    def test_le_scellement_ne_lui_invente_pas_de_densho(self):
+        (self.racine / "kata" / "venu.md").write_text("Tu accompagnes.\n", encoding="utf-8")
+        self.sceller(Proposition(kata=[{
+            "id": "venu", "nom": "Venu", "source": "kata/venu.md", "amont": [],
+            "herite": [], "produit": [],
+            "provenance": {"source": "manuel", "checksum_import": "abc", "date_import": "2026-09-14"},
+        }]))
+        self.assertFalse((self.racine / "kata" / "venu.yaml").exists())
+        self.assertEqual((self.racine / "kata" / "venu.md").read_text(encoding="utf-8"), "Tu accompagnes.\n")
+
+
 class VocabulaireDeProposition(unittest.TestCase):
     def test_le_gabarit_est_un_texte(self):
         with self.assertRaises(TypeError):

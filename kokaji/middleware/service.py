@@ -707,6 +707,8 @@ def creer_harness(
                     ],
                     "produit": [{"champ": r, "statut": s} for r, s in k.produit],
                     "emet_options": k.emet_options,
+                    # Un texte servi tel quel (RFC-008, RFC-011) : sans densho ni contrat.
+                    "orphelin": harness.exogene or k.orphelin,
                     # Le densho, tel que la forge le lit ; un texte tel quel
                     # pour un kata adopté (RFC-010 D10.2, D10.4).
                     "source": _densho(k),
@@ -747,7 +749,7 @@ def creer_harness(
     def _densho(kata) -> dict:
         if not kata.source.is_file():
             return {}
-        if harness.exogene:
+        if harness.exogene or kata.orphelin:
             return {"texte": kata.source.read_text(encoding="utf-8")}
         lu = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
         return dict(lu) if isinstance(lu, dict) else {}

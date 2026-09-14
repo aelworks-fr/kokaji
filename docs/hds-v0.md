@@ -94,6 +94,24 @@ qui la porte encore.
 Une variable du template sans valeur, ou une variable obligatoire vide, arrête
 la forge. Aucune coupe n'est écrite avec un trou.
 
+### Un kata en texte — l'orphelin (HDS v0.2, RFC-011)
+
+Une `source` qui se termine par `.md` est **un texte servi tel quel** : le kata
+est orphelin — il n'est pas assemblé depuis le gabarit, il ne tient pas de
+contrat (`herite` et `produit` vides, sinon faute), son `livrable` est
+facultatif (le nom en tient lieu), et il déclare d'où il vient :
+
+```yaml
+  - id: devis
+    nom: Répondre à un devis
+    source: kata/devis.md
+    provenance: { source: "…", checksum_import: "…", date_import: "…" }
+```
+
+Un kata natif ne déclare pas de `provenance` ; un harness `exogene: true`
+(RFC-008) est le cas où tous les kata sont orphelins, et la provenance est
+alors celle du harness.
+
 ### `cibles` — les profils de forge
 
 Une liste non vide. Chaque cible produit son propre jeu de coupes.

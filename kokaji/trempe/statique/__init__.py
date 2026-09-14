@@ -125,6 +125,10 @@ def _registre_canonique(harness: Harness, registre: dict) -> list[Anomalie]:
     connus_champs = set(registre.get("champs") or {})
 
     for kata in harness.kata:
+        # Un orphelin n'est pas au registre : il n'a ni livrable de forge ni
+        # champs à croiser (RFC-011 D11.2).
+        if kata.orphelin:
+            continue
         if kata.id not in connus_kata:
             anomalies.append(
                 Anomalie("registre-canonique", f"kata.{kata.id}", "absent de `kata:` au registre")
@@ -166,6 +170,8 @@ def _contrat(harness: Harness) -> list[Anomalie]:
     engagements = {k.id: dict(k.produit) for k in harness.kata}
 
     for kata in harness.kata:
+        if kata.orphelin:
+            continue
         if not kata.produit:
             anomalies.append(
                 Anomalie("contrat-complet", f"kata.{kata.id}", "`produit` vide : ce kata ne garantit rien")
@@ -228,6 +234,8 @@ def _contrebande(harness: Harness, registre: dict) -> list[Anomalie]:
     anomalies = []
 
     for kata in harness.kata:
+        if kata.orphelin:
+            continue
         autorises = {champ_nu(r) for r in kata.herite} | {champ_nu(r) for r, _ in kata.produit}
         texte = kata.source.read_text(encoding="utf-8")
         for champ in sorted(connus - autorises):

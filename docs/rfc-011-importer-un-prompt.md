@@ -122,5 +122,13 @@ Remplacer le gabarit par un texte sans variables rend les densho **inertes** : l
 - Les boutons d'import, le geste « remplacer par un densho », les trois encres par kata (sabotage 5).
 - Mise à jour du HDS et des RFC touchées (§5).
 
+## 9. Tableau d'application
+
+| Lot | État (14 septembre 2026) |
+|---|---|
+| A — le kata orphelin dans un harness natif | appliqué — `Kata.orphelin` et `Kata.provenance` ; une source `.md` fait l'orphelin ; sa provenance est exigée, un contrat refusé (sabotage 4), la provenance interdite à un natif ; la forge choisit par kata, une cible instrumentée le sert sans bloc (D11.3) ; la trempe statique trempe le texte (sabotages 1, 2) et ne consulte pas le registre pour lui ; le scellement ne lui sème pas de densho ; la page le lit sans l'éditer |
+| B — l'import comme proposition | à faire |
+| C — la page et les observatoires | à faire — les trois encres par kata, le geste « remplacer par un densho » |
+
 ---
 *Note d'établi : le RFC-008 disait qu'un harness n'est pas dedans-ou-dehors, mais plus ou moins* su *par la forge. Ce RFC dit la même chose d'un kata : un texte collé est une étape que la forge ne sait pas encore lire — pas une étape qu'elle refuse.*

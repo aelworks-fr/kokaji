@@ -231,3 +231,36 @@ class BlocageDeLaForge(Bac):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnOrphelinEstUneCoupe(Bac):
+    """RFC-011 D11.2 — le texte se trempe comme une coupe ; le registre ne le concerne pas."""
+
+    MIXTE = MANIFEST.replace(
+        "chaine:",
+        """  - id: venu
+    nom: Venu
+    source: kata/venu.md
+    amont: []
+    herite: []
+    produit: []
+    provenance: { source: manuel, checksum_import: abc, date_import: "2026-09-14" }
+chaine:""",
+    ).replace("  noeuds:\n", "  noeuds:\n    - { id: venu, type: kata, nom: Venu }\n")
+
+    def texte(self, contenu: str):
+        (self.racine / "kata" / "venu.md").write_text(contenu, encoding="utf-8")
+
+    def test_hors_du_registre_il_ne_fait_pas_d_anomalie(self):
+        self.texte("Tu accompagnes une étape.\n")
+        self.assertEqual(self.regles(manifest=self.MIXTE), set())
+
+    def test_un_marqueur_de_gabarit_dans_le_texte_est_refuse(self):
+        """Sabotage 1 du RFC-011."""
+        self.texte("Tu accompagnes [À COMPLÉTER] — TBD.\n")
+        self.assertIn("marqueur-residuel", self.regles(manifest=self.MIXTE))
+
+    def test_le_vocabulaire_interdit_du_harness_s_applique_au_texte(self):
+        """Sabotage 2."""
+        self.texte("Tu emploies un mot banni.\n")
+        self.assertIn("vocabulaire-interdit", self.regles(manifest=self.MIXTE))

@@ -141,7 +141,15 @@ def sceller(
         str(k.get("id"))
         for k in (apres.get("kata") or [])
         if not exogene and not (racine / "kata" / f"{k.get('id')}.yaml").is_file()
+        # Un orphelin (source `.md`, RFC-011) est un texte : pas de page à semer.
+        and not str(k.get("source") or "").endswith(".md")
     }
+    # Et un orphelin retouché au manifest ne reçoit pas de densho pour autant.
+    orphelins = {
+        str(k.get("id")) for k in (apres.get("kata") or [])
+        if str(k.get("source") or "").endswith(".md")
+    }
+    retouches -= orphelins
     for id_kata in sorted(retouches):
         fichier = racine / "kata" / f"{id_kata}.yaml"
         # Un kata neuf reçoit sa page à remplir : la sauter laisserait au

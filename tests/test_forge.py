@@ -360,3 +360,41 @@ class ForgeRefuse(Bac):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class UnOrphelinDansUnHarnessNatif(Bac):
+    """RFC-011 D11.2 — la forge choisit par kata : le texte, tel quel, plus l'estampille."""
+
+    MIXTE = MANIFEST.replace(
+        "chaine:",
+        """  - id: venu
+    nom: Venu
+    source: kata/venu.md
+    amont: []
+    herite: []
+    produit: []
+    provenance: { source: manuel, checksum_import: abc, date_import: "2026-09-14" }
+chaine:""",
+    ).replace("  noeuds:\n", "  noeuds:\n    - { id: venu, type: kata, nom: Venu }\n")
+
+    def mixte(self, texte: str):
+        (self.racine / "kata").mkdir(exist_ok=True)
+        (self.racine / "kata" / "venu.md").write_text(texte, encoding="utf-8")
+        return _harness(self.racine, manifest=self.MIXTE)
+
+    def test_le_texte_est_servi_tel_quel_et_les_natifs_se_forgent(self):
+        h = self.mixte("Tu accompagnes une étape.\n")
+        resultat = forger_harness(h, self.sortie, trempe=False)
+        venu = self.coupe(resultat, "nue", "venu")
+        self.assertTrue(venu.texte.startswith("Tu accompagnes une étape.\n"))
+        self.assertIn("<!-- h/venu", venu.texte)
+        self.assertEqual(venu.estampille.version_kata, "0.1.0")
+        k1 = self.coupe(resultat, "nue", "k1")
+        self.assertIn("EN-TETE-NUE — K1", k1.texte)
+
+    def test_la_cible_instrumentee_le_sert_sans_bloc_d_etat(self):
+        """RFC-011 D11.3 : sans contrat ni champs, rien ne s'invente — le QG l'affiche éteint."""
+        resultat = forger_harness(self.mixte("Tu accompagnes.\n"), self.sortie, trempe=False)
+        venu = self.coupe(resultat, "instrumentee", "venu")
+        self.assertNotIn("kokaji_state", venu.texte)
+        self.assertTrue(venu.texte.startswith("Tu accompagnes.\n"))

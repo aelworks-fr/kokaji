@@ -36,6 +36,12 @@ class Kata:
     # RFC-001 : ce kata élicite et suit des options. Kokaji ne sait pas ce qu'est
     # une option dans ce domaine — il sait seulement que ce kata en déclare.
     emet_options: bool = False
+    # RFC-011 D11.2 — un kata dont la source est un texte, servi tel quel : il
+    # n'est pas assemblé depuis le gabarit, il porte sa provenance, et la
+    # forge le choisit par kata. Un harness exogène (RFC-008) est le cas où
+    # tous le sont.
+    orphelin: bool = False
+    provenance: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)

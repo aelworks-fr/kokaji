@@ -1870,6 +1870,8 @@ function rendreDesign() {
 function marquesDe(k) {
   const rompus = liensRompus().filter(r => r.kata === k.id).length;
   const src = brouillon.source[k.id];
+  // Un orphelin (RFC-011) est un texte : ni densho à compléter, ni seuil.
+  if (k.orphelin) return { contrat: rompus, densho: false, seuil: false };
   const incomplet = !def.harness.exogene && (!src
     || !(src.role || "").trim() || !(src.questions || []).length
     || !(src.livrable_structure || []).length || !(src.passage || "").trim());
@@ -2369,6 +2371,12 @@ async function adopterUneEtape() {
 }
 
 function rendreContrats(k) {
+  if (k.orphelin) {
+    $("axe-corps").innerHTML = `<h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 8px">Contrats f♯ — ${e(k.nom || k.id)}</h2>
+      <p class="rien">Un texte servi tel quel ne tient pas de contrat (RFC-011) : il n'hérite ni ne produit,
+        et le QG l'affiche éteint. Le contrat viendra avec sa réécriture en densho.</p>`;
+    return;
+  }
   const g = garanties();
   const consommateurs = (champ) =>
     brouillon.kata.filter(x => x.herite.some(h => h.champ === champ)).map(x => nomDe(x.id));
@@ -2660,7 +2668,7 @@ const depuisLignes = (texte) => texte.split("\n").map(l => l.trim()).filter(Bool
 function retoucheCoupe() { coupeRendue = null; coupeDit = ""; retouche(); }
 
 function rendreCoupes(k) {
-  const exogene = def.harness.exogene;
+  const exogene = def.harness.exogene || k.orphelin;
   const densho = brouillon.source[k.id] || {};
   const zone = (cle, libelle, aide, rows = 3) => `
     <div>
@@ -2673,8 +2681,10 @@ function rendreCoupes(k) {
     DENSHO_LISTES.includes(c) ? !(densho[c] || []).length : !(densho[c] || "").trim());
 
   const gauche = exogene ? `
-    <p class="rien">Un harness adopté n'a ni gabarit ni densho : ses étapes sont des textes
-      servis tels quels. Ils se lisent ici ; les éditer est le geste du RFC-011.</p>
+    <p class="rien">${def.harness.exogene
+      ? "Un harness adopté n'a ni gabarit ni densho : ses étapes sont des textes servis tels quels. Ils se lisent ici ; les éditer est le geste du RFC-011."
+      : "Ce kata est un texte importé, servi tel quel (RFC-011) : sans densho ni contrat. Il se lit ici ; le remplacer par un densho est un geste à part."}</p>
+    ${k.provenance ? `<p class="mot">provenance : ${e(k.provenance.source || "?")}</p>` : ""}
     <pre class="hds" id="densho-texte" style="margin-top:10px">${e(densho.texte || "")}</pre>`
   : `<div style="display:flex;flex-direction:column;gap:16px">
       ${zone("role", "Rôle", "obligatoire", 4)}

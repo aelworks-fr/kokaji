@@ -287,6 +287,8 @@ def copie_eprouvee(racine: Path, apres: dict, proposition: Proposition) -> Itera
             str(k.get("id"))
             for k in (apres.get("kata") or [])
             if not (copie / "kata" / f"{k.get('id')}.yaml").is_file()
+            # Un orphelin (source `.md`, RFC-011) est un texte : rien à semer.
+            and not str(k.get("source") or "").endswith(".md")
         }
         # Le registre suit : un champ nommé par un kata neuf doit y être déclaré,
         # sinon la trempe refuse une coupe qui cite un nom qu'elle ne connaît pas.

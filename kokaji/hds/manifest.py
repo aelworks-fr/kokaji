@@ -276,6 +276,30 @@ def _provenance(l: _Lecture, entete: dict, exogene: bool) -> tuple[tuple[str, st
     return tuple((str(c), str(v)) for c, v in brut.items())
 
 
+def _provenance_de_kata(
+    l: _Lecture, item: dict, ou: str, *, orphelin: bool, exogene: bool
+) -> tuple[tuple[str, str], ...]:
+    """D'où vient un texte — exigée d'un orphelin dans un harness natif.
+
+    Dans un harness exogène, la provenance est celle du harness (RFC-008) ;
+    un kata natif n'en a pas, et la déclarer serait un mensonge par avance.
+    """
+    brut = item.get("provenance")
+    if not orphelin or exogene:
+        if brut is not None:
+            l.faute(f"{ou}.provenance", "réservée à un kata orphelin d'un harness natif")
+        return ()
+    if not isinstance(brut, dict):
+        l.faute(f"{ou}.provenance", "section absente — un texte importé dit d'où il vient")
+        return ()
+    if not str(brut.get("source") or "").strip():
+        l.faute(f"{ou}.provenance.source", "attendu : un texte non vide")
+    for cle in ("checksum_import", "date_import"):
+        if not str(brut.get(cle) or "").strip():
+            l.faute(f"{ou}.provenance.{cle}", "attendu : un texte non vide")
+    return tuple((str(c), str(v)) for c, v in brut.items())
+
+
 def _herite(
     l: _Lecture, item: dict, ou: str, statuts_champ: tuple[str, ...]
 ) -> tuple[tuple[str, ...], dict[str, str]]:
@@ -401,17 +425,22 @@ def _kata(
             l.faute(f"{ou}.id", f"id déjà utilisé : {id_kata!r}")
         vus.add(id_kata)
         references, exigences = _herite(l, item, ou, statuts_champ)
+        source_brute = l.texte(item, ou, "source") or "."
+        # RFC-011 D11.2 — une source `.md` est un texte servi tel quel : le
+        # kata est orphelin dans un harness qui, par ailleurs, forge. Dans un
+        # harness exogène, tous le sont.
+        orphelin = exogene or source_brute.endswith(".md")
         kata.append(
             Kata(
                 id=id_kata,
                 nom=(nom_kata := l.texte(item, ou, "nom")),
-                source=l.chemin(f"{ou}.source", l.texte(item, ou, "source") or "."),
+                source=l.chemin(f"{ou}.source", source_brute),
                 # Une coupe orpheline n'a pas de livrable déclaré : le texte
                 # importé dit ce qu'il dit, et on ne lui invente rien. Le nom
                 # tient lieu d'étiquette (RFC-008 §4).
                 livrable=(
                     str(item.get("livrable") or "").strip() or nom_kata
-                    if exogene
+                    if orphelin
                     else l.texte(item, ou, "livrable")
                 ),
                 amont=tuple(l.liste(item, ou, "amont")),
@@ -419,8 +448,15 @@ def _kata(
                 exigences=exigences,
                 produit=_produit(l, item, ou, statuts_champ),
                 emet_options=l.booleen(item, ou, "emet_options"),
+                orphelin=orphelin,
+                provenance=_provenance_de_kata(l, item, ou, orphelin=orphelin, exogene=exogene),
             )
         )
+        # Un texte ne tient pas de contrat (RFC-011 sabotage 4) : dans un
+        # harness natif, un orphelin n'hérite ni ne produit — ce sont les
+        # gestes de la réécriture en densho, pas de l'import.
+        if orphelin and not exogene and (references or item.get("produit")):
+            l.faute(f"{ou}", "un kata orphelin ne tient pas de contrat : un texte servi tel quel n'hérite ni ne produit")
 
     for rang, k in enumerate(kata):
         for amont in k.amont:

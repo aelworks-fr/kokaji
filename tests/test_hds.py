@@ -344,3 +344,63 @@ class PlusieursHarness(Bac):
         _ecrire_harness(self.racine / "deux", MINIMAL.replace("id: h\n", "id: H MAJUSCULE\n"))
         with self.assertRaises(ManifestInvalide):
             charger_tous(self.racine)
+
+
+class UnKataOrphelinDansUnHarnessNatif(Bac):
+    """RFC-011 D11.2 — une source `.md` est un texte servi tel quel."""
+
+    ORPHELIN = MINIMAL.replace(
+        "chaine:",
+        """  - id: venu
+    nom: Venu d'ailleurs
+    source: kata/venu.md
+    amont: []
+    herite: []
+    produit: []
+    provenance: { source: manuel, checksum_import: abc, date_import: "2026-09-14" }
+chaine:""",
+    ).replace("  noeuds:\n", "  noeuds:\n    - { id: venu, type: kata, nom: Venu }\n")
+
+    def ecrire(self, manifest: str):
+        _ecrire_harness(self.racine, manifest)
+        (self.racine / "kata" / "venu.md").write_text("Tu accompagnes.", encoding="utf-8")
+
+    def test_il_se_charge_orphelin_avec_sa_provenance_et_son_nom_pour_livrable(self):
+        self.ecrire(self.ORPHELIN)
+        h = charger(self.racine)
+        venu = h.kata_par_id("venu")
+        self.assertTrue(venu.orphelin)
+        self.assertFalse(h.kata_par_id("k1").orphelin)
+        self.assertFalse(h.exogene)
+        self.assertEqual(venu.livrable, "Venu d'ailleurs")
+        self.assertEqual(dict(venu.provenance)["source"], "manuel")
+
+    def test_sans_provenance_il_est_refuse(self):
+        """Sabotage 3 : on ne sait pas d'où ça vient, on n'enregistre pas."""
+        manifest = self.ORPHELIN.replace(
+            '    provenance: { source: manuel, checksum_import: abc, date_import: "2026-09-14" }\n', ""
+        )
+        _ecrire_harness(self.racine, manifest)
+        (self.racine / "kata" / "venu.md").write_text("Tu accompagnes.", encoding="utf-8")
+        with self.assertRaises(ManifestInvalide) as capture:
+            charger(self.racine)
+        self.assertTrue(any("provenance" in str(f) for f in capture.exception.fautes))
+
+    def test_un_texte_ne_tient_pas_de_contrat(self):
+        """Sabotage 4."""
+        self.ecrire(self.ORPHELIN.replace("    herite: []\n    produit: []\n    provenance",
+                                          "    amont: [k1]\n    herite: [k1.c1]\n    produit: []\n    provenance"))
+        with self.assertRaises(ManifestInvalide) as capture:
+            charger(self.racine)
+        self.assertTrue(any("ne tient pas de contrat" in str(f) for f in capture.exception.fautes),
+                        [str(f) for f in capture.exception.fautes])
+
+    def test_un_kata_natif_ne_declare_pas_de_provenance(self):
+        manifest = MINIMAL.replace(
+            "    livrable: L1\n",
+            "    livrable: L1\n    provenance: { source: x, checksum_import: y, date_import: z }\n",
+        )
+        _ecrire_harness(self.racine, manifest)
+        with self.assertRaises(ManifestInvalide) as capture:
+            charger(self.racine)
+        self.assertTrue(any("réservée à un kata orphelin" in str(f) for f in capture.exception.fautes))

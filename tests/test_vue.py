@@ -570,7 +570,8 @@ class LesCoupes(unittest.TestCase):
         self.assertIn("function retoucheCoupe() { coupeRendue = null;", RENDU)
 
     def test_un_harness_adopte_se_lit_sans_s_editer(self):
-        self.assertIn("ses étapes sont des textes\n      servis tels quels", RENDU)
+        self.assertIn("ses étapes sont des textes servis tels quels", RENDU)
+        self.assertIn("Ce kata est un texte importé, servi tel quel (RFC-011)", RENDU)
         self.assertIn("if (exogene) return;", RENDU)
 
     def test_les_adjonctions_ne_s_editent_pas_ici(self):
