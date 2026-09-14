@@ -177,3 +177,7 @@ class Scellement:
     versions: dict[str, str]
     changements: tuple[str, ...]
     racine: Path | None = None
+    # Le commit qui porte ce scellement dans le dépôt du harness (D9.1), ou la
+    # raison pour laquelle il n'y en a pas — jamais un silence.
+    commit: str = ""
+    commit_motif: str = ""

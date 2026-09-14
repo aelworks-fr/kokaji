@@ -765,6 +765,9 @@ def creer_harness(
             "le": trace.quand,
             "versions": trace.versions,
             "changements": list(trace.changements),
+            # Le commit dans le dépôt du harness, ou pourquoi il n'y en a pas.
+            "commit": trace.commit,
+            "commit_motif": trace.commit_motif,
             "coupes": _forger_apres_scellement(),
             "passerelle": _publier_a_la_passerelle(),
         }

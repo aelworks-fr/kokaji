@@ -200,6 +200,9 @@ services:
       KOKAJI_MOTEURS: /litellm/moteurs.yaml
       # Où la vigie dépose son verdict. L'administration le lit là.
       KOKAJI_VERDICTS: /verdicts/verdicts.json
+      # Le scellement commite dans le dépôt du harness monté ; pousser est un
+      # choix de déploiement (voir .env.example).
+      KOKAJI_DEPOT_PUSH: ${KOKAJI_DEPOT_PUSH:-0}
     volumes:
       # Le dossier **des** harness : un harness ne peut naître que là où le
       # service en sert plusieurs (RFC-006). En écriture — une naissance écrit.

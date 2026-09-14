@@ -39,6 +39,11 @@ Le corpus vivant reste **exportable** au format fichier `CAS-XXXX/` (standard v0
 la base est le régime de travail, le fichier est le régime d'échange et de sauvegarde.
 Aucune donnée vivante n'est captive de la base.
 
+> **Application, 14 septembre 2026** — le scellement commite le harness dans le
+> dépôt qui le contient (`kokaji/conception/depot.py`), auteur et motif au
+> message ; un harness modifié depuis le QG n'est plus hors historique. Le push
+> reste un choix de déploiement.
+
 **Ce que ça interdit :** commiter une coupe. Une coupe dans un repo git est un
 artefact fossile qui divergera de sa source — la trempe du produit doit le refuser
 (`dist/` reste dans `.gitignore`, et un check CI échoue si un fichier de `dist/`

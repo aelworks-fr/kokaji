@@ -102,6 +102,14 @@ l'aval — n'ont pas de zone sur cet axe : elles vivent à l'axe « Contrats » 
 entrent à la forge, où on les lit dans la coupe. Un harness adopté (RFC-008) y
 montre le texte de ses étapes sans l'éditer : c'est le geste du RFC-011.
 
+**Sceller commite.** La définition d'un harness vit dans un dépôt git (RFC-009
+D9.1) : le scellement, une fois écrit, commite le harness — et seulement lui —
+dans le dépôt qui le contient, avec ses versions, le motif et l'auteur dans le
+message. Sans git, hors de tout dépôt, ou si le commit échoue, le scellement
+tient et la trace dit pourquoi rien n'a été commité. Pousser vers le distant
+est un choix de déploiement, `KOKAJI_DEPOT_PUSH=1`, qui suppose des
+accréditations dans le conteneur.
+
 ## Au backlog, non bloquant — la nature au détail du nœud (RFC-003 §5.5)
 
 Le bloc d'état peut désormais porter un champ `nature` : dans quel genre de

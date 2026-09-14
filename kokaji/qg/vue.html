@@ -2085,6 +2085,10 @@ async function scellerDepuisLaPage() {
         : `Coupes non forgées (${e((trace.coupes || {}).motif || "raison inconnue")}) :
            le chat sert encore la précédente.`}
       ${CHAT ? `<a href="${e(CHAT)}" target="_blank" rel="noopener">pratiquer ↗</a>` : ""}
+      <br>${trace.commit
+        ? `Commité dans le dépôt du harness : <span class="mono">${e(trace.commit)}</span>${
+            trace.commit_motif ? ` — ${e(trace.commit_motif)}` : ""}`
+        : `Non commité — ${e(trace.commit_motif || "raison inconnue")}.`}
       <br>Les ha déjà capturés peuvent être périmés : \`kokaji regression\`.
     </div>`;
   } catch {

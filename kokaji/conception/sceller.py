@@ -18,6 +18,7 @@ le corpus devient périmé.
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -32,6 +33,7 @@ from .brouillon import (
     juger,
     source_neuve,
 )
+from .depot import commiter
 from .modele import Proposition, Scellement, Verdict
 
 __all__ = ["JOURNAL", "ScellementRefuse", "sceller", "version_suivante", "versions_prevues"]
@@ -100,14 +102,14 @@ def sceller(
         # exactement l'inverse. Ce qui est écrit est la trace : à cette date,
         # cette définition a été arrêtée par quelqu'un, et elle tient.
         entete = dict(avant.get("harness") or {})
-        return _tracer(
+        return _commiter(_tracer(
             racine,
             auteur=auteur,
             motif=motif,
             quand=quand,
             versions={str(entete.get("id") or "harness"): str(entete.get("version") or "")},
             changements=(),
-        )
+        ))
 
     apres = appliquer(avant, proposition, copier=False)
 
@@ -171,14 +173,20 @@ def sceller(
     versions[str(apres["harness"].get("id") or "harness")] = apres["harness"]["version"]
     ecrire_source(racine / "harness.yaml", apres)
 
-    return _tracer(
+    return _commiter(_tracer(
         racine,
         auteur=auteur,
         motif=motif,
         quand=quand,
         versions=versions,
         changements=tuple(str(c) for c in verdict.changements),
-    )
+    ))
+
+
+def _commiter(trace: Scellement) -> Scellement:
+    """Le commit suit la trace : le journal des scellements en fait partie."""
+    sha, motif = commiter(trace.racine, trace.auteur, trace.motif, trace.versions)
+    return replace(trace, commit=sha, commit_motif=motif)
 
 
 def _tracer(

@@ -375,6 +375,75 @@ class Scellement(Bac):
         self.assertEqual(self.manifest()["harness"]["version"], "1.4.0")
 
 
+class LeScellementCommite(Scellement):
+    """Un scellement est un commit — dans le dépôt qui contient le harness (D9.1)."""
+
+    def git(self, depot: Path, *args: str) -> str:
+        import subprocess
+
+        return subprocess.run(
+            ["git", "-c", "safe.directory=*", "-C", str(depot), *args],
+            capture_output=True, text=True, check=True,
+        ).stdout.strip()
+
+    def depot(self, ou: Path) -> Path:
+        self.git(ou, "init", "-q")
+        self.git(ou, "config", "user.email", "t@exemple.test")
+        self.git(ou, "config", "user.name", "T")
+        self.git(ou, "add", "-A")
+        self.git(ou, "commit", "-q", "-m", "avant")
+        return ou
+
+    def test_hors_de_tout_depot_le_scellement_tient_et_le_dit(self):
+        trace = self.sceller(Proposition(kata=[{"id": "k2", "nom": "Autre"}]))
+        self.assertEqual(trace.commit, "")
+        self.assertIn("aucun dépôt git", trace.commit_motif)
+        self.assertEqual(self.manifest()["harness"]["version"], "1.3.0")
+
+    def test_le_harness_qui_est_un_depot_se_commite_signe_et_motive(self):
+        self.depot(self.racine)
+        trace = self.sceller(Proposition(kata=[{"id": "k2", "nom": "Autre"}]), motif="pour lire mieux")
+
+        self.assertTrue(trace.commit, trace.commit_motif)
+        self.assertEqual(trace.commit_motif, "")
+        self.assertEqual(self.git(self.racine, "status", "--porcelain"), "")
+        message = self.git(self.racine, "log", "-1", "--format=%B")
+        self.assertTrue(message.startswith("scellement : h — "), message)
+        self.assertIn("h v1.3.0", message)
+        self.assertIn("pour lire mieux", message)
+        self.assertIn("Scellé par forgeron", message)
+        self.assertEqual(self.git(self.racine, "log", "-1", "--format=%an"), "forgeron")
+
+    def test_dans_un_depot_plus_large_seul_le_harness_part(self):
+        """Le dépôt de l'instance porte d'autres choses : elles ne partent pas sous ce nom."""
+        parent = self.racine.parent
+        self.depot(parent)
+        (parent / "autre.txt").write_text("en cours", encoding="utf-8")
+
+        trace = self.sceller(Proposition(kata=[{"id": "k2", "nom": "Autre"}]))
+
+        self.assertTrue(trace.commit, trace.commit_motif)
+        self.assertEqual(self.git(parent, "status", "--porcelain"), "?? autre.txt")
+        commites = self.git(parent, "show", "--stat", "--format=", "HEAD")
+        self.assertIn("harness/harness.yaml", commites)
+        self.assertNotIn("autre.txt", commites)
+
+    def test_un_arret_commite_sa_trace(self):
+        """Un arrêt n'écrit que le journal des scellements : c'est ce qui se commite."""
+        self.depot(self.racine)
+        trace = self.sceller(Proposition())
+        self.assertTrue(trace.commit, trace.commit_motif)
+        self.assertIn(JOURNAL, self.git(self.racine, "show", "--stat", "--format=", "HEAD"))
+
+    def test_un_scellement_qui_ne_tient_pas_ne_commite_rien(self):
+        self.depot(self.racine)
+        avant = self.git(self.racine, "rev-parse", "HEAD")
+        with self.assertRaises(ScellementRefuse):
+            self.sceller(Proposition(template="{{ inconnue }}"))
+        self.assertEqual(self.git(self.racine, "rev-parse", "HEAD"), avant)
+        self.assertEqual(self.git(self.racine, "status", "--porcelain"), "")
+
+
 class VocabulaireDeProposition(unittest.TestCase):
     def test_le_gabarit_est_un_texte(self):
         with self.assertRaises(TypeError):
