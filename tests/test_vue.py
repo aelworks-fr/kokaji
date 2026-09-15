@@ -816,6 +816,11 @@ class SelecteurDeHarness(unittest.TestCase):
         """Chaque module lit le harness courant : en rafraîchir un seul mentirait."""
         self.assertIn("location.reload()", PAGE)
 
+    def test_changer_de_harness_pose_l_adresse_du_nouveau_avant_de_recharger(self):
+        """Sinon l'ancien harness reste dans le fragment et le routage y ramène."""
+        self.assertIn("fragmentPourHarness(select.value)", PAGE)
+        self.assertIn("function fragmentPourHarness(id)", PAGE)
+
 
 class Etroit(unittest.TestCase):
     """Un téléphone fait 360 px. Rien ici ne mesure, tout ici se déclare."""

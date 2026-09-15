@@ -1320,6 +1320,16 @@ function aller(route) {
   location.hash = route;   // `hashchange` applique
 }
 
+// Le fragment à poser quand on **change** de harness : celui-ci, dans la vue où
+// l'on est. Sans lui, on recharge en laissant l'ancien harness dans l'adresse,
+// et `appliquerRoute` y ramène — le symptôme « ça revient au harness courant ».
+function fragmentPourHarness(id) {
+  const r = lireRoute();
+  const h = `/h/${encodeURIComponent(id)}`;
+  if (r.vue === "design") return `#${h}/design/${r.axe || axe || "partition"}`;
+  return `#${h}/qg`;
+}
+
 function nomDuHarness() {
   const o = offreHarness;
   if (!o || !o.courant) return "";
@@ -3002,8 +3012,10 @@ async function chargerHarness() {
       body: JSON.stringify({ id_harness: select.value })
     });
     // Changer de harness change tout ce que la page montre : on la recharge
-    // plutôt que de rafraîchir chaque module et d'en oublier un.
-    if (r.ok) location.reload();
+    // plutôt que de rafraîchir chaque module et d'en oublier un. On pose d'abord
+    // le fragment sur le nouveau harness, sinon l'ancien y reste et le routage y
+    // ramène au rechargement.
+    if (r.ok) { location.hash = fragmentPourHarness(select.value); location.reload(); }
   };
 }
 
@@ -3110,12 +3122,14 @@ async function creerHarness() {
     $("ne-valider").disabled = false;
     return;
   }
-  // Il naît brouillon : on l'ouvre là où on l'arrête ou l'adapte.
+  // Il naît brouillon : on l'ouvre là où on l'arrête ou l'adapte — sous sa
+  // propre adresse, sinon le routage ramène au harness d'avant au rechargement.
   const ne = await r.json();
   await fetch("/harness/courant", {
     method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ id_harness: ne.id })
   });
+  location.hash = `#/h/${encodeURIComponent(ne.id)}/design/partition`;
   location.reload();
 }
 
