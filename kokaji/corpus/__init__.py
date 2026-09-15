@@ -12,13 +12,13 @@ supprimé.
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from ..comptes.modele import PRIVEE
 from ..hds import Harness
 from ..yaml_source import charger_texte, rendre_source
+from .depot import RefHa, depot_pour, ref_de
 
 __all__ = [
     "Ha", "Versement", "deja_ailleurs", "ecartees", "ecarter",
@@ -122,12 +122,7 @@ def _sessions(lignes: list[dict], id_harness: str) -> dict[str, list[dict]]:
 
 
 def _numero_suivant(corpus: Path) -> int:
-    existants = [
-        int(m.group(1))
-        for d in corpus.glob("CAS-*")
-        if (m := re.match(r"CAS-(\d+)", d.name))
-    ]
-    return max(existants, default=0) + 1
+    return depot_pour().numero_suivant(corpus)
 
 
 def _titre(appels: list[dict]) -> str:
@@ -137,14 +132,12 @@ def _titre(appels: list[dict]) -> str:
 
 def existants(corpus: Path) -> dict[str, Path]:
     """Les ha déjà versés, par session."""
+    depot = depot_pour()
     trouves: dict[str, Path] = {}
-    for dossier in sorted(corpus.glob("CAS-*")):
-        fiche = dossier / "fiche.md"
-        if not fiche.is_file():
-            continue
-        texte = fiche.read_text(encoding="utf-8")
-        if "session `" in texte:
-            trouves[texte.split("session `")[-1].split("`")[0]] = dossier
+    for ref in depot.tous(corpus):
+        texte = depot.fiche(ref)
+        if texte and "session `" in texte:
+            trouves[texte.split("session `")[-1].split("`")[0]] = ref.chemin
     return trouves
 
 
@@ -173,19 +166,8 @@ def deja_ailleurs(harness: Harness, corpus: Path) -> dict[str, Path]:
 
 
 def ecartees(corpus: Path) -> set[str]:
-    """Les sessions écartées du corpus, par décision humaine."""
-    fichier = Path(corpus) / ECARTES
-    if not fichier.is_file():
-        return set()
-    sessions = set()
-    for ligne in fichier.read_text(encoding="utf-8").splitlines():
-        if not ligne.strip():
-            continue
-        try:
-            sessions.add(json.loads(ligne)["session"])
-        except (json.JSONDecodeError, KeyError):
-            continue
-    return sessions
+    """Les sessions qu'un humain a écartées de ce corpus."""
+    return {str(e.get("session") or "") for e in depot_pour().ecartes(corpus)}
 
 
 def ecarter(corpus: Path, session: str, raison: str, quand: str) -> None:
@@ -195,13 +177,7 @@ def ecarter(corpus: Path, session: str, raison: str, quand: str) -> None:
     """
     if session in ecartees(corpus):
         return
-    fichier = Path(corpus) / ECARTES
-    fichier.parent.mkdir(parents=True, exist_ok=True)
-    with fichier.open("a", encoding="utf-8") as f:
-        f.write(
-            json.dumps({"session": session, "raison": raison, "le": quand}, ensure_ascii=False)
-            + "\n"
-        )
+    depot_pour().ecarter(corpus, session, raison, quand)
 
 
 # Ce que la capture possède dans une fiche. Tout le reste appartient à d'autres
@@ -257,10 +233,10 @@ def rafraichir_fiche(ancienne: str, neuve: str) -> str:
     return "---\n" + rendre_source(garde) + "---" + corps
 
 
-def _annote(dossier: Path) -> bool:
+def _annote(dossier: Path | RefHa) -> bool:
     """Un ha annoté ne se réécrit jamais : la promotion humaine prime."""
-    fiche = dossier / "fiche.md"
-    return fiche.is_file() and "statut: brut" not in fiche.read_text(encoding="utf-8")
+    texte = depot_pour().fiche(ref_de(dossier))
+    return texte is not None and "statut: brut" not in texte
 
 
 def verser(
@@ -289,6 +265,7 @@ def verser(
     praticiens = praticiens or {}
     corpus = Path(corpus) if corpus is not None else harness.corpus
     corpus.mkdir(parents=True, exist_ok=True)
+    depot = depot_pour(harness)
     deja = existants(corpus)
     hors_jeu = ecartees(corpus)
     ailleurs = deja_ailleurs(harness, corpus)
@@ -322,13 +299,13 @@ def verser(
         dernier = appels[-1]
         blocs = sum(1 for a in appels if "kokaji_state" in (a["reponse"] or ""))
         if ancien is not None:
-            dossier = ancien
-            identifiant = dossier.name.split("-")[0] + "-" + dossier.name.split("-")[1]
+            ref = ref_de(ancien)
+            identifiant = ref.identifiant
         else:
             identifiant = f"CAS-{numero:04d}"
-            dossier = corpus / f"{identifiant}-{_titre(appels)}"
+            ref = depot.creer(corpus, f"{identifiant}-{_titre(appels)}")
             numero += 1
-        (dossier / "materiau").mkdir(parents=True, exist_ok=True)
+        dossier = ref.chemin
 
         neuve = GABARIT_FICHE.format(
                 harness=identite["harness"],
@@ -363,10 +340,10 @@ def verser(
                     else "Température non fixée : ce ha est un tirage, pas une mesure."
                 ),
         )
-        fiche = dossier / "fiche.md"
-        if ancien is not None and fiche.is_file():
-            neuve = rafraichir_fiche(fiche.read_text(encoding="utf-8"), neuve)
-        fiche.write_text(neuve, encoding="utf-8")
+        ancienne_fiche = depot.fiche(ref) if ancien is not None else None
+        if ancienne_fiche is not None:
+            neuve = rafraichir_fiche(ancienne_fiche, neuve)
+        depot.ecrire_fiche(ref, neuve)
 
         lignes = [f"# Transcript — {identifiant}", ""]
         messages = dernier["messages"]
@@ -391,14 +368,9 @@ def verser(
             ]
         if len(echanges) % 2 == 1:
             lignes += ["## Dernier tour", "", "**Kata** —", "", dernier["reponse"], ""]
-        (dossier / "transcript.md").write_text("\n".join(lignes), encoding="utf-8")
-
-        (dossier / "sortie.md").write_text(
-            f"# Dernière réponse — {identifiant}\n\n{dernier['reponse']}\n", encoding="utf-8"
-        )
-        (dossier / "materiau" / "coupe.md").write_text(
-            messages[0]["content"] if messages else "", encoding="utf-8"
-        )
+        depot.ecrire_transcript(ref, "\n".join(lignes))
+        depot.ecrire_sortie(ref, f"# Dernière réponse — {identifiant}\n\n{dernier['reponse']}\n")
+        depot.ecrire_materiau(ref, "coupe.md", messages[0]["content"] if messages else "")
 
         verses.append(
             Ha(

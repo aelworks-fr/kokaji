@@ -28,8 +28,7 @@ import collections
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import yaml
-
+from .corpus.depot import depot_pour, ref_de
 from .hds import Harness
 
 __all__ = ["Depense", "Releve", "mesurer"]
@@ -108,12 +107,12 @@ class Releve:
     doubles: Depense = field(default_factory=Depense)
 
 
-def _carre_du_dossier(dossier: Path) -> str:
+def _carre_du_dossier(dossier) -> str:
     """Le verdict écrit à côté du ha, ou rien s'il n'a pas été prononcé."""
-    fichier = dossier / "carre.md"
-    if not fichier.is_file():
+    texte = depot_pour().carre(ref_de(dossier))
+    if not texte:
         return ""
-    premiere = fichier.read_text(encoding="utf-8").splitlines()[0]
+    premiere = texte.splitlines()[0]
     return premiere.split("—")[-1].strip() if "—" in premiere else ""
 
 
@@ -144,14 +143,13 @@ def mesurer(harness: Harness, corpus: Path | None = None) -> Releve:
         par_moteur={},
     )
 
-    for dossier in sorted(racine.glob("CAS-*")):
-        fiche = dossier / "fiche.md"
-        if not fiche.is_file():
+    depot = depot_pour(harness)
+    for ref in depot.tous(racine):
+        dossier = ref.chemin
+        texte = depot.fiche(ref)
+        if texte is None or not texte.startswith("---"):
             continue
-        texte = fiche.read_text(encoding="utf-8")
-        if not texte.startswith("---"):
-            continue
-        entete = yaml.safe_load(texte.split("---")[1]) or {}
+        entete = depot.entete(ref)
         scores = entete.get("scores") or {}
         if not scores:
             releve.sans_scores += 1

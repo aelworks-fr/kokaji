@@ -13,7 +13,6 @@ Trois gestes, dans cet ordre :
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -21,6 +20,7 @@ from pathlib import Path
 import yaml
 
 from ..corpus import lire_journal, verser
+from ..corpus.depot import depot_pour, ref_de
 from ..etat import extraire, fautes_de_bloc
 from ..forge.coupe import champ_nu, champs_du_kata, charger_registre
 from ..hds import Harness, Kata
@@ -79,9 +79,9 @@ def etats_du_ha(
     return releves
 
 
-def _relu(etats: Path) -> bool:
-    """Ce fichier d'état vient-il d'une ré-abstraction ? — RFC-002 §7.2."""
-    return etats.is_file() and '"reabstrait": true' in etats.read_text(encoding="utf-8")
+def _relu(releves: list[dict]) -> bool:
+    """Cet état vient-il d'une ré-abstraction ? — RFC-002 §7.2."""
+    return any(r.get("reabstrait") is True for r in releves)
 
 
 def carre_attendu(harness: Harness, id_cible: str, kata: Kata | None = None) -> bool:
@@ -235,22 +235,19 @@ def _a_rattraper(harness: Harness, corpus: Path | None = None) -> list:
     from ..corpus import Ha
 
     racine = Path(corpus) if corpus is not None else harness.corpus
+    depot = depot_pour(harness)
     en_retard = []
-    for dossier in sorted(racine.glob("CAS-*")):
-        fiche = dossier / "fiche.md"
-        if (dossier / "etats.jsonl").is_file() or not fiche.is_file():
+    for ref in depot.tous(racine):
+        if depot.a_des_etats(ref):
             continue
-        texte = fiche.read_text(encoding="utf-8")
-        if "session `" not in texte:
+        texte = depot.fiche(ref)
+        if texte is None or "session `" not in texte:
             continue
         session = texte.split("session `")[-1].split("`")[0]
-        identifiant, _, reste = dossier.name.partition("-")
         en_retard.append(
             Ha(
-                identifiant=f"{identifiant}-{reste.split('-')[0]}"
-                if identifiant == "CAS"
-                else dossier.name,
-                dossier=dossier,
+                identifiant=ref.identifiant,
+                dossier=ref.chemin,
                 session=session,
                 kata=_kata_de_la_fiche(texte),
                 cible="",
@@ -336,17 +333,14 @@ def veiller(
         # ha gardait sa marque et son carré, et perdait ce qu'ils décrivent. Un
         # ha qui annonce une lecture sans la porter ment mieux qu'un ha muet.
         # Une observation, elle, l'emporte toujours sur une lecture.
-        etats = ha.dossier / "etats.jsonl"
-        if releves or not _relu(etats):
-            etats.write_text(
-                "".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in releves),
-                encoding="utf-8",
-            )
+        depot = depot_pour(harness)
+        ref = ref_de(ha.dossier)
+        if releves or not _relu(depot.etats(ref)):
+            depot.ecrire_etats(ref, releves)
 
-        fichier = ha.dossier / "carre.md"
         if carre_attendu(harness, ha.cible, kata):
             carre = carre_du_ha(harness, kata, releves)
-            fichier.write_text(carre.rendre(), encoding="utf-8")
+            depot.ecrire_carre(ref, carre.rendre())
         else:
             # Le verdict écrit avant cette règle est retiré : le laisser en
             # place ferait vivre un reproche que plus rien ne réécrit, et un
@@ -357,9 +351,9 @@ def veiller(
             # non dans la fiche : la fiche d'un ha `brut` est réécrite à chaque
             # passage, ce qui efface tout ce qu'on y ajoute.
             carre = None
-            garde = fichier.is_file() and "ré-abstrait" in fichier.read_text(encoding="utf-8")
+            garde = "ré-abstrait" in (depot.carre(ref) or "")
             if not garde:
-                fichier.unlink(missing_ok=True)
+                depot.retirer_carre(ref)
 
         veilles.append(
             Veille(

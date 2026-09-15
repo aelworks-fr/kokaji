@@ -145,5 +145,17 @@ Le magasin des comptes passe de SQLite à la même base, tables identiques (`uti
 
 Les lots A et B se livrent sans toucher à la production ; C à F la touchent, un par un.
 
+## 10. Tableau d'application
+
+| Lot | État (15 septembre 2026) |
+|---|---|
+| 0 — le clone reste propre | appliqué — `.gitignore` posé par `initier()`, `kokaji promouvoir` ajoute de force ; les cinq clones de la première instance migrés le jour même |
+| A — l'interface | appliqué — `kokaji/corpus/depot.py` : `DepotDeHa` (protocole), `RefHa` (un ha nommé sans être situé), `DepotFichiers` (le régime d'aujourd'hui, intact), `depot_pour(harness)` qui rend les fichiers tant qu'aucune base n'est déclarée ; le corpus (verser, écarter, existants), la visibilité, la surface HTTP `/ha`, le QG, la veille et la ré-abstraction, l'usage, le banc (rejeu, resserrage, jugement) et les commandes (réabstraire, purger, rattacher, juger, promouvoir) ne lisent ni n'écrivent plus une pièce de ha sans passer par lui ; plus un `CAS-*` parcouru hors du dépôt, sauf la copie d'épreuve qui les exclut ; le jeu de tests du dépôt (`tests/test_corpus_depot.py`) servira tel quel au dépôt base ; la suite existante inchangée |
+| B — le dépôt base | à faire |
+| C — le journal à la source | à faire |
+| D — promouvoir et exporter | à faire |
+| E — les comptes | à faire |
+| F — la première instance | à faire |
+
 ---
 *Note d'établi : la RFC-009 avait écrit la phrase — « la base est le régime de travail, le fichier le régime d'échange » — et laissé le régime de travail en fichiers. La RFC-012 a rendu la dette visible en mettant le corpus dans un dépôt git : ce qui vit ne se versionne pas, sauf quand quelqu'un décide que ça vaut d'être gardé. Cette RFC met chaque chose à sa place, et garde le fichier comme porte de sortie.*

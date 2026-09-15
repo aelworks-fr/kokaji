@@ -22,6 +22,7 @@ from pathlib import Path
 import yaml
 
 from ..comptes.modele import PRIVEE, VERSE, VISIBILITES
+from .depot import depot_pour, ref_de
 
 __all__ = ["Acces", "acces", "lisible_par", "regler_visibilite"]
 
@@ -44,14 +45,8 @@ class Acces:
         return not self.praticien
 
 
-def _entete(dossier: Path) -> dict:
-    fiche = dossier / "fiche.md"
-    if not fiche.is_file():
-        return {}
-    texte = fiche.read_text(encoding="utf-8")
-    if not texte.startswith("---"):
-        return {}
-    return yaml.safe_load(texte.split("---")[1]) or {}
+def _entete(dossier) -> dict:
+    return depot_pour().entete(ref_de(dossier))
 
 
 def acces(dossier: Path) -> Acces:
@@ -100,12 +95,12 @@ def regler_visibilite(dossier: Path, visibilite: str, par: str) -> None:
     if porte.praticien != par or not par:
         raise PermissionError("seul le praticien d'un ha règle sa visibilité")
 
-    fiche = dossier / "fiche.md"
-    texte = fiche.read_text(encoding="utf-8")
+    depot = depot_pour()
+    ref = ref_de(dossier)
+    texte = depot.fiche(ref) or ""
     avant, entete, apres = texte.split("---", 2)
     donnees = yaml.safe_load(entete) or {}
     donnees["visibilite"] = visibilite
-    fiche.write_text(
-        avant + "---" + yaml.safe_dump(donnees, allow_unicode=True, sort_keys=False) + "---" + apres,
-        encoding="utf-8",
+    depot.ecrire_fiche(
+        ref, avant + "---" + yaml.safe_dump(donnees, allow_unicode=True, sort_keys=False) + "---" + apres
     )

@@ -26,8 +26,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
-
+from ...corpus.depot import depot_pour, ref_de
 from ...hds import Harness, Kata
 from . import Tour, evaluer
 from .client import Passerelle, PasserelleInjoignable
@@ -95,22 +94,15 @@ def modele_virtuel(harness_id: str, kata: str, cible: str, cible_par_defaut: str
     return f"{harness_id}/{kata}{suffixe}"
 
 
-def _entete(dossier: Path) -> dict:
-    fiche = dossier / "fiche.md"
-    if not fiche.is_file():
-        return {}
-    texte = fiche.read_text(encoding="utf-8")
-    if not texte.startswith("---"):
-        return {}
-    return yaml.safe_load(texte.split("---")[1]) or {}
+def _entete(dossier) -> dict:
+    return depot_pour().entete(ref_de(dossier))
 
 
 def tours_du_ha(dossier: Path) -> tuple[list[str], tuple[Tour, ...]]:
     """Les tours de l'interlocuteur, et l'échange complet tel qu'il a eu lieu."""
-    transcript = dossier / "transcript.md"
-    if not transcript.is_file():
+    texte = depot_pour().transcript(ref_de(dossier))
+    if texte is None:
         return [], ()
-    texte = transcript.read_text(encoding="utf-8")
     porteurs = [p.strip() for p in PORTEUR.findall(texte)]
     katas = [k.strip() for k in KATA.findall(texte)]
     tours = tuple(
@@ -127,8 +119,9 @@ def perimes(harness: Harness, coupes: dict[tuple[str, str], str], corpus: Path |
     """
     racine = Path(corpus) if corpus is not None else harness.corpus
     trouves = []
-    for dossier in sorted(racine.glob("CAS-*")):
-        entete = _entete(dossier)
+    for ref in depot_pour(harness).tous(racine):
+        dossier = ref.chemin
+        entete = _entete(ref)
         kata, cible = str(entete.get("kata") or ""), str(entete.get("cible") or "")
         actuelle = coupes.get((kata, cible))
         version = str(entete.get("version_coupe") or "")

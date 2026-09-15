@@ -14,13 +14,13 @@ Sans ce marquage, le corpus mentirait sur sa propre nature.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 
 import yaml
 
+from ..corpus.depot import depot_pour, ref_de
 from ..etat import extraire, fautes_de_bloc
 from ..forge.coupe import STATUTS_OPTION, champs_du_kata, charger_registre
 from ..hds import Harness, Kata
@@ -96,13 +96,15 @@ def reabstraire(
     temperature: float | None = 0.0,
 ) -> Reabstraction:
     """Reconstruit l'état final d'un ha depuis son transcript, et le marque."""
-    fiche = (dossier / "fiche.md").read_text(encoding="utf-8")
+    depot = depot_pour(harness)
+    ref = ref_de(dossier)
+    fiche = depot.fiche(ref) or ""
     entete = yaml.safe_load(fiche.split("---")[1]) or {}
     kata = harness.kata_par_id(entete.get("kata"))
     if kata is None:
-        raise ValueError(f"{dossier.name} : kata inconnu — {entete.get('kata')!r}")
+        raise ValueError(f"{ref.nom} : kata inconnu — {entete.get('kata')!r}")
 
-    transcript = (dossier / "transcript.md").read_text(encoding="utf-8")
+    transcript = depot.transcript(ref) or ""
     registre = charger_registre(harness.trempe.registre)
     source = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
     champs = champs_du_kata(harness, kata, source, registre)
@@ -133,17 +135,14 @@ def reabstraire(
             }
         )
 
-    (dossier / "etats.jsonl").write_text(
-        "".join(json.dumps(r, ensure_ascii=False, default=str) + "\n" for r in releves),
-        encoding="utf-8",
-    )
+    depot.ecrire_etats(ref, releves)
 
     carre = carre_du_ha(harness, kata, releves)
-    (dossier / "carre.md").write_text(
+    depot.ecrire_carre(
+        ref,
         carre.rendre()
         + "\n> État **ré-abstrait** depuis le transcript, non émis en session.\n"
         "> Ce verdict porte sur une lecture, pas sur une observation.\n",
-        encoding="utf-8",
     )
 
     if "etat_reabstrait:" not in fiche:
@@ -156,11 +155,11 @@ def reabstraire(
             " pratique — voir RFC-002 §7.2.\n",
             1,
         )
-        (dossier / "fiche.md").write_text(fiche, encoding="utf-8")
+        depot.ecrire_fiche(ref, fiche)
 
     premier = next((r["etat"] for r in releves if "__illisible__" not in r["etat"]), {})
     return Reabstraction(
-        ha=dossier.name,
+        ha=ref.nom,
         blocs=len(releves),
         fautes=sum(len(r["fautes"]) for r in releves),
         carre=carre.verdict,

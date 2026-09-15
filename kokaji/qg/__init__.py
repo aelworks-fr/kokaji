@@ -10,14 +10,12 @@ Il ne connaît aucune chaîne en dur : la topologie vient du manifest (R8.1).
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from pathlib import Path
 
-import yaml
-
+from ..corpus.depot import depot_pour
 from ..forge.coupe import champ_nu
 from ..hds import Harness
 
@@ -173,28 +171,18 @@ def _releves_corpus(
     l'état est de la pratique, et la pratique ne se prend pas.
     """
     racine = Path(corpus) if corpus is not None else harness.corpus
+    depot = depot_pour(harness)
     releves, sessions = [], set()
-    for dossier in sorted(racine.glob("CAS-*")):
+    for dossier in depot.tous(racine):
         if lisible is not None and not lisible(dossier):
             continue
-        fiche = dossier / "fiche.md"
-        if fiche.is_file():
-            texte = fiche.read_text(encoding="utf-8")
-            if "session `" in texte:
-                sessions.add(texte.split("session `")[-1].split("`")[0])
-        fichier = dossier / "etats.jsonl"
-        if not fichier.is_file():
-            continue
-        for ligne in fichier.read_text(encoding="utf-8").splitlines():
-            if not ligne.strip():
-                continue
-            try:
-                releve = json.loads(ligne)
-            except json.JSONDecodeError:
-                continue
+        texte = depot.fiche(dossier)
+        if texte and "session `" in texte:
+            sessions.add(texte.split("session `")[-1].split("`")[0])
+        for releve in depot.etats(dossier):
             if "__illisible__" in (releve.get("etat") or {}):
                 continue  # un bloc illisible ne colore rien
-            releve["ha"] = dossier.name
+            releve["ha"] = dossier.nom
             releves.append(releve)
     return releves, sessions
 
@@ -288,41 +276,27 @@ def _sessions_du_corpus(
 ) -> dict[str, list[dict]]:
     """Les sessions de pratique, par nœud — chaque état renvoie à sa source."""
     racine = Path(corpus) if corpus is not None else harness.corpus
+    depot = depot_pour(harness)
     par_noeud: dict[str, list[dict]] = {}
 
-    for dossier in sorted(racine.glob("CAS-*")):
+    for dossier in depot.tous(racine):
         if lisible is not None and not lisible(dossier):
             continue
-        etats = dossier / "etats.jsonl"
-        fiche = dossier / "fiche.md"
-        if not etats.is_file() or not fiche.is_file():
+        if not depot.a_des_etats(dossier) or depot.fiche(dossier) is None:
             continue
 
-        releves, blocs = [], 0
-        for ligne in etats.read_text(encoding="utf-8").splitlines():
-            if not ligne.strip():
-                continue
-            try:
-                releves.append(json.loads(ligne))
-            except json.JSONDecodeError:
-                continue
+        releves = depot.etats(dossier)
         if not any((r.get("etat") or {}).get("sujet") == sujet for r in releves):
             continue
         blocs = len(releves)
 
-        texte = fiche.read_text(encoding="utf-8")
-        entete = yaml.safe_load(texte.split("---")[1]) if texte.startswith("---") else {}
-        entete = entete or {}
-        transcript = dossier / "transcript.md"
-        tours = (
-            _tours_du_transcript(transcript.read_text(encoding="utf-8"))
-            if transcript.is_file()
-            else []
-        )
+        entete = depot.entete(dossier)
+        transcript = depot.transcript(dossier)
+        tours = _tours_du_transcript(transcript) if transcript is not None else []
         par_noeud.setdefault(str(entete.get("kata")), []).append(
             {
-                "id": dossier.name,
-                "titre": dossier.name,
+                "id": dossier.nom,
+                "titre": dossier.nom,
                 "date": entete.get("date"),
                 "tours": tours,
                 "nombre_tours": (entete.get("scores") or {}).get("tours"),
@@ -547,32 +521,24 @@ def activites(
     """
     racine = chemin_corpus(harness, corpus)
     dossier_racine = Path(racine) if racine is not None else harness.corpus
+    depot = depot_pour(harness)
 
     par_sujet: dict[str, dict] = {}
-    for dossier in sorted(dossier_racine.glob("CAS-*")):
+    for dossier in depot.tous(dossier_racine):
         if lisible is not None and not lisible(dossier):
             continue
-        etats = dossier / "etats.jsonl"
-        fiche = dossier / "fiche.md"
-        if not etats.is_file() or not fiche.is_file():
+        if not depot.a_des_etats(dossier) or depot.fiche(dossier) is None:
             continue
 
         sujets_du_ha = set()
-        for ligne in etats.read_text(encoding="utf-8").splitlines():
-            if not ligne.strip():
-                continue
-            try:
-                releve = json.loads(ligne)
-            except json.JSONDecodeError:
-                continue
+        for releve in depot.etats(dossier):
             nom = (releve.get("etat") or {}).get("sujet")
             if nom:
                 sujets_du_ha.add(str(nom))
         if not sujets_du_ha:
             continue
 
-        texte = fiche.read_text(encoding="utf-8")
-        entete = (yaml.safe_load(texte.split("---")[1]) if texte.startswith("---") else {}) or {}
+        entete = depot.entete(dossier)
         quand = str(entete.get("date") or "")
         for nom in sujets_du_ha:
             vu = par_sujet.setdefault(

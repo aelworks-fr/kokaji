@@ -37,6 +37,7 @@ from pathlib import Path
 
 import yaml
 
+from ...corpus.depot import depot_pour, ref_de
 from ...hds import Critere, Harness
 from .client import Passerelle, PasserelleInjoignable
 
@@ -143,7 +144,9 @@ def juger_grille(
             f"{harness.id} : aucune grille déclarée — `trempe.grille_judge` au manifest"
         )
 
-    fiche = (Path(dossier) / "fiche.md").read_text(encoding="utf-8")
+    depot = depot_pour(harness)
+    ref = ref_de(dossier)
+    fiche = depot.fiche(ref) or ""
     entete = yaml.safe_load(fiche.split("---")[1]) or {}
     pratiquant = str(entete.get("moteur") or "")
     if modele and pratiquant and modele == pratiquant:
@@ -152,11 +155,9 @@ def juger_grille(
             "propre copie a un avis sur lui-même, pas sur elle"
         )
 
-    matiere = _matiere(
-        (Path(dossier) / "transcript.md").read_text(encoding="utf-8")
-    )
+    matiere = _matiere(depot.transcript(ref) or "")
     if not matiere:
-        raise JugeRefuse(f"{Path(dossier).name} : transcript vide — rien à juger")
+        raise JugeRefuse(f"{ref.nom} : transcript vide — rien à juger")
 
     scores = []
     for critere in harness.trempe.grille_judge:
@@ -176,7 +177,7 @@ def juger_grille(
         scores.append(_lire(reponse, critere, modele))
 
     jugement = Jugement(
-        ha=Path(dossier).name.split("-")[0] + "-" + Path(dossier).name.split("-")[1],
+        ha=ref.identifiant,
         kata=str(entete.get("kata") or ""),
         cible=str(entete.get("cible") or ""),
         moteur_pratiquant=pratiquant,
@@ -185,8 +186,7 @@ def juger_grille(
         le=datetime.now(UTC).isoformat(),
         scores=tuple(scores),
     )
-    with (Path(dossier) / "jugements.jsonl").open("a", encoding="utf-8") as f:
-        f.write(json.dumps(asdict(jugement), ensure_ascii=False) + "\n")
+    depot.ajouter_jugement(ref, asdict(jugement))
     return jugement
 
 
@@ -197,16 +197,7 @@ def deja_juge(dossier: Path, juge: str, version_coupe: str) -> bool:
     campagne saute ce qui est fait, et `--rejuger` force. Une autre version,
     ou un autre juge, est une nouvelle information — jamais sautée.
     """
-    fichier = Path(dossier) / "jugements.jsonl"
-    if not fichier.is_file():
-        return False
-    for ligne in fichier.read_text(encoding="utf-8").splitlines():
-        if not ligne.strip():
-            continue
-        try:
-            fait = json.loads(ligne)
-        except json.JSONDecodeError:
-            continue
+    for fait in depot_pour().jugements(ref_de(dossier)):
         if fait.get("juge") == juge and fait.get("version_coupe") == version_coupe:
             return True
     return False

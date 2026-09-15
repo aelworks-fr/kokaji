@@ -14,6 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .corpus import ecarter, verser
+from .corpus.depot import depot_pour, ref_de
 from .forge import SORTIE_DEFAUT, ForgeImpossible, TrempeEchouee, forger_harness
 from .forge.coupe import charger_registre, forger
 from .hds import ManifestInvalide, charger, charger_valides
@@ -461,7 +462,7 @@ def _reabstraire(args) -> int:
         return 1
 
     racine = _corpus_choisi(harness, args.corpus_nom) or harness.corpus
-    dossiers = [d for d in sorted(racine.glob("CAS-*")) if d.name.startswith(args.ha)]
+    dossiers = [r.chemin for r in depot_pour(harness).tous(racine) if r.nom.startswith(args.ha)]
     if not dossiers:
         print(f"✗ aucun ha commençant par {args.ha!r} dans {racine}", file=sys.stderr)
         return 1
@@ -489,7 +490,6 @@ def _reabstraire(args) -> int:
 
 def _purger(args) -> int:
     """Écarter des ha du corpus — et le déclarer, sinon la veille les recrée."""
-    import shutil
 
     try:
         harness = charger(args.harness)
@@ -501,11 +501,11 @@ def _purger(args) -> int:
     quand = datetime.now(UTC).isoformat()
     vises = []
 
-    for dossier in sorted(racine.glob("CAS-*")):
-        fiche = dossier / "fiche.md"
-        if not fiche.is_file():
+    depot = depot_pour(harness)
+    for dossier in depot.tous(racine):
+        texte = depot.fiche(dossier)
+        if texte is None:
             continue
-        texte = fiche.read_text(encoding="utf-8")
         if "statut: brut" not in texte:
             continue  # un ha annoté ne s'écarte pas à la volée
         session = texte.split("session `")[-1].split("`")[0] if "session `" in texte else ""
@@ -515,8 +515,7 @@ def _purger(args) -> int:
                 # « écarté nommément » y dit qui, jamais pourquoi.
                 vises.append((dossier, session, args.raison or "écarté nommément"))
             continue
-        transcript = dossier / "transcript.md"
-        contenu = transcript.read_text(encoding="utf-8") if transcript.is_file() else ""
+        contenu = depot.transcript(dossier) or ""
         if args.parasites and ("### Task:" in contenu or contenu.count("## Tour ") <= 1):
             vises.append((dossier, session, "appel d'interface, pas une session de kata"))
 
@@ -525,10 +524,10 @@ def _purger(args) -> int:
         return 0
 
     for dossier, session, raison in vises:
-        print(f"  − {dossier.name}  ({raison})")
+        print(f"  − {dossier.nom}  ({raison})")
         if not args.essai_seulement:
             ecarter(racine, session, raison, quand)
-            shutil.rmtree(dossier)
+            depot.supprimer(dossier)
 
     if args.essai_seulement:
         print(f"\n{len(vises)} ha seraient écartés. Relance sans --essai pour le faire.")
@@ -1031,24 +1030,22 @@ def _rattacher(args) -> int:
         return 0
 
     rattaches = 0
+    depot = depot_pour(harness)
     for corpus in harness.corpus_nommes:
-        for dossier in sorted(corpus.chemin.glob("CAS-*")):
-            fiche = dossier / "fiche.md"
-            if not fiche.is_file():
-                continue
-            texte = fiche.read_text(encoding="utf-8")
-            if not texte.startswith("---"):
+        for dossier in depot.tous(corpus.chemin):
+            texte = depot.fiche(dossier)
+            if texte is None or not texte.startswith("---"):
                 continue
             avant, entete, apres = texte.split("---", 2)
             donnees = _yaml.safe_load(entete) or {}
             if donnees.get("praticien"):
                 continue
             donnees["praticien"] = qui.id
-            fiche.write_text(
+            depot.ecrire_fiche(
+                dossier,
                 avant + "---"
                 + _yaml.safe_dump(donnees, allow_unicode=True, sort_keys=False)
                 + "---" + apres,
-                encoding="utf-8",
             )
             rattaches += 1
     print(f"+ {rattaches} ha orphelin(s) rattaché(s) à {qui.nom}")
@@ -1122,18 +1119,15 @@ def _juger(args) -> int:
     passerelle = Passerelle(cle=args.cle) if args.cle else Passerelle()
     racine = _corpus_choisi(harness, args.corpus_nom) or harness.corpus
     juges, sautes, refus = 0, 0, 0
-    for dossier in sorted(racine.glob("CAS-*")):
-        if args.ha and not dossier.name.startswith(tuple(args.ha)):
+    depot = depot_pour(harness)
+    for dossier in depot.tous(racine):
+        if args.ha and not dossier.nom.startswith(tuple(args.ha)):
             continue
-        if not (dossier / "transcript.md").is_file():
+        if depot.transcript(dossier) is None:
             continue
         version = ""
         if not args.rejuger:
-            import yaml as _yaml
-
-            entete = _yaml.safe_load(
-                (dossier / "fiche.md").read_text(encoding="utf-8").split("---")[1]
-            ) or {}
+            entete = depot.entete(dossier)
             version = str(entete.get("version_coupe") or "")
             if deja_juge(dossier, args.moteur, version):
                 sautes += 1
@@ -1141,7 +1135,7 @@ def _juger(args) -> int:
         try:
             fait = juger_grille(harness, dossier, passerelle, args.moteur)
         except JugeRefuse as err:
-            print(f"✗ {dossier.name} — {err}", file=sys.stderr)
+            print(f"✗ {dossier.nom} — {err}", file=sys.stderr)
             refus += 1
             continue
         juges += 1
@@ -1204,18 +1198,18 @@ def _promouvoir(args) -> int:
     code = 0
     for nom in args.ha:
         dossier = Path(nom) if Path(nom).is_dir() else next(iter(args.harness.rglob(nom)), None)
-        fiche = dossier / "fiche.md" if dossier else None
-        if fiche is None or not fiche.is_file():
+        depot = depot_pour()
+        texte = depot.fiche(ref_de(dossier)) if dossier else None
+        if texte is None:
             print(f"✗ {nom} : aucun ha à ce nom sous {args.harness}", file=sys.stderr)
             code = 1
             continue
-        texte = fiche.read_text(encoding="utf-8")
         neuf, n = re.subn(r"(?m)^statut:\s*\S+", "statut: annote", texte, count=1)
         if not n:
             print(f"✗ {dossier.name} : la fiche n'a pas de `statut`", file=sys.stderr)
             code = 1
             continue
-        fiche.write_text(neuf, encoding="utf-8")
+        depot.ecrire_fiche(ref_de(dossier), neuf)
         au_depot = promouvoir_au_depot(args.harness, dossier)
         print(f"✓ {dossier.name} — annote" + (" · ajouté au dépôt, à sceller" if au_depot else " · hors dépôt git"))
     return code

@@ -20,12 +20,10 @@ retenir la promesse.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
-import yaml
-
+from ...corpus.depot import depot_pour, ref_de
 from ...forge.coupe import champ_nu
 from ...hds import Harness, Kata
 
@@ -64,30 +62,20 @@ class Proposition:
 
 def _etat_final(dossier: Path) -> dict | None:
     """Le dernier bloc lisible d'un ha — l'état qu'il laisse."""
-    fichier = dossier / "etats.jsonl"
-    if not fichier.is_file():
+    depot = depot_pour()
+    ref = ref_de(dossier)
+    if not depot.a_des_etats(ref):
         return None
     dernier = None
-    for ligne in fichier.read_text(encoding="utf-8").splitlines():
-        if not ligne.strip():
-            continue
-        try:
-            releve = json.loads(ligne)
-        except json.JSONDecodeError:
-            continue
+    for releve in depot.etats(ref):
         etat = releve.get("etat") or {}
         if "__illisible__" not in etat and isinstance(etat.get("champs"), dict):
             dernier = etat
     return dernier
 
 
-def _kata_du_ha(dossier: Path) -> str:
-    fiche = dossier / "fiche.md"
-    if not fiche.is_file():
-        return ""
-    texte = fiche.read_text(encoding="utf-8")
-    entete = yaml.safe_load(texte.split("---")[1]) if texte.startswith("---") else {}
-    return str((entete or {}).get("kata") or "")
+def _kata_du_ha(dossier) -> str:
+    return str(depot_pour().entete(ref_de(dossier)).get("kata") or "")
 
 
 def observer(harness: Harness, kata: Kata, corpus: Path | None = None) -> list[Observation]:
@@ -95,7 +83,7 @@ def observer(harness: Harness, kata: Kata, corpus: Path | None = None) -> list[O
     racine = Path(corpus) if corpus is not None else harness.corpus
     finaux = [
         etat
-        for dossier in sorted(racine.glob("CAS-*"))
+        for dossier in depot_pour(harness).tous(racine)
         if _kata_du_ha(dossier) == kata.id and (etat := _etat_final(dossier)) is not None
     ]
 

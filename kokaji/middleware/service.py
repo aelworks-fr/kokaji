@@ -43,6 +43,7 @@ from ..conception import (
     sceller,
     versions_prevues,
 )
+from ..corpus.depot import DepotDeHa, RefHa, depot_pour
 from ..corpus.visibilite import acces, lisible_par, regler_visibilite
 from ..forge import ForgeImpossible, TrempeEchouee, forger_harness
 from ..hds import Harness, ManifestInvalide, charger_valides
@@ -64,26 +65,6 @@ __all__ = ["creer", "creer_harness", "servir"]
 # d'argument construit l'objet à chaque définition de route.
 CORPS = Body(embed=True)
 CORPS_FACULTATIF = Body(default=None, embed=True)
-
-
-def _fiche(dossier: Path) -> dict:
-    """Le frontmatter d'un ha, sans son corps."""
-    texte = (dossier / "fiche.md").read_text(encoding="utf-8")
-    if not texte.startswith("---"):
-        return {}
-    _, entete, _ = texte.split("---", 2)
-    donnees = yaml.safe_load(entete) or {}
-    return donnees if isinstance(donnees, dict) else {}
-
-
-def _lire_jsonl(fichier: Path) -> list[dict]:
-    if not fichier.is_file():
-        return []
-    return [
-        json.loads(ligne)
-        for ligne in fichier.read_text(encoding="utf-8").splitlines()
-        if ligne.strip()
-    ]
 
 
 def creer(
@@ -185,13 +166,15 @@ def creer_harness(
             raise HTTPException(status_code=403, detail=str(err)) from err
         return qui, role
 
-    def dossier_du_ha(identifiant: str) -> Path:
-        trouves = sorted(harness.corpus.glob(f"{identifiant}-*"))
-        if not trouves:
-            raise HTTPException(status_code=404, detail=f"ha inconnu : {identifiant}")
-        return trouves[0]
+    depot = depot_pour(harness)
 
-    def ha_lisible(identifiant: str, qui: Utilisateur | None, role: str) -> Path:
+    def dossier_du_ha(identifiant: str) -> RefHa:
+        ref = depot.trouver(harness.corpus, identifiant)
+        if ref is None:
+            raise HTTPException(status_code=404, detail=f"ha inconnu : {identifiant}")
+        return ref
+
+    def ha_lisible(identifiant: str, qui: Utilisateur | None, role: str) -> RefHa:
         """Le dossier d'un ha, si cette personne a le droit de le lire.
 
         Sabotage n°3, le plus important du RFC : le propriétaire du harness
@@ -216,21 +199,21 @@ def creer_harness(
         """
         qui, role = qui_role
         ha = []
-        for dossier in sorted(harness.corpus.glob("CAS-*")):
+        for dossier in depot.tous(harness.corpus):
             if comptes is not None and not lisible_par(dossier, qui.id if qui else "", role):
                 continue
-            fiche = _fiche(dossier)
+            fiche = depot.entete(dossier)
             ha.append(
                 {
-                    "id": dossier.name.split("-", 2)[0] + "-" + dossier.name.split("-")[1],
-                    "dossier": dossier.name,
+                    "id": dossier.identifiant,
+                    "dossier": dossier.nom,
                     "kata": fiche.get("kata"),
                     "cible": fiche.get("cible"),
                     "statut": fiche.get("statut"),
                     "verdict": fiche.get("verdict"),
                     "praticien": fiche.get("praticien") or "",
                     "visibilite": acces(dossier).visibilite,
-                    "carre": _carre_lu(dossier),
+                    "carre": _carre_lu(depot, dossier),
                 }
             )
         return ha
@@ -239,23 +222,23 @@ def creer_harness(
     def un_ha(identifiant: str, qui_role: tuple = Depends(membre)) -> dict:
         dossier = ha_lisible(identifiant, *qui_role)
         return {
-            "dossier": dossier.name,
-            "fiche": _fiche(dossier),
-            "carre": _carre_lu(dossier),
-            "blocs_etat": len(_lire_jsonl(dossier / "etats.jsonl")),
+            "dossier": dossier.nom,
+            "fiche": depot.entete(dossier),
+            "carre": _carre_lu(depot, dossier),
+            "blocs_etat": len(depot.etats(dossier)),
         }
 
     @app.get("/ha/{identifiant}/transcript", summary="Le transcript d'un ha")
     def transcript(identifiant: str, qui_role: tuple = Depends(membre)) -> dict:
         dossier = ha_lisible(identifiant, *qui_role)
-        fichier = dossier / "transcript.md"
-        if not fichier.is_file():
+        texte = depot.transcript(dossier)
+        if texte is None:
             raise HTTPException(status_code=404, detail="transcript absent")
-        return {"dossier": dossier.name, "transcript": fichier.read_text(encoding="utf-8")}
+        return {"dossier": dossier.nom, "transcript": texte}
 
     @app.get("/ha/{identifiant}/etat", summary="Les blocs d'état, horodatés")
     def etat(identifiant: str, qui_role: tuple = Depends(membre)) -> list[dict]:
-        return _lire_jsonl(ha_lisible(identifiant, *qui_role) / "etats.jsonl")
+        return depot.etats(ha_lisible(identifiant, *qui_role))
 
     @app.post("/ha/{identifiant}/visibilite", summary="Verser un ha aux co-auteurs, ou le reprendre")
     def visibilite(
@@ -279,20 +262,20 @@ def creer_harness(
             regler_visibilite(dossier, valeur, par=qui.id if qui else "")
         except PermissionError as err:
             raise HTTPException(status_code=403, detail=str(err)) from err
-        return {"dossier": dossier.name, "visibilite": valeur}
+        return {"dossier": dossier.nom, "visibilite": valeur}
 
     @app.get("/sujet/{sujet}/etat", summary="Le dernier état connu d'un sujet")
     def etat_du_sujet(sujet: str) -> dict:
         """R7.4 — `get_state(sujet)`. Le sujet est déclaré par les blocs eux-mêmes."""
         dernier = None
-        for dossier in sorted(harness.corpus.glob("CAS-*")):
-            for releve in _lire_jsonl(dossier / "etats.jsonl"):
+        for dossier in depot.tous(harness.corpus):
+            for releve in depot.etats(dossier):
                 if (releve.get("etat") or {}).get("sujet") != sujet:
                     continue
                 if dernier is None or (releve.get("horodatage") or "") >= (
                     dernier.get("horodatage") or ""
                 ):
-                    dernier = {**releve, "ha": dossier.name}
+                    dernier = {**releve, "ha": dossier.nom}
         if dernier is None:
             raise HTTPException(status_code=404, detail=f"aucun état pour le sujet {sujet!r}")
         return dernier
@@ -991,11 +974,11 @@ def creer_harness(
     return app
 
 
-def _carre_lu(dossier: Path) -> str | None:
-    fichier = dossier / "carre.md"
-    if not fichier.is_file():
+def _carre_lu(depot: DepotDeHa, ref: RefHa) -> str | None:
+    texte = depot.carre(ref)
+    if not texte:
         return None
-    premiere = fichier.read_text(encoding="utf-8").splitlines()[0]
+    premiere = texte.splitlines()[0]
     return premiere.replace("# Carré de naturalité — ", "").strip() or None
 
 
