@@ -100,6 +100,23 @@ ou `kokaji promouvoir <harness> CAS-XXXX…`, qui fait la même chose et **ajout
 l'ha au dépôt git du harness**. Car un ha brut n'y entre pas (RFC-014, lot 0) :
 un harness naît avec un `.gitignore` sur `corpus/**/CAS-*/` — la donnée vivante
 ne se versionne pas, sauf ce qu'un humain a décidé de garder avec la forme.
+En régime base, promouvoir est aussi l'export (D14.5) : le `CAS-XXXX/` s'écrit
+dans le clone du harness, où le scellement suivant le commite.
+
+## L'instance s'exporte entière
+
+```bash
+kokaji instance exporter <dossier>
+kokaji instance importer <dossier> [--journal <dossier>] [--vers <dossier des harness>]
+```
+
+Rien n'est captif de la base (RFC-014 D14.8). L'export écrit tout au format
+fichiers : `ha/<harness>/<corpus>/CAS-XXXX/`, les écartés à côté, `journal/`
+en JSONL par jour, et un `manifeste.json` qui retient où chaque corpus vivait.
+L'import prend un export, ou **le dossier des harness d'une instance en
+régime fichiers** avec son `--journal` — c'est la migration. `--vers` transpose
+les chemins vers un autre dossier de harness. Un appel ne s'importe jamais deux
+fois ; un ha réimporté reprend sa place.
 
 ## Écarter un ha
 

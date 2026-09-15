@@ -124,10 +124,14 @@ def _cle(corpus: Path) -> str:
 
 
 def _harness_et_nom(corpus: Path) -> tuple[str, str]:
-    """`<harness>/corpus/<nom>` → (harness, nom) ; sinon ('', le dossier)."""
+    """`<harness>/corpus/<nom>` → (harness, nom) ; `<harness>/corpus` — la forme
+    simple du manifest, un seul corpus, que le HDS nomme `reel` — → (harness,
+    'reel') ; sinon ('', le dossier)."""
     chemin = Path(corpus).resolve()
     if chemin.parent.name == "corpus":
         return chemin.parent.parent.name, chemin.name
+    if chemin.name == "corpus":
+        return chemin.parent.name, "reel"
     return "", chemin.name
 
 
@@ -249,6 +253,16 @@ class DepotBase(_Base):
 
     def supprimer(self, ref: RefHa) -> None:
         self._executer("DELETE FROM ha WHERE corpus = %s AND nom = %s", _cle(ref.corpus), ref.nom)
+
+    def corpus_connus(self) -> list[tuple[str, str, str]]:
+        """(chemin, harness, nom) de chaque corpus qui a au moins un ha ou un écarté."""
+        return [
+            tuple(ligne) for ligne in self._lire_toutes(
+                "SELECT DISTINCT corpus, harness, corpus_nom FROM ha"
+                " UNION SELECT DISTINCT corpus, '', '' FROM ecart"
+                " WHERE corpus NOT IN (SELECT corpus FROM ha) ORDER BY 1"
+            )
+        ]
 
     # --- les pièces -------------------------------------------------------------
 

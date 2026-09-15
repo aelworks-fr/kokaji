@@ -14,7 +14,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from .corpus import ecarter, verser
-from .corpus.depot import depot_pour, ref_de
+from .corpus.depot import depot_pour, identifiant_de, ref_de
 from .forge import SORTIE_DEFAUT, ForgeImpossible, TrempeEchouee, forger_harness
 from .forge.coupe import charger_registre, forger
 from .hds import ManifestInvalide, charger, charger_valides
@@ -1190,29 +1190,79 @@ def _note(args) -> int:
 
 def _promouvoir(args) -> int:
     """La promotion est un geste humain (SPECS §6) : la fiche passe `annote`,
-    et l'ha entre au dépôt du harness malgré l'ignore des ha bruts (RFC-014)."""
+    et l'ha entre au dépôt du harness malgré l'ignore des ha bruts (RFC-014).
+    En régime base, c'est aussi l'export : le `CAS-XXXX/` s'écrit dans le
+    clone, où le scellement suivant le commitera (D14.5)."""
     import re
 
+    from .corpus.base import DepotBase
+    from .corpus.instance import ref_dans_les_fichiers
     from .depot import promouvoir_au_depot
+
+    depot = depot_pour()
+    try:
+        harness = charger(args.harness)
+    except ManifestInvalide:
+        harness = None
+    corpus_du_harness = [c.chemin for c in harness.corpus_nommes] if harness else []
 
     code = 0
     for nom in args.ha:
-        dossier = Path(nom) if Path(nom).is_dir() else next(iter(args.harness.rglob(nom)), None)
-        depot = depot_pour()
-        texte = depot.fiche(ref_de(dossier)) if dossier else None
+        ref = ref_de(Path(nom)) if Path(nom).is_dir() else None
+        for corpus in corpus_du_harness if ref is None else []:
+            trouve = depot.trouver(corpus, identifiant_de(nom))
+            if trouve is not None and trouve.nom.startswith(nom):
+                ref = trouve
+                break
+        if ref is None and harness is None:
+            trouve = next(iter(args.harness.rglob(nom)), None)
+            ref = ref_de(trouve) if trouve else None
+        texte = depot.fiche(ref) if ref is not None else None
         if texte is None:
             print(f"✗ {nom} : aucun ha à ce nom sous {args.harness}", file=sys.stderr)
             code = 1
             continue
         neuf, n = re.subn(r"(?m)^statut:\s*\S+", "statut: annote", texte, count=1)
         if not n:
-            print(f"✗ {dossier.name} : la fiche n'a pas de `statut`", file=sys.stderr)
+            print(f"✗ {ref.nom} : la fiche n'a pas de `statut`", file=sys.stderr)
             code = 1
             continue
-        depot.ecrire_fiche(ref_de(dossier), neuf)
-        au_depot = promouvoir_au_depot(args.harness, dossier)
-        print(f"✓ {dossier.name} — annote" + (" · ajouté au dépôt, à sceller" if au_depot else " · hors dépôt git"))
+        depot.ecrire_fiche(ref, neuf)
+        if isinstance(depot, DepotBase):
+            ref_dans_les_fichiers(ref, depot)
+        au_depot = promouvoir_au_depot(args.harness, ref.chemin)
+        print(f"✓ {ref.nom} — annote" + (" · ajouté au dépôt, à sceller" if au_depot else " · hors dépôt git"))
     return code
+
+
+def _instance(args) -> int:
+    """RFC-014 D14.8 — l'instance s'exporte entière au format fichiers, et s'importe."""
+    from .corpus.base import BaseInjoignable, DepotBase, JournalBase
+    from .corpus.instance import exporter, importer
+
+    url = os.environ.get("KOKAJI_BASE_URL", "").strip()
+    if not url:
+        print("✗ aucune base déclarée (KOKAJI_BASE_URL) : rien à exporter ni où importer", file=sys.stderr)
+        return 1
+    base, journal = DepotBase(url), JournalBase(url)
+    try:
+        if args.geste == "exporter":
+            bilan = exporter(base, journal, args.dossier)
+            print(f"✓ exporté vers {args.dossier} — {bilan.ha} ha dans {len(bilan.corpus)} corpus,"
+                  f" {bilan.ecartes} écartés, {bilan.appels} appels")
+        else:
+            bilan = importer(base, journal, args.dossier, journal_fichiers=args.journal, vers=args.vers)
+            print(f"✓ importé depuis {args.dossier} — {bilan.ha} ha dans {len(bilan.corpus)} corpus,"
+                  f" {bilan.ecartes} écartés, {bilan.appels} appels")
+            for corpus in bilan.corpus:
+                print(f"  · {corpus}")
+    except BaseInjoignable as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    finally:
+        base.fermer()
+        journal.fermer()
+    return 0
 
 
 def _geste_de_depot(args) -> int:
@@ -1584,9 +1634,26 @@ def main(argv: list[str] | None = None) -> int:
     promouvoir.add_argument("harness", type=Path, help="dossier du harness")
     promouvoir.add_argument("ha", nargs="+", help="dossier(s) CAS-XXXX à promouvoir")
 
+    instance = sous.add_parser(
+        "instance", help="exporte la base de l'instance au format fichiers, ou l'importe (RFC-014)"
+    )
+    gestes = instance.add_subparsers(dest="geste", required=True)
+    exporter_ = gestes.add_parser("exporter", help="tout ce que la base contient, en fichiers")
+    exporter_.add_argument("dossier", type=Path, help="où écrire l'export")
+    importer_ = gestes.add_parser(
+        "importer", help="un export, ou le dossier des harness d'une instance en fichiers"
+    )
+    importer_.add_argument("dossier", type=Path, help="l'export, ou le dossier des harness")
+    importer_.add_argument("--journal", type=Path, help="le journal en JSONL, s'il est ailleurs")
+    importer_.add_argument(
+        "--vers", type=Path, help="le dossier des harness de l'instance d'arrivée, s'il diffère"
+    )
+
     args = parseur.parse_args(argv)
     if args.commande == "promouvoir":
         return _promouvoir(args)
+    if args.commande == "instance":
+        return _instance(args)
     if args.commande in ("pousser", "tirer", "enregistrer"):
         return _geste_de_depot(args)
     if args.commande == "concevoir":
