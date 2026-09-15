@@ -107,7 +107,7 @@ class Instance(unittest.TestCase):
 
         bilan = importer(self.base, self.journal, self.racine / "harness", journal_fichiers=self.journal_dir)
         self.assertEqual((bilan.ha, bilan.ecartes, bilan.appels), (2, 1, 2))
-        self.assertEqual(self.base.corpus_connus(), [(str(self.harness.corpus.resolve()), "h", "reel")])
+        self.assertEqual(self.base.corpus_connus(), [("h/reel", "h", "reel")])
 
         export = self.racine / "export"
         bilan = exporter(self.base, self.journal, export)
@@ -118,7 +118,7 @@ class Instance(unittest.TestCase):
         self.assertEqual(_octets(export / "ha" / "h" / "reel"), _octets(self.harness.corpus))
         self.assertEqual(lire_fichiers(export / "journal"), lire_fichiers(self.journal_dir))
         manifeste = json.loads((export / "manifeste.json").read_text(encoding="utf-8"))
-        self.assertEqual(manifeste["corpus"], {"h/reel": str(self.harness.corpus.resolve())})
+        self.assertEqual(manifeste["corpus"], {"h/reel": {"cle": "h/reel", "harness": "h", "nom": "reel"}})
 
     def test_export_puis_import_sur_une_base_vide_redonne_le_meme_qg(self):
         from kokaji.corpus.instance import exporter, importer
@@ -138,7 +138,7 @@ class Instance(unittest.TestCase):
         self.assertEqual(bilan.ha, 2)
         self.assertEqual(
             sorted(bilan.identifiants),
-            sorted(f"{self.harness.corpus.resolve()}/CAS-{n:04d}-k1-c1-abcdef" for n in (1, 2)),
+            sorted(f"h/reel/CAS-{n:04d}-k1-c1-abcdef" for n in (1, 2)),
         )
 
         # Le QG en régime base, sans un seul fichier de ha ni de journal.
@@ -150,19 +150,6 @@ class Instance(unittest.TestCase):
             for s in sujets(self.harness, self.racine / "journal-absent")
         }
         self.assertEqual(obtenu, attendu)
-
-    def test_importer_vers_un_autre_dossier_de_harness_transpose_les_chemins(self):
-        from kokaji.corpus.instance import exporter, importer
-
-        importer(self.base, self.journal, self.racine / "harness")
-        export = self.racine / "export"
-        exporter(self.base, self.journal, export)
-        self.vider()
-        ailleurs = self.racine / "ailleurs"
-        importer(self.base, self.journal, export, vers=ailleurs)
-        self.assertEqual(
-            self.base.corpus_connus(), [(str((ailleurs / "h" / "corpus").resolve()), "h", "reel")]
-        )
 
     def test_promouvoir_en_regime_base_ecrit_le_ha_dans_le_clone_et_l_ajoute(self):
         from kokaji.corpus.instance import importer

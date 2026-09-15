@@ -229,6 +229,71 @@ class TestDepotFichiers(ContratDuDepot, unittest.TestCase):
         self.assertEqual([r.nom for r in self.depot.tous(self.corpus)], ["CAS-0001-vrai"])
 
 
+class _HarnessFactice:
+    def __init__(self, hid, corpus):
+        self.id = hid
+        self.corpus_nommes = tuple(_CorpusFactice(nom, chemin) for nom, chemin in corpus)
+
+
+class _CorpusFactice:
+    def __init__(self, nom, chemin):
+        self.nom = nom
+        self.chemin = chemin
+
+
+@unittest.skipUnless(URL_ESSAI, "KOKAJI_BASE_URL_ESSAI absent : pas de Postgres d'essai")
+class TestCleDeCorpus(unittest.TestCase):
+    """RFC-014, correctif du lot F : la clé d'un corpus est son identité, pas son
+    chemin de montage. Deux conteneurs montent le même corpus à deux chemins ;
+    ils doivent écrire et lire le même corpus en base."""
+
+    def setUp(self):
+        from kokaji.corpus.base import DepotBase
+
+        self.depot = DepotBase(URL_ESSAI)
+        self.depot._executer("DELETE FROM ha WHERE nom LIKE 'CAS-99%%'")
+
+    def tearDown(self):
+        self.depot._executer("DELETE FROM ha WHERE nom LIKE 'CAS-99%%'")
+        self.depot.fermer()
+
+    def test_deux_montages_du_meme_corpus_ont_la_meme_cle(self):
+        from kokaji.corpus.base import DepotBase
+        # La veille principale : l'Atelier sous /harness/atelier.
+        vue_principale = Path("/montage-a/atelier/corpus/essai")
+        # La veille-essai : l'Atelier monté à la racine, /harness.
+        vue_essai = Path("/montage-b/corpus/essai")
+
+        self.depot.enregistrer_corpus(_HarnessFactice("atelier", [("essai", vue_principale)]))
+        ref = self.depot.creer(vue_principale, "CAS-9901-x")
+        self.depot.ecrire_fiche(ref, "---\nstatut: brut\n---\n")
+
+        # Un autre processus, l'autre montage : même identité déclarée.
+        autre = DepotBase(URL_ESSAI)
+        try:
+            autre.enregistrer_corpus(_HarnessFactice("atelier", [("essai", vue_essai)]))
+            # Il voit le ha écrit par le premier, sous son propre chemin.
+            self.assertEqual([r.nom for r in autre.tous(vue_essai)], ["CAS-9901-x"])
+            # Et il n'en crée pas un double : même corpus en base.
+            autre.creer(vue_essai, "CAS-9902-y")
+        finally:
+            autre.fermer()
+
+        self.assertEqual(
+            sorted(r.nom for r in self.depot.tous(vue_principale)), ["CAS-9901-x", "CAS-9902-y"]
+        )
+        cles = {c for (c, _, _) in self.depot.corpus_connus() if c.startswith("atelier")}
+        self.assertIn("atelier/essai", cles)
+
+    def test_ecarter_est_idempotent_en_base(self):
+        corpus = Path("/montage/atelier/corpus/reel")
+        self.depot.enregistrer_corpus(_HarnessFactice("atelier", [("reel", corpus)]))
+        self.depot.ecarter(corpus, "s-42", "parasite", "2026-09-15T00:00:00")
+        self.depot.ecarter(corpus, "s-42", "parasite", "2026-09-15T00:00:00")  # rejoué
+        self.assertEqual([e["session"] for e in self.depot.ecartes(corpus)], ["s-42"])
+        self.depot._executer("DELETE FROM ecart WHERE session = 's-42'")
+
+
 @unittest.skipUnless(URL_ESSAI, "KOKAJI_BASE_URL_ESSAI absent : pas de Postgres d'essai")
 class TestDepotBase(ContratDuDepot, unittest.TestCase):
     @classmethod
@@ -246,7 +311,7 @@ class TestDepotBase(ContratDuDepot, unittest.TestCase):
         self.depot.ecrire_fiche(ref, FICHE.replace("statut: brut", "statut: brut\nscores:\n  tours: 3"))
         ligne = self.depot._lire_une(
             "SELECT id, kata, cible, statut, scores FROM ha WHERE corpus = %s AND nom = %s",
-            str(self.corpus.resolve()), "CAS-0001-x",
+            self.depot._cle(self.corpus), "CAS-0001-x",
         )
         self.assertEqual(ligne, ("CAS-0001", "k1", "c", "brut", {"tours": 3}))
 
@@ -255,7 +320,7 @@ class TestDepotBase(ContratDuDepot, unittest.TestCase):
         ref = self.depot.creer(corpus, "CAS-0001-x")
         try:
             ligne = self.depot._lire_une(
-                "SELECT harness, corpus_nom FROM ha WHERE corpus = %s", str(corpus.resolve())
+                "SELECT harness, corpus_nom FROM ha WHERE corpus = %s", self.depot._cle(corpus)
             )
             self.assertEqual(ligne, ("atelier", "principal"))
         finally:

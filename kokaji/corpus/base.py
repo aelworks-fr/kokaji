@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS ecart (
     raison text NOT NULL DEFAULT '', quand text NOT NULL DEFAULT '',
     PRIMARY KEY (corpus, rang)
 );
+CREATE UNIQUE INDEX IF NOT EXISTS ecart_corpus_session ON ecart (corpus, session);
 """
 
 COLONNES_DE_LA_FICHE = (
@@ -119,14 +120,17 @@ COLONNES_DE_LA_FICHE = (
 )
 
 
-def _cle(corpus: Path) -> str:
-    return str(Path(corpus).resolve())
-
-
 def _harness_et_nom(corpus: Path) -> tuple[str, str]:
-    """`<harness>/corpus/<nom>` → (harness, nom) ; `<harness>/corpus` — la forme
-    simple du manifest, un seul corpus, que le HDS nomme `reel` — → (harness,
-    'reel') ; sinon ('', le dossier)."""
+    """Depuis un chemin *canonique* `.../<harness>/corpus/<nom>` → (harness, nom) ;
+    `.../<harness>/corpus` — la forme simple du manifest, un seul corpus, que le
+    HDS nomme `reel` — → (harness, 'reel') ; sinon ('', le dossier).
+
+    Ce parse ne suffit pas seul : un conteneur qui monte un harness *à* la racine
+    (`../harness/atelier:/harness`) verrait `(harness, essai)` au lieu de
+    `(atelier, essai)`. La clé d'un corpus est donc son **identité** — l'id du
+    harness et le nom du corpus, tirés du manifest —, enregistrée par
+    `depot_pour(harness)` et non devinée du montage. Voir `DepotBase._identite`.
+    """
     chemin = Path(corpus).resolve()
     if chemin.parent.name == "corpus":
         return chemin.parent.parent.name, chemin.name
@@ -211,12 +215,56 @@ class _Base:
 class DepotBase(_Base):
     """Le corpus dans le Postgres de l'instance."""
 
+    def __init__(self, url: str):
+        super().__init__(url)
+        # chemin résolu → (id du harness, nom du corpus), posé par
+        # `enregistrer_corpus` ; et l'ensemble des clés logiques déjà vues.
+        self._identites: dict[str, tuple[str, str]] = {}
+        self._connues: set[str] = set()
+
+    def enregistrer_corpus(self, harness) -> None:
+        """Fait connaître au dépôt l'identité de chaque corpus d'un harness, quel
+        que soit le chemin où ce processus le monte (RFC-014, correctif du lot F).
+        `depot_pour(harness)` l'appelle : la clé cesse de dépendre du montage."""
+        for corpus in getattr(harness, "corpus_nommes", ()):
+            self.enregistrer_cle(f"{harness.id}/{corpus.nom}", harness.id, corpus.nom, corpus.chemin)
+
+    def enregistrer_cle(self, cle: str, harness: str, nom: str, chemin=None) -> None:
+        """Déclare une clé logique et l'identité qui va avec — pour l'import, qui
+        écrit sous une clé connue sans monter le harness (D14.8)."""
+        self._connues.add(cle)
+        if harness:
+            self._identites[str(Path(cle).resolve())] = (harness, nom)
+            if chemin is not None:
+                self._identites[str(Path(chemin).resolve())] = (harness, nom)
+
+    def _identite(self, corpus: Path) -> tuple[str, str]:
+        """(id du harness, nom du corpus) : le registre d'abord, le chemin ensuite."""
+        enregistre = self._identites.get(str(Path(corpus).resolve()))
+        return enregistre if enregistre is not None else _harness_et_nom(corpus)
+
+    def _cle(self, corpus) -> str:
+        """La clé logique d'un corpus — `<harness>/<nom>`. Stable d'un montage à
+        l'autre. Une clé déjà connue (une lecture qui repart d'un `corpus_connus`)
+        se rend telle quelle ; sinon on la compose depuis l'identité, et à défaut
+        d'identité — un chemin hors manifest, comme un dossier de test — on
+        retombe sur le chemin résolu."""
+        texte = str(corpus)
+        if texte in self._connues:
+            return texte
+        harness, nom = self._identite(corpus)
+        if harness:
+            cle = f"{harness}/{nom}"
+            self._connues.add(cle)
+            return cle
+        return str(Path(corpus).resolve())
+
     # --- les ha d'un corpus ---------------------------------------------------
 
     def tous(self, corpus: Path) -> list[RefHa]:
         corpus = Path(corpus)
         lignes = self._lire_toutes(
-            "SELECT nom FROM ha WHERE corpus = %s AND nom LIKE 'CAS-%%' ORDER BY nom", _cle(corpus)
+            "SELECT nom FROM ha WHERE corpus = %s AND nom LIKE 'CAS-%%' ORDER BY nom", self._cle(corpus)
         )
         return [RefHa(corpus, nom) for (nom,) in lignes]
 
@@ -224,51 +272,55 @@ class DepotBase(_Base):
         corpus = Path(corpus)
         ligne = self._lire_une(
             "SELECT nom FROM ha WHERE corpus = %s AND (nom LIKE %s OR nom = %s) ORDER BY nom LIMIT 1",
-            _cle(corpus), identifiant + "-%", identifiant,
+            self._cle(corpus), identifiant + "-%", identifiant,
         )
         return RefHa(corpus, ligne[0]) if ligne else None
 
     def existe(self, ref: RefHa) -> bool:
         return self._lire_une(
-            "SELECT 1 FROM ha WHERE corpus = %s AND nom = %s", _cle(ref.corpus), ref.nom
+            "SELECT 1 FROM ha WHERE corpus = %s AND nom = %s", self._cle(ref.corpus), ref.nom
         ) is not None
 
     def numero_suivant(self, corpus: Path) -> int:
         numeros = [
             int(m.group(1))
-            for (nom,) in self._lire_toutes("SELECT nom FROM ha WHERE corpus = %s", _cle(corpus))
+            for (nom,) in self._lire_toutes("SELECT nom FROM ha WHERE corpus = %s", self._cle(corpus))
             if (m := re.match(r"CAS-(\d+)", nom))
         ]
         return max(numeros, default=0) + 1
 
     def creer(self, corpus: Path, nom: str) -> RefHa:
         corpus = Path(corpus)
-        harness, corpus_nom = _harness_et_nom(corpus)
+        harness, corpus_nom = self._identite(corpus)
         self._executer(
             "INSERT INTO ha (corpus, nom, harness, corpus_nom, id) VALUES (%s, %s, %s, %s, %s)"
             " ON CONFLICT DO NOTHING",
-            _cle(corpus), nom, harness, corpus_nom, RefHa(corpus, nom).identifiant,
+            self._cle(corpus), nom, harness, corpus_nom, RefHa(corpus, nom).identifiant,
         )
         return RefHa(corpus, nom)
 
     def supprimer(self, ref: RefHa) -> None:
-        self._executer("DELETE FROM ha WHERE corpus = %s AND nom = %s", _cle(ref.corpus), ref.nom)
+        self._executer("DELETE FROM ha WHERE corpus = %s AND nom = %s", self._cle(ref.corpus), ref.nom)
 
     def corpus_connus(self) -> list[tuple[str, str, str]]:
-        """(chemin, harness, nom) de chaque corpus qui a au moins un ha ou un écarté."""
-        return [
+        """(clé, harness, nom) de chaque corpus qui a au moins un ha ou un écarté.
+        Les clés lues sont retenues comme connues, pour qu'un `tous(clé)` qui
+        suit les reconnaisse sans les prendre pour un chemin."""
+        lignes = [
             tuple(ligne) for ligne in self._lire_toutes(
                 "SELECT DISTINCT corpus, harness, corpus_nom FROM ha"
                 " UNION SELECT DISTINCT corpus, '', '' FROM ecart"
                 " WHERE corpus NOT IN (SELECT corpus FROM ha) ORDER BY 1"
             )
         ]
+        self._connues.update(cle for cle, _, _ in lignes)
+        return lignes
 
     # --- les pièces -------------------------------------------------------------
 
     def _colonne(self, ref: RefHa, colonne: str) -> str | None:
         ligne = self._lire_une(
-            f"SELECT {colonne} FROM ha WHERE corpus = %s AND nom = %s", _cle(ref.corpus), ref.nom
+            f"SELECT {colonne} FROM ha WHERE corpus = %s AND nom = %s", self._cle(ref.corpus), ref.nom
         )
         return ligne[0] if ligne else None
 
@@ -276,7 +328,7 @@ class DepotBase(_Base):
         self.creer(ref.corpus, ref.nom)
         self._executer(
             f"UPDATE ha SET {colonne} = %s WHERE corpus = %s AND nom = %s",
-            texte, _cle(ref.corpus), ref.nom,
+            texte, self._cle(ref.corpus), ref.nom,
         )
 
     def fiche(self, ref: RefHa) -> str | None:
@@ -296,7 +348,7 @@ class DepotBase(_Base):
             " WHERE corpus = %s AND nom = %s",
             texte, *colonnes.values(),
             self._json(entete.get("scores")), self._json(entete.get("design_exerce")),
-            _cle(ref.corpus), ref.nom,
+            self._cle(ref.corpus), ref.nom,
         )
 
     def transcript(self, ref: RefHa) -> str | None:
@@ -314,7 +366,7 @@ class DepotBase(_Base):
     def materiau(self, ref: RefHa, nom: str) -> str | None:
         ligne = self._lire_une(
             "SELECT texte FROM materiau WHERE corpus = %s AND ha = %s AND nom = %s",
-            _cle(ref.corpus), ref.nom, nom,
+            self._cle(ref.corpus), ref.nom, nom,
         )
         return ligne[0] if ligne else None
 
@@ -323,7 +375,7 @@ class DepotBase(_Base):
         self._executer(
             "INSERT INTO materiau (corpus, ha, nom, texte) VALUES (%s, %s, %s, %s)"
             " ON CONFLICT (corpus, ha, nom) DO UPDATE SET texte = EXCLUDED.texte",
-            _cle(ref.corpus), ref.nom, nom, texte,
+            self._cle(ref.corpus), ref.nom, nom, texte,
         )
 
     def materiaux(self, ref: RefHa) -> list[str]:
@@ -331,7 +383,7 @@ class DepotBase(_Base):
         return [
             nom for (nom,) in self._lire_toutes(
                 "SELECT nom FROM materiau WHERE corpus = %s AND ha = %s ORDER BY nom",
-                _cle(ref.corpus), ref.nom,
+                self._cle(ref.corpus), ref.nom,
             )
         ]
 
@@ -339,7 +391,7 @@ class DepotBase(_Base):
         return [
             bloc for (bloc,) in self._lire_toutes(
                 "SELECT bloc FROM etat WHERE corpus = %s AND ha = %s ORDER BY rang",
-                _cle(ref.corpus), ref.nom,
+                self._cle(ref.corpus), ref.nom,
             )
         ]
 
@@ -348,7 +400,7 @@ class DepotBase(_Base):
 
     def ecrire_etats(self, ref: RefHa, releves: list[dict]) -> None:
         self.creer(ref.corpus, ref.nom)
-        cle = _cle(ref.corpus)
+        cle = self._cle(ref.corpus)
         with self._co().transaction():
             self._executer("DELETE FROM etat WHERE corpus = %s AND ha = %s", cle, ref.nom)
             for rang, releve in enumerate(releves):
@@ -365,7 +417,7 @@ class DepotBase(_Base):
 
     def carre(self, ref: RefHa) -> str | None:
         ligne = self._lire_une(
-            "SELECT rendu FROM carre WHERE corpus = %s AND ha = %s", _cle(ref.corpus), ref.nom
+            "SELECT rendu FROM carre WHERE corpus = %s AND ha = %s", self._cle(ref.corpus), ref.nom
         )
         return ligne[0] if ligne else None
 
@@ -374,17 +426,17 @@ class DepotBase(_Base):
         self._executer(
             "INSERT INTO carre (corpus, ha, rendu) VALUES (%s, %s, %s)"
             " ON CONFLICT (corpus, ha) DO UPDATE SET rendu = EXCLUDED.rendu",
-            _cle(ref.corpus), ref.nom, texte,
+            self._cle(ref.corpus), ref.nom, texte,
         )
 
     def retirer_carre(self, ref: RefHa) -> None:
-        self._executer("DELETE FROM carre WHERE corpus = %s AND ha = %s", _cle(ref.corpus), ref.nom)
+        self._executer("DELETE FROM carre WHERE corpus = %s AND ha = %s", self._cle(ref.corpus), ref.nom)
 
     def jugements(self, ref: RefHa) -> list[dict]:
         return [
             contenu for (contenu,) in self._lire_toutes(
                 "SELECT contenu FROM jugement WHERE corpus = %s AND ha = %s ORDER BY rang",
-                _cle(ref.corpus), ref.nom,
+                self._cle(ref.corpus), ref.nom,
             )
         ]
 
@@ -393,7 +445,7 @@ class DepotBase(_Base):
         self._executer(
             "INSERT INTO jugement (corpus, ha, juge, version_coupe, quand, contenu)"
             " VALUES (%s, %s, %s, %s, %s, %s)",
-            _cle(ref.corpus), ref.nom, _texte(jugement.get("juge")),
+            self._cle(ref.corpus), ref.nom, _texte(jugement.get("juge")),
             _texte(jugement.get("version_coupe")), _texte(jugement.get("le")), self._json(jugement),
         )
 
@@ -404,14 +456,17 @@ class DepotBase(_Base):
             {"session": session, "raison": raison, "le": quand}
             for session, raison, quand in self._lire_toutes(
                 "SELECT session, raison, quand FROM ecart WHERE corpus = %s ORDER BY rang",
-                _cle(corpus),
+                self._cle(corpus),
             )
         ]
 
     def ecarter(self, corpus: Path, session: str, raison: str, quand: str) -> None:
+        # Idempotent : réimporter, ou réécarter une session déjà écartée, ne
+        # crée pas de doublon (l'unicité (corpus, session) le garantit).
         self._executer(
-            "INSERT INTO ecart (corpus, session, raison, quand) VALUES (%s, %s, %s, %s)",
-            _cle(corpus), session, raison, quand,
+            "INSERT INTO ecart (corpus, session, raison, quand) VALUES (%s, %s, %s, %s)"
+            " ON CONFLICT (corpus, session) DO NOTHING",
+            self._cle(corpus), session, raison, quand,
         )
 
 

@@ -1251,7 +1251,7 @@ def _instance(args) -> int:
             bilan = exporter(base, journal, args.dossier, comptes=comptes)
         else:
             bilan = importer(
-                base, journal, args.dossier, journal_fichiers=args.journal, vers=args.vers,
+                base, journal, args.dossier, journal_fichiers=args.journal,
                 comptes=comptes, comptes_fichier=args.comptes,
             )
         sens = f"exporté vers {args.dossier}" if args.geste == "exporter" else f"importé depuis {args.dossier}"
@@ -1651,9 +1651,6 @@ def main(argv: list[str] | None = None) -> int:
     importer_.add_argument("dossier", type=Path, help="l'export, ou le dossier des harness")
     importer_.add_argument("--journal", type=Path, help="le journal en JSONL, s'il est ailleurs")
     importer_.add_argument("--comptes", type=Path, help="le magasin SQLite des comptes à migrer")
-    importer_.add_argument(
-        "--vers", type=Path, help="le dossier des harness de l'instance d'arrivée, s'il diffère"
-    )
 
     args = parseur.parse_args(argv)
     if args.commande == "promouvoir":

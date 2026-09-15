@@ -275,7 +275,12 @@ def depot_pour(harness=None) -> DepotDeHa:
         from .base import DepotBase
 
         _BASES[url] = DepotBase(url)
-    return _BASES[url]
+    depot = _BASES[url]
+    if harness is not None:
+        # La clé d'un corpus est son identité (id du harness + nom), pas son
+        # chemin de montage : on la fait connaître ici (RFC-014, correctif lot F).
+        depot.enregistrer_corpus(harness)
+    return depot
 
 
 def transferer(ref: RefHa, de: DepotDeHa, vers: DepotDeHa, corpus: Path | None = None) -> RefHa:

@@ -44,12 +44,12 @@ class Bilan:
     identifiants: list[str] = field(default_factory=list)
 
 
-def _dossier_de(harness: str, corpus_nom: str, chemin: str) -> str:
-    """Où ranger un corpus dans l'export : `<harness>/<nom>`, ou le chemin
-    aplati quand il n'a pas cette forme."""
+def _dossier_de(harness: str, corpus_nom: str, cle: str) -> str:
+    """Où ranger un corpus dans l'export : `<harness>/<nom>`, ou la clé aplatie
+    quand le corpus n'a pas d'identité (un corpus d'avant les harness nommés)."""
     if harness and corpus_nom:
         return f"{harness}/{corpus_nom}"
-    return chemin.strip("/").replace("/", "__") or "corpus"
+    return cle.strip("/").replace("/", "__") or "corpus"
 
 
 def exporter(
@@ -61,19 +61,19 @@ def exporter(
     dossier.mkdir(parents=True, exist_ok=True)
     fichiers = DepotFichiers()
     bilan = Bilan()
-    manifeste: dict[str, str] = {}
+    manifeste: dict[str, dict] = {}
 
-    for chemin, harness, corpus_nom in base.corpus_connus():
-        ou = _dossier_de(harness, corpus_nom, chemin)
-        manifeste[ou] = chemin
-        corpus_source = Path(chemin)
+    for cle, harness, corpus_nom in base.corpus_connus():
+        ou = _dossier_de(harness, corpus_nom, cle)
+        manifeste[ou] = {"cle": cle, "harness": harness, "nom": corpus_nom}
+        source = Path(cle)  # une clé connue : le dépôt la reconnaît telle quelle
         corpus_cible = dossier / "ha" / ou
         corpus_cible.mkdir(parents=True, exist_ok=True)
-        for ref in base.tous(corpus_source):
+        for ref in base.tous(source):
             transferer(ref, base, fichiers, corpus=corpus_cible)
             bilan.ha += 1
             bilan.identifiants.append(f"{ou}/{ref.nom}")
-        for ecart in base.ecartes(corpus_source):
+        for ecart in base.ecartes(source):
             fichiers.ecarter(corpus_cible, ecart["session"], ecart["raison"], ecart["le"])
             bilan.ecartes += 1
         bilan.corpus.append(ou)
@@ -106,16 +106,21 @@ def exporter(
     return bilan
 
 
-def _corpus_d_un_export(dossier: Path) -> list[tuple[Path, str]]:
-    """(dossier du corpus dans l'export, chemin d'origine) — par le manifeste."""
+def _corpus_d_un_export(dossier: Path) -> list[tuple[Path, str, str, str]]:
+    """(dossier source, clé logique, harness, nom) — par le manifeste."""
     manifeste = json.loads((dossier / MANIFESTE).read_text(encoding="utf-8"))
-    return [(dossier / "ha" / ou, chemin) for ou, chemin in (manifeste.get("corpus") or {}).items()]
+    trouves = []
+    for ou, dit in (manifeste.get("corpus") or {}).items():
+        if isinstance(dit, str):  # un vieux manifeste ne portait que le chemin
+            dit = {"cle": dit, "harness": "", "nom": ""}
+        trouves.append((dossier / "ha" / ou, dit["cle"], dit.get("harness", ""), dit.get("nom", "")))
+    return trouves
 
 
-def _corpus_des_harness(dossier: Path) -> list[tuple[Path, str]]:
-    """(corpus, son propre chemin) pour chaque harness valide sous `dossier` —
-    la migration d'une instance en régime fichiers. Un manifest invalide est
-    sauté : on migre ce qui se lit, on ne devine pas le reste."""
+def _corpus_des_harness(dossier: Path):
+    """(corpus, clé, harness, nom) pour chaque harness valide sous `dossier` — la
+    migration d'une instance en régime fichiers. Un manifest invalide est sauté :
+    on migre ce qui se lit, on ne devine pas le reste."""
     trouves = []
     for manifest in sorted(dossier.glob("*/harness.yaml")):
         try:
@@ -123,7 +128,7 @@ def _corpus_des_harness(dossier: Path) -> list[tuple[Path, str]]:
         except ManifestInvalide:
             continue
         for corpus in harness.corpus_nommes:
-            trouves.append((corpus.chemin, str(corpus.chemin.resolve())))
+            trouves.append((corpus.chemin, f"{harness.id}/{corpus.nom}", harness.id, corpus.nom))
     return trouves
 
 
@@ -132,28 +137,24 @@ def importer(
     journal: JournalBase,
     dossier: Path,
     journal_fichiers: Path | None = None,
-    vers: Path | None = None,
     comptes: Comptes | None = None,
     comptes_fichier: Path | None = None,
 ) -> Bilan:
-    """Dans la base : un export (`manifeste.json`) ou le dossier des harness
-    d'une instance. `journal_fichiers` : le journal en JSONL, s'il est ailleurs
-    que dans l'export. `vers` : le dossier des harness de l'instance d'arrivée,
-    quand ce n'est pas celui d'origine — les chemins de corpus y sont
-    transposés (`<vers>/<harness>/corpus/<nom>`). `comptes` : le magasin
-    d'arrivée, rempli depuis `comptes_fichier` ou le SQLite de l'export."""
+    """Dans la base : un export (`manifeste.json`) ou le dossier des harness d'une
+    instance. Un corpus est nommé par son **identité** — `<harness>/<nom>` —, pas
+    par un chemin : il retrouve sa place quelle que soit l'instance d'arrivée
+    (RFC-014, correctif du lot F). `journal_fichiers` : le journal en JSONL, s'il
+    est ailleurs que dans l'export. `comptes` : le magasin d'arrivée, rempli
+    depuis `comptes_fichier` ou le SQLite de l'export."""
     dossier = Path(dossier)
     fichiers = DepotFichiers()
     bilan = Bilan()
 
     est_export = (dossier / MANIFESTE).is_file()
     corpus = _corpus_d_un_export(dossier) if est_export else _corpus_des_harness(dossier)
-    for source, chemin in corpus:
-        cible = Path(chemin)
-        if vers is not None and "corpus" in Path(chemin).parts[1:]:
-            morceaux = Path(chemin).parts
-            i = len(morceaux) - 1 - morceaux[::-1].index("corpus")
-            cible = Path(vers, morceaux[i - 1], *morceaux[i:])
+    for source, cle, harness, nom in corpus:
+        base.enregistrer_cle(cle, harness, nom, source)
+        cible = source if not est_export else Path(cle)
         for ref in fichiers.tous(source):
             transferer(ref, fichiers, base, corpus=cible)
             bilan.ha += 1
@@ -161,7 +162,7 @@ def importer(
         for ecart in fichiers.ecartes(source):
             base.ecarter(cible, ecart["session"], ecart["raison"], ecart["le"])
             bilan.ecartes += 1
-        bilan.corpus.append(str(cible))
+        bilan.corpus.append(cle)
 
     for ou in (dossier / "journal" if est_export else None, journal_fichiers):
         for ligne in lire_fichiers(ou):
