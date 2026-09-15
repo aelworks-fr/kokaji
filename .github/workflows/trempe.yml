@@ -40,6 +40,10 @@ jobs:
       - run: pip install --quiet -e ".[service,dev,base]"
       - name: les tests
         run: python -m pytest -q tests
+      - name: le magasin des comptes, la même suite sur Postgres (RFC-014 D14.7)
+        env:
+          KOKAJI_COMPTES_ESSAI: ${{ env.KOKAJI_BASE_URL_ESSAI }}
+        run: python -m pytest -q tests/test_comptes.py
       - name: le manifest de l'Atelier, et sa trempe statique
         run: |
           python -m kokaji.cli valider atelier kokaji/semence

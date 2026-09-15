@@ -20,6 +20,7 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..comptes import Comptes, transvaser
 from ..hds import ManifestInvalide, charger
 from .base import DepotBase, JournalBase
 from .depot import DepotFichiers, RefHa, transferer
@@ -28,6 +29,7 @@ from .journal import lire_fichiers
 __all__ = ["MANIFESTE", "Bilan", "exporter", "importer"]
 
 MANIFESTE = "manifeste.json"
+COMPTES = "comptes.sqlite3"
 
 
 @dataclass
@@ -37,6 +39,7 @@ class Bilan:
     ha: int = 0
     appels: int = 0
     ecartes: int = 0
+    comptes: dict[str, int] = field(default_factory=dict)
     corpus: list[str] = field(default_factory=list)
     identifiants: list[str] = field(default_factory=list)
 
@@ -49,9 +52,13 @@ def _dossier_de(harness: str, corpus_nom: str, chemin: str) -> str:
     return chemin.strip("/").replace("/", "__") or "corpus"
 
 
-def exporter(base: DepotBase, journal: JournalBase, dossier: Path) -> Bilan:
-    """Tout ce que la base contient, au format fichiers, sous `dossier`."""
+def exporter(
+    base: DepotBase, journal: JournalBase, dossier: Path, comptes: Comptes | None = None
+) -> Bilan:
+    """Tout ce que la base contient, au format fichiers, sous `dossier` — les
+    comptes, s'ils sont donnés, en un fichier SQLite (D14.7 : même schéma)."""
     dossier = Path(dossier)
+    dossier.mkdir(parents=True, exist_ok=True)
     fichiers = DepotFichiers()
     bilan = Bilan()
     manifeste: dict[str, str] = {}
@@ -84,7 +91,15 @@ def exporter(base: DepotBase, journal: JournalBase, dossier: Path) -> Bilan:
         )
         bilan.appels += len(lignes)
 
-    dossier.mkdir(parents=True, exist_ok=True)
+    if comptes is not None:
+        fichier = dossier / COMPTES
+        fichier.unlink(missing_ok=True)
+        vers = Comptes(fichier)
+        try:
+            bilan.comptes = transvaser(comptes, vers)
+        finally:
+            vers.fermer()
+
     (dossier / MANIFESTE).write_text(
         json.dumps({"corpus": manifeste}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
     )
@@ -118,12 +133,15 @@ def importer(
     dossier: Path,
     journal_fichiers: Path | None = None,
     vers: Path | None = None,
+    comptes: Comptes | None = None,
+    comptes_fichier: Path | None = None,
 ) -> Bilan:
     """Dans la base : un export (`manifeste.json`) ou le dossier des harness
     d'une instance. `journal_fichiers` : le journal en JSONL, s'il est ailleurs
     que dans l'export. `vers` : le dossier des harness de l'instance d'arrivée,
     quand ce n'est pas celui d'origine — les chemins de corpus y sont
-    transposés (`<vers>/<harness>/corpus/<nom>`)."""
+    transposés (`<vers>/<harness>/corpus/<nom>`). `comptes` : le magasin
+    d'arrivée, rempli depuis `comptes_fichier` ou le SQLite de l'export."""
     dossier = Path(dossier)
     fichiers = DepotFichiers()
     bilan = Bilan()
@@ -149,6 +167,14 @@ def importer(
         for ligne in lire_fichiers(ou):
             journal.ecrire(ligne)
             bilan.appels += 1
+
+    source_comptes = comptes_fichier or (dossier / COMPTES if est_export else None)
+    if comptes is not None and source_comptes is not None and Path(source_comptes).is_file():
+        de = Comptes(source_comptes)
+        try:
+            bilan.comptes = transvaser(de, comptes)
+        finally:
+            de.fermer()
     return bilan
 
 

@@ -11,6 +11,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+import os
+
 from kokaji.comptes import (
     ADMINISTRATION,
     ANONYME,
@@ -160,9 +162,26 @@ class GestesDeService(unittest.TestCase):
         self.assertEqual(str(capture.exception), "geste refusé : creer")
 
 
+URL_COMPTES_ESSAI = os.environ.get("KOKAJI_COMPTES_ESSAI", "").strip()
+
+
+def magasin() -> Comptes:
+    """Le magasin sous test : la mémoire — ou, avec `KOKAJI_COMPTES_ESSAI`, le
+    Postgres d'essai, vidé d'abord : la même suite se joue sur les deux moteurs
+    (RFC-014 D14.7)."""
+    if not URL_COMPTES_ESSAI:
+        return Comptes()
+    comptes = Comptes(URL_COMPTES_ESSAI)
+    for table in ("sessions", "harness_depot", "contributeurs", "identites_externes",
+                  "invitations", "harness_acl", "utilisateurs"):
+        comptes._db.execute(f"DELETE FROM {table}")
+    comptes._db.commit()
+    return comptes
+
+
 class Magasin(unittest.TestCase):
     def setUp(self):
-        self.comptes = Comptes()
+        self.comptes = magasin()
         self.addCleanup(self.comptes.fermer)
         self.un = self.comptes.creer_utilisateur("Un", "un@exemple.test", MOT_DE_PASSE)
         self.deux = self.comptes.creer_utilisateur("Deux", "deux@exemple.test", MOT_DE_PASSE)
@@ -273,7 +292,7 @@ class Invitations(unittest.TestCase):
     """Une porte nominative, à usage unique et datée."""
 
     def setUp(self):
-        self.comptes = Comptes()
+        self.comptes = magasin()
         self.addCleanup(self.comptes.fermer)
         self.hote = self.comptes.creer_utilisateur(
             "Hôte", "hote@exemple.test", MOT_DE_PASSE, admin=True
@@ -339,7 +358,7 @@ class Invitations(unittest.TestCase):
 
 class Administration(unittest.TestCase):
     def setUp(self):
-        self.comptes = Comptes()
+        self.comptes = magasin()
         self.addCleanup(self.comptes.fermer)
 
     def test_un_compte_n_est_pas_admin_par_defaut(self):
@@ -470,7 +489,7 @@ class HarnessCourant(unittest.TestCase):
     """RFC-005 §2.2 — le harness que je pratique est une propriété de moi."""
 
     def setUp(self):
-        self.comptes = Comptes()
+        self.comptes = magasin()
         self.addCleanup(self.comptes.fermer)
         self.un = self.comptes.creer_utilisateur("Un", "un@exemple.test", MOT_DE_PASSE)
         self.deux = self.comptes.creer_utilisateur("Deux", "deux@exemple.test", MOT_DE_PASSE)
@@ -519,6 +538,8 @@ class HarnessCourant(unittest.TestCase):
 class Migration(unittest.TestCase):
     """Une base écrite avant le RFC-005 s'ouvre sans qu'on ait à la refaire."""
 
+    @unittest.skipIf(URL_COMPTES_ESSAI, "la migration d'un fichier SQLite ne concerne que SQLite")
+
     def test_la_colonne_est_posee_sur_une_base_deja_ecrite(self):
         import sqlite3
         import tempfile
@@ -540,6 +561,61 @@ class Migration(unittest.TestCase):
             qui = comptes.creer_utilisateur("Un", "un@exemple.test", MOT_DE_PASSE)
             comptes.enregistrer_harness("h", qui.id)
             self.assertEqual(comptes.harness_courant(qui.id), "h")
+
+
+@unittest.skipUnless(URL_COMPTES_ESSAI, "KOKAJI_COMPTES_ESSAI absent : pas de Postgres d'essai")
+class Transvasement(unittest.TestCase):
+    """D14.7 — les comptes migrent de SQLite au Postgres sans changer de schéma."""
+
+    def test_tout_passe_et_rejouer_ne_casse_rien(self):
+        from kokaji.comptes import transvaser
+
+        de = Comptes()
+        un = de.creer_utilisateur("Un", "Un@Exemple.test", MOT_DE_PASSE, admin=True)
+        deux = de.creer_utilisateur("Deux", "deux@exemple.test", MOT_DE_PASSE)
+        de.enregistrer_harness("h", un.id)
+        de.enregistrer_harness("g", deux.id)
+        de.ajouter_contributeur("h", deux.id)
+        de.enregistrer_depot("h", "/depots/h.git", commit_reference="abc")
+        de.choisir_harness(deux.id, "h")
+        de.archiver("g")
+        jeton_invitation = de.inviter("trois@exemple.test", un.id)
+        jeton_session = de.ouvrir_session("un@exemple.test", MOT_DE_PASSE)
+
+        vers = magasin()
+        self.assertTrue(vers.en_base)
+        comptes = transvaser(de, vers)
+        self.assertEqual(comptes["utilisateurs"], 2)
+        self.assertEqual(comptes["contributeurs"], 1)
+        self.assertEqual(transvaser(de, vers)["utilisateurs"], 2)  # rejoué : rien ne casse
+
+        self.assertEqual(vers.par_email("UN@exemple.test").id, un.id)
+        self.assertTrue(vers.est_admin(un.id))
+        self.assertEqual(vers.acl("h").contributeurs, (deux.id,))
+        self.assertEqual(vers.depot("h").commit_reference, "abc")
+        self.assertEqual(vers.harness_courant(deux.id), "h")
+        self.assertIsNotNone(vers.archive_le("g"))
+        self.assertEqual(vers.invitation(jeton_invitation)["email"], "trois@exemple.test")
+        self.assertEqual(vers.session(jeton_session).id, un.id)
+        # Le mot de passe traverse : c'est l'empreinte qui a été copiée.
+        vers.ouvrir_session("deux@exemple.test", MOT_DE_PASSE)
+        with self.assertRaises(AclInvalide):
+            vers.creer_utilisateur("Bis", "un@EXEMPLE.test", MOT_DE_PASSE)  # l'unicité tient, casse comprise
+
+    def test_ou_ouvrir_choisit_la_base_quand_elle_est_declaree(self):
+        from kokaji.comptes import ou_ouvrir
+
+        avant = os.environ.pop("KOKAJI_BASE_URL", None)
+        try:
+            self.assertEqual(ou_ouvrir(Path("comptes.sqlite3")), Path("comptes.sqlite3"))
+            self.assertIsNone(ou_ouvrir(None))
+            os.environ["KOKAJI_BASE_URL"] = URL_COMPTES_ESSAI
+            self.assertEqual(ou_ouvrir(Path("comptes.sqlite3")), URL_COMPTES_ESSAI)
+            self.assertIsNone(ou_ouvrir(None))
+        finally:
+            os.environ.pop("KOKAJI_BASE_URL", None)
+            if avant is not None:
+                os.environ["KOKAJI_BASE_URL"] = avant
 
 
 if __name__ == "__main__":

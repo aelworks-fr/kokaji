@@ -1,8 +1,14 @@
 """Le magasin des comptes et des ACL — RFC-004 §2, SPECS R12.1 et R12.2.
 
-Un fichier SQLite, **hors git** : il contient des empreintes de mots de passe et
-des jetons de session. C'est la seule donnée de Kokaji qui ne doit jamais entrer
-dans un corpus ni dans une définition de harness.
+Un fichier SQLite, **hors git** — ou, quand l'instance déclare `KOKAJI_BASE_URL`,
+les mêmes tables dans son Postgres (RFC-014 D14.7) : il contient des empreintes
+de mots de passe et des jetons de session. C'est la seule donnée de Kokaji qui
+ne doit jamais entrer dans un corpus ni dans une définition de harness.
+
+Un seul magasin, deux moteurs : le SQL est écrit une fois, avec des `?`, et
+chaque moteur le traduit. Ce qui diffère tient en trois lignes de schéma — la
+casse de l'email, l'ordre des contributeurs, une clé étrangère que Postgres
+veut voir déclarée après sa cible.
 
 Pourquoi une base ici, alors que tout le reste du projet est en fichiers lisibles
 à l'œil : parce que ces données ont des invariants qui se tiennent par des
@@ -13,6 +19,7 @@ se vérifie.
 
 from __future__ import annotations
 
+import os
 import secrets
 import sqlite3
 import uuid
@@ -25,7 +32,7 @@ from argon2.exceptions import VerifyMismatchError
 from .droits import exiger
 from .modele import ETRANGER, Acl, AclInvalide, Enregistrement, Utilisateur, email_plausible
 
-__all__ = ["Comptes", "IdentiteInconnue"]
+__all__ = ["Comptes", "IdentiteInconnue", "ou_ouvrir", "transvaser"]
 
 DUREE_SESSION = timedelta(hours=12)
 # Une invitation qui traîne est une porte ouverte : elle se périme d'elle-même.
@@ -109,27 +116,57 @@ CREATE TABLE IF NOT EXISTS sessions (
 """
 
 
-class IdentiteInconnue(Exception):
-    """Identifiants refusés, ou jeton périmé."""
+# Le même schéma pour Postgres, à trois différences près : pas de `COLLATE
+# NOCASE` (un index unique sur `lower(email)` tient l'invariant), un `rowid`
+# déclaré pour l'ordre des contributeurs (SQLite l'a d'office), et la clé
+# étrangère `harness_courant` non déclarée — Postgres exige que `harness_acl`
+# existe avant, et aucune ligne de `harness_acl` n'est jamais effacée.
+SCHEMA_POSTGRES = (
+    SCHEMA.replace(" UNIQUE COLLATE NOCASE", "")
+    .replace(" COLLATE NOCASE", "")
+    .replace(
+        "harness_courant TEXT REFERENCES harness_acl(harness_id) ON DELETE SET NULL",
+        "harness_courant TEXT",
+    )
+    .replace(
+        "    utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,\n"
+        "    PRIMARY KEY (harness_id, utilisateur_id)",
+        "    utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,\n"
+        "    rowid          SERIAL,\n"
+        "    PRIMARY KEY (harness_id, utilisateur_id)",
+    )
+    + "CREATE UNIQUE INDEX IF NOT EXISTS utilisateurs_email ON utilisateurs (lower(email));\n"
+)
 
 
-def _instant(texte: str) -> datetime:
-    quand = datetime.fromisoformat(texte)
-    return quand if quand.tzinfo else quand.replace(tzinfo=UTC)
+class _Resultat:
+    """Ce qu'une requête a rendu : des lignes qu'on lit par nom, et un compte."""
+
+    def __init__(self, lignes: list[dict], rowcount: int):
+        self._lignes = lignes
+        self.rowcount = rowcount
+
+    def fetchone(self) -> dict | None:
+        return self._lignes[0] if self._lignes else None
+
+    def fetchall(self) -> list[dict]:
+        return list(self._lignes)
+
+    def __iter__(self):
+        return iter(self._lignes)
 
 
-class Comptes:
-    """Le magasin. Ouvert sur un chemin, ou en mémoire pour les tests."""
+class _Sqlite:
+    """Le moteur d'un poste seul et des tests : un fichier, ou la mémoire."""
 
-    def __init__(self, chemin: Path | str = ":memory:"):
-        self.chemin = chemin
+    def __init__(self, chemin: Path | str):
         self._db = sqlite3.connect(str(chemin), check_same_thread=False)
         self._db.row_factory = sqlite3.Row
         self._db.execute("PRAGMA foreign_keys = ON")
         self._db.executescript(SCHEMA)
         self._migrer()
         self._db.commit()
-        self._hacheur = PasswordHasher()
+        self.Integrite = sqlite3.IntegrityError
 
     def _migrer(self) -> None:
         """Les colonnes venues après coup, posées sur une base déjà écrite.
@@ -148,6 +185,94 @@ class Comptes:
         acl = {r["name"] for r in self._db.execute("PRAGMA table_info(harness_acl)")}
         if "archive_le" not in acl:
             self._db.execute("ALTER TABLE harness_acl ADD COLUMN archive_le TEXT")
+
+    def execute(self, sql: str, params: tuple = ()) -> _Resultat:
+        cur = self._db.execute(sql, params)
+        lignes = [dict(r) for r in cur.fetchall()] if cur.description else []
+        return _Resultat(lignes, cur.rowcount)
+
+    def executemany(self, sql: str, seq) -> None:
+        self._db.executemany(sql, seq)
+
+    def commit(self) -> None:
+        self._db.commit()
+
+    def close(self) -> None:
+        self._db.close()
+
+
+class _Postgres:
+    """Le moteur d'une instance : la base `kokaji` de son Postgres (RFC-014)."""
+
+    def __init__(self, url: str):
+        import psycopg
+        from psycopg.rows import dict_row
+
+        self._db = psycopg.connect(url, row_factory=dict_row)
+        self._db.execute(SCHEMA_POSTGRES)
+        self._db.commit()
+        self.Integrite = psycopg.errors.IntegrityError
+
+    @staticmethod
+    def _traduire(sql: str) -> str:
+        return sql.replace("?", "%s")
+
+    def execute(self, sql: str, params: tuple = ()) -> _Resultat:
+        try:
+            cur = self._db.execute(self._traduire(sql), params)
+        except self.Integrite:
+            self._db.rollback()  # une transaction fautive ne bloque pas la suivante
+            raise
+        lignes = cur.fetchall() if cur.description else []
+        return _Resultat(lignes, cur.rowcount)
+
+    def executemany(self, sql: str, seq) -> None:
+        with self._db.cursor() as cur:
+            cur.executemany(self._traduire(sql), list(seq))
+
+    def commit(self) -> None:
+        self._db.commit()
+
+    def close(self) -> None:
+        self._db.close()
+
+
+def _moteur(chemin: Path | str):
+    if str(chemin).startswith(("postgresql://", "postgres://")):
+        return _Postgres(str(chemin))
+    return _Sqlite(chemin)
+
+
+def ou_ouvrir(chemin: Path | str | None) -> Path | str | None:
+    """Le magasin que l'instance veut : sa base si `KOKAJI_BASE_URL` est là,
+    sinon le chemin donné — SQLite, comme toujours. `None` reste `None` : un
+    service sans comptes le reste."""
+    if chemin is None:
+        return None
+    url = os.environ.get("KOKAJI_BASE_URL", "").strip()
+    return url or chemin
+
+
+class IdentiteInconnue(Exception):
+    """Identifiants refusés, ou jeton périmé."""
+
+
+def _instant(texte: str) -> datetime:
+    quand = datetime.fromisoformat(texte)
+    return quand if quand.tzinfo else quand.replace(tzinfo=UTC)
+
+
+class Comptes:
+    """Le magasin. Ouvert sur un chemin, ou en mémoire pour les tests."""
+
+    def __init__(self, chemin: Path | str = ":memory:"):
+        self.chemin = chemin
+        self._db = _moteur(chemin)
+        self._hacheur = PasswordHasher()
+
+    @property
+    def en_base(self) -> bool:
+        return isinstance(self._db, _Postgres)
 
     def fermer(self) -> None:
         self._db.close()
@@ -178,12 +303,12 @@ class Comptes:
                     1 if admin else 0,
                 ),
             )
-        except sqlite3.IntegrityError as err:
+        except self._db.Integrite as err:
             raise AclInvalide(f"email déjà pris : {email}") from err
         self._db.commit()
         return utilisateur
 
-    def _utilisateur(self, ligne: sqlite3.Row | None) -> Utilisateur | None:
+    def _utilisateur(self, ligne: dict | None) -> Utilisateur | None:
         if ligne is None:
             return None
         return Utilisateur(
@@ -201,7 +326,7 @@ class Comptes:
     def par_email(self, email: str) -> Utilisateur | None:
         return self._utilisateur(
             self._db.execute(
-                "SELECT * FROM utilisateurs WHERE email = ? COLLATE NOCASE", (email.strip(),)
+                "SELECT * FROM utilisateurs WHERE lower(email) = lower(?)", (email.strip(),)
             ).fetchone()
         )
 
@@ -324,7 +449,7 @@ class Comptes:
         distinguer les deux dirait à un inconnu qui possède un compte ici.
         """
         ligne = self._db.execute(
-            "SELECT * FROM utilisateurs WHERE email = ? COLLATE NOCASE", (email.strip(),)
+            "SELECT * FROM utilisateurs WHERE lower(email) = lower(?)", (email.strip(),)
         ).fetchone()
         if ligne is None:
             # Une vérification à vide, pour que le temps de réponse ne trahisse
@@ -371,7 +496,7 @@ class Comptes:
                 "INSERT INTO harness_acl (harness_id, proprietaire) VALUES (?,?)",
                 (acl.harness_id, acl.proprietaire),
             )
-        except sqlite3.IntegrityError as err:
+        except self._db.Integrite as err:
             raise AclInvalide(f"harness déjà enregistré : {harness_id}") from err
         self._db.commit()
         return acl
@@ -566,3 +691,39 @@ class Comptes:
             )
         ]
         return sorted(possedes + contribues)
+
+
+TABLES = (
+    "utilisateurs", "harness_acl", "invitations", "identites_externes",
+    "contributeurs", "harness_depot", "sessions",
+)
+
+
+def transvaser(de: Comptes, vers: Comptes) -> dict[str, int]:
+    """Tout ce qu'un magasin contient, dans un autre — la migration de D14.7,
+    jouée une fois, et l'export des comptes (D14.8). Lignes recopiées telles
+    quelles, table par table dans l'ordre des clés étrangères ; le harness
+    courant, qui renvoie à une table créée après, est posé en dernier. Une
+    ligne déjà là n'est pas réécrite : rejouer ne casse rien."""
+    comptes: dict[str, int] = {}
+    for table in TABLES:
+        lignes = de._db.execute(f"SELECT * FROM {table}").fetchall()
+        for ligne in lignes:
+            ligne.pop("rowid", None)
+            if table == "utilisateurs":
+                ligne = {**ligne, "harness_courant": None}
+            colonnes = ", ".join(ligne)
+            marques = ", ".join("?" for _ in ligne)
+            vers._db.execute(
+                f"INSERT INTO {table} ({colonnes}) VALUES ({marques}) ON CONFLICT DO NOTHING",
+                tuple(ligne.values()),
+            )
+        comptes[table] = len(lignes)
+    for ligne in de._db.execute("SELECT id, harness_courant FROM utilisateurs"):
+        if ligne["harness_courant"]:
+            vers._db.execute(
+                "UPDATE utilisateurs SET harness_courant = ? WHERE id = ?",
+                (ligne["harness_courant"], ligne["id"]),
+            )
+    vers._db.commit()
+    return comptes

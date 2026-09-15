@@ -6,7 +6,7 @@ verse (`visibilite` sur le ha). Voir `modele.py` pour le pourquoi.
 
 from __future__ import annotations
 
-from .depot import DUREE_INVITATION, Comptes, IdentiteInconnue
+from .depot import DUREE_INVITATION, Comptes, IdentiteInconnue, ou_ouvrir, transvaser
 from .droits import (
     ADMINISTRATION,
     ANONYME,
@@ -59,6 +59,8 @@ __all__ = [
     "exiger",
     "exiger_au_service",
     "inscrire",
+    "ou_ouvrir",
     "peut",
     "peut_au_service",
+    "transvaser",
 ]

@@ -934,14 +934,14 @@ def _compte(args) -> int:
     un argument se retrouve dans l'historique du shell et dans `ps`."""
     from getpass import getpass
 
-    from .comptes import AclInvalide, Comptes
+    from .comptes import AclInvalide, Comptes, ou_ouvrir
 
     mot_de_passe = getpass("mot de passe (douze caractères au moins) : ")
     if mot_de_passe != getpass("confirmer : "):
         print("les deux saisies diffèrent", file=sys.stderr)
         return 2
 
-    comptes = Comptes(args.comptes)
+    comptes = Comptes(ou_ouvrir(args.comptes))
     try:
         utilisateur = comptes.creer_utilisateur(
             args.nom, args.email, mot_de_passe, admin=getattr(args, "admin", False)
@@ -966,9 +966,9 @@ def _inviter(args) -> int:
     Rien n'est transmis d'autre que ce lien : le mot de passe sera choisi par
     l'invité, et personne d'autre ne l'aura jamais connu.
     """
-    from .comptes import AclInvalide, Comptes
+    from .comptes import AclInvalide, Comptes, ou_ouvrir
 
-    comptes = Comptes(args.comptes)
+    comptes = Comptes(ou_ouvrir(args.comptes))
     try:
         invitant = comptes.par_email(args.par)
         if invitant is None:
@@ -1000,7 +1000,7 @@ def _rattacher(args) -> int:
     """
     import yaml as _yaml
 
-    from .comptes import AclInvalide, Comptes
+    from .comptes import AclInvalide, Comptes, ou_ouvrir
 
     try:
         harness = charger(args.harness)
@@ -1008,7 +1008,7 @@ def _rattacher(args) -> int:
         print(f"✗ {err}", file=sys.stderr)
         return 1
 
-    comptes = Comptes(args.comptes)
+    comptes = Comptes(ou_ouvrir(args.comptes))
     try:
         qui = comptes.par_email(args.email)
         if qui is None:
@@ -1237,6 +1237,7 @@ def _promouvoir(args) -> int:
 
 def _instance(args) -> int:
     """RFC-014 D14.8 — l'instance s'exporte entière au format fichiers, et s'importe."""
+    from .comptes import Comptes
     from .corpus.base import BaseInjoignable, DepotBase, JournalBase
     from .corpus.instance import exporter, importer
 
@@ -1244,16 +1245,19 @@ def _instance(args) -> int:
     if not url:
         print("✗ aucune base déclarée (KOKAJI_BASE_URL) : rien à exporter ni où importer", file=sys.stderr)
         return 1
-    base, journal = DepotBase(url), JournalBase(url)
+    base, journal, comptes = DepotBase(url), JournalBase(url), Comptes(url)
     try:
         if args.geste == "exporter":
-            bilan = exporter(base, journal, args.dossier)
-            print(f"✓ exporté vers {args.dossier} — {bilan.ha} ha dans {len(bilan.corpus)} corpus,"
-                  f" {bilan.ecartes} écartés, {bilan.appels} appels")
+            bilan = exporter(base, journal, args.dossier, comptes=comptes)
         else:
-            bilan = importer(base, journal, args.dossier, journal_fichiers=args.journal, vers=args.vers)
-            print(f"✓ importé depuis {args.dossier} — {bilan.ha} ha dans {len(bilan.corpus)} corpus,"
-                  f" {bilan.ecartes} écartés, {bilan.appels} appels")
+            bilan = importer(
+                base, journal, args.dossier, journal_fichiers=args.journal, vers=args.vers,
+                comptes=comptes, comptes_fichier=args.comptes,
+            )
+        sens = f"exporté vers {args.dossier}" if args.geste == "exporter" else f"importé depuis {args.dossier}"
+        print(f"✓ {sens} — {bilan.ha} ha dans {len(bilan.corpus)} corpus, {bilan.ecartes} écartés,"
+              f" {bilan.appels} appels, {bilan.comptes.get('utilisateurs', 0)} comptes")
+        if args.geste == "importer":
             for corpus in bilan.corpus:
                 print(f"  · {corpus}")
     except BaseInjoignable as err:
@@ -1262,6 +1266,7 @@ def _instance(args) -> int:
     finally:
         base.fermer()
         journal.fermer()
+        comptes.fermer()
     return 0
 
 
@@ -1645,6 +1650,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     importer_.add_argument("dossier", type=Path, help="l'export, ou le dossier des harness")
     importer_.add_argument("--journal", type=Path, help="le journal en JSONL, s'il est ailleurs")
+    importer_.add_argument("--comptes", type=Path, help="le magasin SQLite des comptes à migrer")
     importer_.add_argument(
         "--vers", type=Path, help="le dossier des harness de l'instance d'arrivée, s'il diffère"
     )

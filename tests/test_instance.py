@@ -21,6 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from test_corpus import MANIFEST, _appel
 
 from kokaji.cli import main
+from kokaji.comptes import Comptes
 from kokaji.corpus.depot import DepotFichiers, RefHa
 from kokaji.corpus.journal import lire_fichiers
 from kokaji.hds import charger
@@ -43,6 +44,7 @@ class Instance(unittest.TestCase):
         from kokaji.corpus.base import DepotBase, JournalBase
 
         self.base, self.journal = DepotBase(URL_ESSAI), JournalBase(URL_ESSAI)
+        Comptes(URL_ESSAI).fermer()  # pose les tables des comptes, que `vider` va toucher
         self.vider()
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -91,6 +93,10 @@ class Instance(unittest.TestCase):
 
     def vider(self):
         for table in ("ha", "ecart", "appel"):
+            self.base._executer(f"DELETE FROM {table}")
+        # Les comptes aussi : le Postgres d'essai est partagé avec la suite des comptes.
+        for table in ("sessions", "harness_depot", "contributeurs", "identites_externes",
+                      "invitations", "harness_acl", "utilisateurs"):
             self.base._executer(f"DELETE FROM {table}")
 
     def en_base(self):
@@ -187,18 +193,34 @@ class Instance(unittest.TestCase):
         self.assertIn("corpus/CAS-0002-k1-c1-abcdef/fiche.md", suivis)
         self.assertEqual(len([ref for ref in DepotFichiers().tous(self.harness.corpus)]), 1)
 
-    def test_la_commande_instance_exporte_et_importe(self):
+    def test_la_commande_instance_exporte_et_importe_comptes_compris(self):
         from kokaji.corpus.instance import importer
+
+        # Les comptes de l'instance en fichiers : un SQLite, comme avant.
+        sqlite = self.racine / "comptes.sqlite3"
+        de = Comptes(sqlite)
+        qui = de.creer_utilisateur("Un", "un@exemple.test", "un-mot-de-passe-assez-long", admin=True)
+        de.enregistrer_harness("h", qui.id)
+        de.fermer()
 
         importer(self.base, self.journal, self.racine / "harness", journal_fichiers=self.journal_dir)
         self.en_base()
+        self.assertEqual(main(["instance", "importer", str(self.racine / "harness"), "--comptes", str(sqlite)]), 0)
+        en_base = Comptes(URL_ESSAI)
+        self.assertTrue(en_base.en_base)
+        self.assertEqual(en_base.acl("h").proprietaire, qui.id)
+
         export = self.racine / "export-cli"
         self.assertEqual(main(["instance", "exporter", str(export)]), 0)
         self.assertTrue((export / "manifeste.json").is_file())
+        self.assertTrue((export / "comptes.sqlite3").is_file())
         self.vider()
         self.assertEqual(main(["instance", "importer", str(export)]), 0)
         self.assertEqual(self.journal.compter(), 2)
         self.assertEqual(len(self.base.tous(self.harness.corpus)), 2)
+        self.assertEqual(en_base.par_email("un@exemple.test").id, qui.id)
+        self.assertEqual(en_base.acl("h").proprietaire, qui.id)
+        en_base.fermer()
 
     def test_sans_base_la_commande_instance_refuse(self):
         self.assertEqual(main(["instance", "exporter", str(self.racine / "x")]), 1)

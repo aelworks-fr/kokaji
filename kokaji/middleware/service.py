@@ -30,6 +30,7 @@ from ..comptes import (
     Comptes,
     Utilisateur,
     exiger,
+    ou_ouvrir,
 )
 from ..comptes.chat import Chat
 from ..comptes.modele import PROPRIETAIRE, VISIBILITES
@@ -1013,7 +1014,7 @@ def servir(
         print("✗ aucun harness exploitable", file=sys.stderr)
         return 1
 
-    magasin = Comptes(comptes) if comptes else None
+    magasin = Comptes(ou_ouvrir(comptes)) if comptes else None
     uvicorn.run(
         creer_tous(
             harness, journal, magasin, entete_identite, portail,

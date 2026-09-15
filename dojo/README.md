@@ -77,6 +77,12 @@ Le compte administrateur du chat se crée une fois, inscriptions ouvertes
 (`DOJO_CLE_CHAT_ADMIN`) laisse Kokaji activer les comptes qu'il invite. Le
 premier compte Kokaji se crée par `kokaji comptes` — voir `docs/middleware.md`.
 
+Le magasin est un fichier SQLite dans `comptes/` — ou, dès que `KOKAJI_BASE_URL`
+est posée, les mêmes tables dans la base `kokaji` du Postgres (RFC-014 D14.7) :
+le chemin `--comptes` reste dans la commande, la base prend le pas. La
+migration se joue une fois, `kokaji instance importer <harness> --comptes
+comptes/comptes.sqlite3`, et l'export de l'instance rend un SQLite.
+
 ## Ce que fait le hook
 
 Le nom de modèle virtuel `<harness>/<kata>` est la seule chose que la passerelle
