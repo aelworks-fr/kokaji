@@ -21,7 +21,7 @@ WORKDIR /kokaji
 COPY pyproject.toml README.md ./
 COPY kokaji ./kokaji
 
-RUN pip install --quiet ".[service]"
+RUN pip install --quiet ".[service,base]"
 
 # Ni la veille ni le service n'ont besoin d'être root : la veille écrit dans le
 # corpus monté, le service ne fait que lire.

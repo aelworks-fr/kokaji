@@ -21,6 +21,7 @@ personas, la définition — ne passe pas par ici.
 from __future__ import annotations
 
 import json
+import os
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,7 +29,9 @@ from typing import Protocol, runtime_checkable
 
 import yaml
 
-__all__ = ["DepotDeHa", "DepotFichiers", "RefHa", "depot_pour", "identifiant_de", "ref_de"]
+__all__ = [
+    "DepotDeHa", "DepotFichiers", "RefHa", "depot_pour", "identifiant_de", "ref_de", "transferer",
+]
 
 
 def identifiant_de(nom: str) -> str:
@@ -98,6 +101,7 @@ class DepotDeHa(Protocol):
     def ecrire_sortie(self, ref: RefHa, texte: str) -> None: ...
     def materiau(self, ref: RefHa, nom: str) -> str | None: ...
     def ecrire_materiau(self, ref: RefHa, nom: str, texte: str) -> None: ...
+    def materiaux(self, ref: RefHa) -> list[str]: ...
     def etats(self, ref: RefHa) -> list[dict]: ...
     def a_des_etats(self, ref: RefHa) -> bool: ...
     def ecrire_etats(self, ref: RefHa, releves: list[dict]) -> None: ...
@@ -208,6 +212,10 @@ class DepotFichiers:
     def ecrire_materiau(self, ref: RefHa, nom: str, texte: str) -> None:
         self._ecrire(ref, f"materiau/{nom}", texte)
 
+    def materiaux(self, ref: RefHa) -> list[str]:
+        dossier = ref.chemin / "materiau"
+        return sorted(f.name for f in dossier.iterdir() if f.is_file()) if dossier.is_dir() else []
+
     def etats(self, ref: RefHa) -> list[dict]:
         return _jsonl(self._lire(ref, "etats.jsonl") or "")
 
@@ -253,9 +261,41 @@ class DepotFichiers:
 
 
 _FICHIERS = DepotFichiers()
+_BASES: dict[str, DepotDeHa] = {}
 
 
 def depot_pour(harness=None) -> DepotDeHa:
-    """Le dépôt de ha en service. Les fichiers, tant qu'une instance n'a pas
-    déclaré de base (RFC-014 D14.1) — le lot B posera l'autre."""
-    return _FICHIERS
+    """Le dépôt de ha en service : la base que l'instance déclare par
+    `KOKAJI_BASE_URL` (RFC-014 D14.1), sinon les fichiers. Rien ne bascule
+    sans qu'on l'ait demandé."""
+    url = os.environ.get("KOKAJI_BASE_URL", "").strip()
+    if not url:
+        return _FICHIERS
+    if url not in _BASES:
+        from .base import DepotBase
+
+        _BASES[url] = DepotBase(url)
+    return _BASES[url]
+
+
+def transferer(ref: RefHa, de: DepotDeHa, vers: DepotDeHa, corpus: Path | None = None) -> RefHa:
+    """Un ha, pièce par pièce, d'un dépôt à l'autre — l'export et l'import de
+    D14.8, dans les deux sens, sans rien interpréter. `corpus` : où l'écrire
+    dans le dépôt d'arrivée, si ce n'est pas au même endroit."""
+    cible = vers.creer(corpus if corpus is not None else ref.corpus, ref.nom)
+    for lire, ecrire in (
+        (de.fiche, vers.ecrire_fiche),
+        (de.transcript, vers.ecrire_transcript),
+        (de.sortie, vers.ecrire_sortie),
+        (de.carre, vers.ecrire_carre),
+    ):
+        texte = lire(ref)
+        if texte is not None:
+            ecrire(cible, texte)
+    for nom in de.materiaux(ref):
+        vers.ecrire_materiau(cible, nom, de.materiau(ref, nom) or "")
+    if de.a_des_etats(ref):
+        vers.ecrire_etats(cible, de.etats(ref))
+    for jugement in de.jugements(ref):
+        vers.ajouter_jugement(cible, jugement)
+    return cible

@@ -34,6 +34,24 @@ CAS-XXXX-titre/
   materiau/       ce qui a nourri la session — coupe injectée, tours envoyés
 ```
 
+## Deux dépôts, une interface (RFC-014)
+
+Le dossier ci-dessus est le **format d'échange** d'un ha. Ce qui le lit ou
+l'écrit — le versement, la veille, le QG, l'usage, le banc, les commandes —
+passe par un dépôt de ha (`kokaji/corpus/depot.py`), et il y en a deux :
+
+- **les fichiers** — le régime d'aujourd'hui, celui d'un poste seul, du clone
+  étranger et de la suite de tests ;
+- **la base** — le Postgres de l'instance (`kokaji/corpus/base.py`), désigné
+  par `KOKAJI_BASE_URL` (extra `pip install 'kokaji[base]'`). Un ha y est une
+  ligne, ses pièces ses lignes ; la fiche, le transcript et la sortie y sont
+  gardés entiers, ce qui rend l'export identique, octet pour octet, au dossier.
+
+Sans `KOKAJI_BASE_URL`, rien ne bascule. Les deux dépôts tiennent le même
+contrat, éprouvé par le même jeu de tests (`tests/test_corpus_depot.py`, la
+CI pose un Postgres pour le second). `transferer(ref, de, vers)` fait passer
+un ha de l'un à l'autre, dans les deux sens.
+
 ## Le frontmatter
 
 | Champ | Rôle |

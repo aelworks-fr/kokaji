@@ -6,6 +6,21 @@ on: [push, pull_request, workflow_dispatch]
 jobs:
   trempe:
     runs-on: ubuntu-latest
+    # Le dépôt de ha en base (RFC-014) se joue sur un vrai Postgres, le même
+    # jeu de tests que le dépôt des fichiers. Sans lui, ces tests se sautent.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kokaji
+          POSTGRES_PASSWORD: essai
+          POSTGRES_DB: kokaji_essai
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kokaji" --health-interval 5s
+          --health-timeout 5s --health-retries 10
+    env:
+      KOKAJI_BASE_URL_ESSAI: postgresql://kokaji:essai@127.0.0.1:5432/kokaji_essai
     steps:
       - uses: actions/checkout@v4
       - name: vocabulaire local (secret d'instance, jamais publié)
@@ -22,7 +37,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install --quiet -e ".[service,dev]"
+      - run: pip install --quiet -e ".[service,dev,base]"
       - name: les tests
         run: python -m pytest -q tests
       - name: le manifest de l'Atelier, et sa trempe statique
