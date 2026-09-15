@@ -71,7 +71,11 @@ versée est ignorée, donc la commande se relance sans risque.
 C'est une avance sur le middleware (§7), qui fera ce travail en continu. La règle
 est la même : rien n'est jugé, rien n'est agrégé, rien n'est supprimé.
 
-La promotion en `annote` reste un geste humain — on ouvre la fiche et on écrit.
+La promotion en `annote` reste un geste humain — on ouvre la fiche et on écrit,
+ou `kokaji promouvoir <harness> CAS-XXXX…`, qui fait la même chose et **ajoute
+l'ha au dépôt git du harness**. Car un ha brut n'y entre pas (RFC-014, lot 0) :
+un harness naît avec un `.gitignore` sur `corpus/**/CAS-*/` — la donnée vivante
+ne se versionne pas, sauf ce qu'un humain a décidé de garder avec la forme.
 
 ## Écarter un ha
 

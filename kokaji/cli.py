@@ -1194,6 +1194,33 @@ def _note(args) -> int:
     return 0
 
 
+def _promouvoir(args) -> int:
+    """La promotion est un geste humain (SPECS §6) : la fiche passe `annote`,
+    et l'ha entre au dépôt du harness malgré l'ignore des ha bruts (RFC-014)."""
+    import re
+
+    from .depot import promouvoir_au_depot
+
+    code = 0
+    for nom in args.ha:
+        dossier = Path(nom) if Path(nom).is_dir() else next(iter(args.harness.rglob(nom)), None)
+        fiche = dossier / "fiche.md" if dossier else None
+        if fiche is None or not fiche.is_file():
+            print(f"✗ {nom} : aucun ha à ce nom sous {args.harness}", file=sys.stderr)
+            code = 1
+            continue
+        texte = fiche.read_text(encoding="utf-8")
+        neuf, n = re.subn(r"(?m)^statut:\s*\S+", "statut: annote", texte, count=1)
+        if not n:
+            print(f"✗ {dossier.name} : la fiche n'a pas de `statut`", file=sys.stderr)
+            code = 1
+            continue
+        fiche.write_text(neuf, encoding="utf-8")
+        au_depot = promouvoir_au_depot(args.harness, dossier)
+        print(f"✓ {dossier.name} — annote" + (" · ajouté au dépôt, à sceller" if au_depot else " · hors dépôt git"))
+    return code
+
+
 def _geste_de_depot(args) -> int:
     from .depot import DepotRefuse, etat, lier, pousser, tirer
 
@@ -1557,7 +1584,15 @@ def main(argv: list[str] | None = None) -> int:
     enregistrer.add_argument("--nu", required=True, type=Path, help="le dépôt nu — chemin de la machine")
     enregistrer.add_argument("--branche", default="main")
 
+    promouvoir = sous.add_parser(
+        "promouvoir", help="promeut un ha en `annote` et l'ajoute au dépôt du harness (RFC-014)"
+    )
+    promouvoir.add_argument("harness", type=Path, help="dossier du harness")
+    promouvoir.add_argument("ha", nargs="+", help="dossier(s) CAS-XXXX à promouvoir")
+
     args = parseur.parse_args(argv)
+    if args.commande == "promouvoir":
+        return _promouvoir(args)
     if args.commande in ("pousser", "tirer", "enregistrer"):
         return _geste_de_depot(args)
     if args.commande == "concevoir":

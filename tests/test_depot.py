@@ -218,5 +218,39 @@ class LeDepotNu(Bac):
             tirer(self.racine)
 
 
+class LaDonneeVivanteHorsDuDepot(Bac):
+    """RFC-014 D14.5, lot 0 — un ha brut n'entre pas au dépôt ; promu, il y entre de force."""
+
+    def test_un_harness_nait_avec_ses_ignores(self):
+        from kokaji.depot import IGNORES_DU_HARNESS, initier
+
+        initier(self.racine, "naissance : h")
+        self.assertEqual((self.racine / ".gitignore").read_text(encoding="utf-8"), IGNORES_DU_HARNESS)
+        self.assertIn(".gitignore", _git(self.racine, "ls-files"))
+
+    def test_un_ha_brut_laisse_le_clone_propre_et_la_promotion_l_ajoute(self):
+        """Sabotage 1 de la RFC-014 : une séance de plus, `git status` vide."""
+        from kokaji.cli import main
+        from kokaji.depot import initier
+
+        initier(self.racine, "naissance : h")
+        ha = self.racine / "corpus" / "CAS-0001-essai"
+        ha.mkdir(parents=True)
+        (ha / "fiche.md").write_text("---\nharness: h\nstatut: brut\n---\n", encoding="utf-8")
+        (self.racine / "corpus" / ".ecartes.jsonl").write_text("{}\n", encoding="utf-8")
+        self.assertEqual(_git(self.racine, "status", "--porcelain"), "")
+
+        self.assertEqual(main(["promouvoir", str(self.racine), "CAS-0001-essai"]), 0)
+        self.assertIn("statut: annote", (ha / "fiche.md").read_text(encoding="utf-8"))
+        self.assertIn("corpus/CAS-0001-essai/fiche.md", _git(self.racine, "status", "--porcelain"))
+
+    def test_un_ignore_existant_n_est_pas_ecrase(self):
+        from kokaji.depot import initier
+
+        (self.racine / ".gitignore").write_text("le mien\n", encoding="utf-8")
+        initier(self.racine, "naissance : h")
+        self.assertEqual((self.racine / ".gitignore").read_text(encoding="utf-8"), "le mien\n")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -19,8 +19,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 __all__ = [
-    "DepotIndisponible", "DepotRefuse", "Etat", "chemin_admis", "cloner", "est_depot",
-    "est_depot_nu", "etat", "git", "initier", "lier", "pousser", "reference", "tirer",
+    "IGNORES_DU_HARNESS", "DepotIndisponible", "DepotRefuse", "Etat", "chemin_admis", "cloner",
+    "est_depot", "est_depot_nu", "etat", "git", "initier", "lier", "poser_les_ignores",
+    "pousser", "promouvoir_au_depot", "reference", "tirer",
 ]
 
 
@@ -73,6 +74,7 @@ def initier(racine: Path, message: str, auteur: str = "Kokaji") -> str:
         raise DepotIndisponible("git est absent : le harness naît sans dépôt")
     if est_depot(racine):
         raise DepotIndisponible(f"{racine.name} est déjà un dépôt")
+    poser_les_ignores(racine)
     # La branche est nommée : sans `-b`, git prend `master` ou `main` selon
     # le poste, et le dépôt nu — qui reçoit `main` — ne s'y retrouverait pas.
     for etape in (("init", "-q", "-b", "main"), ("add", "-A"), ("commit", "-q", "-m", message)):
@@ -80,6 +82,35 @@ def initier(racine: Path, message: str, auteur: str = "Kokaji") -> str:
         if fait.returncode != 0:
             raise DepotIndisponible(f"git {etape[0]} a refusé : {fait.stderr.strip()}")
     return git(racine, "rev-parse", "--short", "HEAD").stdout.strip()
+
+
+# RFC-014 D14.5, lot 0 — la donnée vivante ne se versionne pas : un ha brut
+# reste hors du dépôt du harness ; la promotion l'y ajoute de force.
+IGNORES_DU_HARNESS = """# Les ha capturés sont de la donnée vivante (RFC-014) : ils n'entrent au dépôt
+# que promus — `kokaji promouvoir` les ajoute de force.
+corpus/**/CAS-*/
+corpus/**/.ecartes.jsonl
+corpus/**/jugements.jsonl
+"""
+
+
+def poser_les_ignores(racine: Path) -> bool:
+    """Le `.gitignore` d'un harness, s'il n'en a pas. Rend vrai s'il a été écrit."""
+    fichier = Path(racine) / ".gitignore"
+    if fichier.exists():
+        return False
+    fichier.write_text(IGNORES_DU_HARNESS, encoding="utf-8")
+    return True
+
+
+def promouvoir_au_depot(racine: Path, dossier_ha: Path) -> bool:
+    """Un ha promu entre au dépôt malgré l'ignore — c'est le geste humain qui
+    décide qu'il vaut d'être gardé avec la forme (D14.5). Rend vrai si ajouté."""
+    racine = Path(racine)
+    if not est_depot(racine):
+        return False
+    relatif = Path(dossier_ha).resolve().relative_to(racine.resolve())
+    return git(racine, "add", "-f", "--", str(relatif)).returncode == 0
 
 
 @dataclass(frozen=True)
