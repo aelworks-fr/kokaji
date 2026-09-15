@@ -16,6 +16,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from ..corpus.depot import depot_pour
+from ..corpus.journal import journal_pour
 from ..forge.coupe import champ_nu
 from ..hds import Harness
 
@@ -197,11 +198,11 @@ def _releves_en_cours(
     silence après la dernière réplique. La conversation en cours n'apparaîtrait
     nulle part, alors que c'est elle qu'on regarde.
     """
-    from ..corpus import lire_journal
+    from ..corpus.journal import lire_journal
     from ..etat import extraire
 
     releves = []
-    for ligne in lire_journal(journal):
+    for ligne in lire_journal(journal, harness.id):
         identite = ligne.get("identite") or {}
         if identite.get("harness") != harness.id:
             continue
@@ -232,7 +233,7 @@ def _releves(
 ) -> list[dict]:
     """Tous les blocs d'état, capturés puis en cours, dans l'ordre du temps."""
     releves, sessions = _releves_corpus(harness, chemin_corpus(harness, corpus), lisible)
-    if journal is not None and Path(journal).is_dir():
+    if journal is not None and (Path(journal).is_dir() or journal_pour() is not None):
         vise = corpus if isinstance(corpus, str) else None
         declare = harness.corpus_par_nom(vise) if vise else harness.corpus_nommes[0]
         releves += _releves_en_cours(

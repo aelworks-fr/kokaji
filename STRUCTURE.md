@@ -16,6 +16,7 @@ kokaji/              La forge — paquet Python, CLI `kokaji`
   corpus/            Versement du journal vers les ha                 (§6)
     depot.py         L'interface du dépôt de ha, et les fichiers   (RFC-014)
     base.py          Le dépôt de ha dans le Postgres de l'instance (RFC-014)
+    journal.py       Le journal des appels : fichiers et base, lus ensemble
   middleware/        Capture, état, carré continu, surface HTTP  (§7, §12)
   qg/                Fil d'ariane : agrégation + pages, sans CDN (§8, R12.5)
   comptes/           Comptes locaux, droits, portail            (RFC-004)

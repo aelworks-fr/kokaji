@@ -86,6 +86,12 @@ kokaji corpus <harness> [--journal <dossier>] [--session <id>]... [--source reel
 transcript, dernière réponse, et la coupe injectée en matériau. Une session déjà
 versée est ignorée, donc la commande se relance sans risque.
 
+Le journal a deux sources, lues ensemble (`kokaji/corpus/journal.py`) : le
+dossier de fichiers `--journal`, et la table `appel` de la base quand
+`KOKAJI_BASE_URL` est posée — c'est là que le hook de la passerelle écrit à
+la source (RFC-014 D14.4). Un appel n'est jamais compté deux fois ; un journal
+exporté d'ailleurs, en fichiers, se verse toujours.
+
 C'est une avance sur le middleware (§7), qui fera ce travail en continu. La règle
 est la même : rien n'est jugé, rien n'est agrégé, rien n'est supprimé.
 

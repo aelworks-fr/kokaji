@@ -48,7 +48,12 @@ services:
 
   # --- La passerelle : un modèle virtuel par kata (§3) ---------------------------
   litellm:
-    image: ghcr.io/berriai/litellm:main-stable
+    # L'image de LiteLLM plus le pilote Postgres, pour que le journal entre en
+    # base à la source (RFC-014). Voir litellm/Dockerfile.
+    build:
+      context: ./litellm
+      dockerfile: Dockerfile
+    image: kokaji-passerelle:local
     <<: *tenue
     deploy:
       resources:
@@ -70,7 +75,9 @@ services:
       KOKAJI_COUPES_DIR: /coupes
       KOKAJI_CIBLE_DEFAUT: ${KOKAJI_CIBLE_DEFAUT:-sobre}
       # Le journal des ha — la trace durable, lue ensuite par la veille (§7).
+      # En base dès que KOKAJI_BASE_URL est posée (RFC-014), en fichiers sinon.
       KOKAJI_JOURNAL_DIR: /journal
+      KOKAJI_BASE_URL: ${KOKAJI_BASE_URL:-}
       KOKAJI_MODELES_NUS: ${KOKAJI_MODELES_NUS:-banc/persona}
       # Les moteurs — le seul trafic sortant. Voir .env.example et litellm/moteurs.yaml.
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -203,6 +210,9 @@ services:
       # Les dépôts nus des harness (RFC-012) : le seul dossier où le service
       # enregistre, pousse, tire et clone. Monté en écriture.
       KOKAJI_DEPOTS: /depots
+      # La base de l'instance (RFC-014) : le journal et les ha y vivent dès
+      # qu'elle est posée ; sans elle, tout reste en fichiers.
+      KOKAJI_BASE_URL: ${KOKAJI_BASE_URL:-}
     volumes:
       # Le dossier **des** harness : un harness ne peut naître que là où le
       # service en sert plusieurs (RFC-006). En écriture — une naissance écrit.
@@ -253,6 +263,8 @@ services:
       - reel
       - --cle-appelante
       - ${DOJO_ALIAS_CHAT:-chat}
+    environment:
+      KOKAJI_BASE_URL: ${KOKAJI_BASE_URL:-}
     volumes:
       - ${KOKAJI_HARNESS_HOST:-./harness}:/harness
       - ./journal:/journal:ro
@@ -285,6 +297,8 @@ services:
       - essai
       - --source
       - simule
+    environment:
+      KOKAJI_BASE_URL: ${KOKAJI_BASE_URL:-}
     volumes:
       # Celle-ci reste sur le harness d'exemple : le corpus `essai` est une
       # notion de ce harness-là.

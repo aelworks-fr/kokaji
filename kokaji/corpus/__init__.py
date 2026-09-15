@@ -11,7 +11,6 @@ supprimé.
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -19,6 +18,7 @@ from ..comptes.modele import PRIVEE
 from ..hds import Harness
 from ..yaml_source import charger_texte, rendre_source
 from .depot import RefHa, depot_pour, ref_de
+from .journal import lire_journal
 
 __all__ = [
     "Ha", "Versement", "deja_ailleurs", "ecartees", "ecarter",
@@ -96,18 +96,6 @@ class Versement:
 
     ha: list[Ha]
     doubles: dict[str, Path]
-
-
-def lire_journal(dossier: Path) -> list[dict]:
-    lignes: list[dict] = []
-    for fichier in sorted(Path(dossier).glob("*.jsonl")):
-        for ligne in fichier.read_text(encoding="utf-8").splitlines():
-            if ligne.strip():
-                try:
-                    lignes.append(json.loads(ligne))
-                except json.JSONDecodeError:
-                    continue  # une ligne illisible ne fait pas tomber la lecture
-    return lignes
 
 
 def _sessions(lignes: list[dict], id_harness: str) -> dict[str, list[dict]]:
@@ -270,7 +258,7 @@ def verser(
     hors_jeu = ecartees(corpus)
     ailleurs = deja_ailleurs(harness, corpus)
 
-    trouvees = _sessions(lire_journal(journal), harness.id)
+    trouvees = _sessions(lire_journal(journal, harness.id), harness.id)
     numero = _numero_suivant(corpus)
     verses: list[Ha] = []
     doubles: dict[str, Path] = {}

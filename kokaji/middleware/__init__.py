@@ -290,7 +290,7 @@ def veiller(
     `rattraper` traite en plus les ha déjà au corpus qui n'ont pas d'état
     extrait — ceux versés avant que le middleware existe.
     """
-    lignes = lire_journal(journal)
+    lignes = lire_journal(journal, harness.id)
     closes = _closes(lignes, harness.id, repos, maintenant)
     toutes = _toutes(lignes, harness.id) if vivantes else closes
     ouvertes = toutes - closes

@@ -130,6 +130,13 @@ ligne, chaque ligne portant les deux empreintes.
 Le journal ne juge, n'agrège et ne supprime rien : c'est la matière première de
 la veille, qui en compose les ha. Son contenu n'est pas versionné.
 
+Avec `KOKAJI_BASE_URL` posée (RFC-014), le hook écrit chaque appel **en base**,
+table `appel`, dans la base `kokaji` du Postgres du dojo — et dans `journal/`
+seulement si la base ne répond pas, pour ne rien perdre. La veille et le QG
+lisent alors le journal par requête, harness par harness, et relisent aussi
+`journal/` sans compter un appel deux fois. L'image de la passerelle est
+celle de LiteLLM plus le pilote Postgres (`litellm/Dockerfile`).
+
 ## Les coupes
 
 `KOKAJI_COUPES_HOST` pointe sur `./dist/coupes`, la sortie de `kokaji forge`

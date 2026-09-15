@@ -26,7 +26,7 @@ import yaml
 
 from .depot import RefHa
 
-__all__ = ["BaseInjoignable", "DepotBase"]
+__all__ = ["SCHEMA", "BaseInjoignable", "DepotBase", "JournalBase"]
 
 
 class BaseInjoignable(RuntimeError):
@@ -89,6 +89,23 @@ CREATE TABLE IF NOT EXISTS jugement (
     PRIMARY KEY (corpus, ha, rang),
     FOREIGN KEY (corpus, ha) REFERENCES ha (corpus, nom) ON DELETE CASCADE
 );
+CREATE TABLE IF NOT EXISTS appel (
+    id          text PRIMARY KEY,           -- id_appel de la passerelle
+    session     text NOT NULL DEFAULT '',
+    harness     text NOT NULL DEFAULT '',
+    kata        text NOT NULL DEFAULT '',
+    cible       text NOT NULL DEFAULT '',
+    moteur      text NOT NULL DEFAULT '',
+    cle         text NOT NULL DEFAULT '',   -- la clé appelante : chat, banc, QG
+    statut      text NOT NULL DEFAULT '',
+    etat_avant  text,
+    etat_apres  text,
+    debut       text NOT NULL DEFAULT '',
+    fin         text NOT NULL DEFAULT '',
+    ligne       json NOT NULL               -- l'appel entier, tel que le hook l'a écrit
+);
+CREATE INDEX IF NOT EXISTS appel_harness_debut ON appel (harness, debut);
+CREATE INDEX IF NOT EXISTS appel_session ON appel (session);
 CREATE TABLE IF NOT EXISTS ecart (
     corpus text NOT NULL, rang serial, session text NOT NULL,
     raison text NOT NULL DEFAULT '', quand text NOT NULL DEFAULT '',
@@ -137,8 +154,8 @@ def _texte(valeur) -> str:
     return valeur if isinstance(valeur, str) else str(valeur)
 
 
-class DepotBase:
-    """Le corpus dans le Postgres de l'instance."""
+class _Base:
+    """Une connexion au Postgres de l'instance, et le schéma posé une fois."""
 
     def __init__(self, url: str):
         try:
@@ -180,6 +197,15 @@ class DepotBase:
         """Un `json`, pas un `jsonb` : le texte est gardé tel quel, clés dans
         l'ordre — l'export d'un bloc redonne la ligne JSONL d'origine."""
         return self._psycopg.types.json.Json(valeur, dumps=_dumps)
+
+    def fermer(self) -> None:
+        if self._connexion is not None and not self._connexion.closed:
+            self._connexion.close()
+        self._connexion = None
+
+
+class DepotBase(_Base):
+    """Le corpus dans le Postgres de l'instance."""
 
     # --- les ha d'un corpus ---------------------------------------------------
 
@@ -374,9 +400,44 @@ class DepotBase:
             _cle(corpus), session, raison, quand,
         )
 
-    # --- l'entretien ---------------------------------------------------------------
 
-    def fermer(self) -> None:
-        if self._connexion is not None and not self._connexion.closed:
-            self._connexion.close()
-        self._connexion = None
+
+class JournalBase(_Base):
+    """Le journal des appels dans la base — ce que le hook y écrit à la source
+    (D14.4). Une ligne par appel, entière ; les colonnes en sont tirées pour
+    demander par harness, par session, par date."""
+
+    def ecrire(self, ligne: dict) -> None:
+        identite = ligne.get("identite") or {}
+        self._executer(
+            "INSERT INTO appel (id, session, harness, kata, cible, moteur, cle, statut,"
+            " etat_avant, etat_apres, debut, fin, ligne)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            " ON CONFLICT (id) DO NOTHING",
+            _texte(ligne.get("id_appel")) or f"{ligne.get('session')}/{ligne.get('etat_apres')}",
+            _texte(ligne.get("session")), _texte(identite.get("harness")),
+            _texte(identite.get("kata")), _texte(identite.get("cible")),
+            _texte(ligne.get("moteur")), _texte(identite.get("cle")), _texte(ligne.get("statut")),
+            ligne.get("etat_avant"), ligne.get("etat_apres"),
+            _texte(ligne.get("debut")), _texte(ligne.get("fin")),
+            self._json(json.loads(_dumps(ligne))),
+        )
+
+    def appels(self, harness: str | None = None, session: str | None = None) -> list[dict]:
+        clauses, params = [], []
+        if harness:
+            clauses.append("harness = %s")
+            params.append(harness)
+        if session:
+            clauses.append("session = %s")
+            params.append(session)
+        ou = (" WHERE " + " AND ".join(clauses)) if clauses else ""
+        return [
+            ligne for (ligne,) in self._lire_toutes(
+                f"SELECT ligne FROM appel{ou} ORDER BY debut, id", *params
+            )
+        ]
+
+    def compter(self, harness: str | None = None) -> int:
+        ou = " WHERE harness = %s" if harness else ""
+        return self._lire_une(f"SELECT count(*) FROM appel{ou}", *([harness] if harness else []))[0]
