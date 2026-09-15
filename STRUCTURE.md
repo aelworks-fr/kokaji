@@ -38,7 +38,7 @@ dojo/                Le kit d'une instance — Docker Compose           (§3)
   harness/ journal/ comptes/   L'instance elle-même — hors git
 atelier/             Le harness de démonstration, domaine fictif      (§9)
 trempe/              La trempe du produit : check.sh, exemptions, gabarit
-docs/                SPECS, RFC 001→014, HDS v0, et la doc de chaque commande
+docs/                SPECS, RFC 001→015, HDS v0, et la doc de chaque commande
   design/handoff-v2/ L'audit ergonomique et le prototype v2 — la référence visuelle (RFC-013)
   carnet.md          Le carnet de vigilances — ce qui peut mal tourner, et ce qu'on lui oppose
 .github/workflows/   La CI : trempe du produit, tests, Atelier, style
