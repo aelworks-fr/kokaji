@@ -51,6 +51,9 @@ class VueNoeud:
     etape: str | None = None
     provenance: dict = field(default_factory=dict)
     sessions: list[dict] = field(default_factory=list)
+    # RFC-011 D11.3 — un kata en texte n'a pas de contrat : son carré est
+    # éteint, jamais vert ni rouge, et le nœud le dit.
+    sans_contrat: bool = False
 
     @property
     def options_vivantes(self) -> list[Option]:
@@ -141,6 +144,7 @@ class VueQG:
                     "sessions": n.sessions,
                     "champs": n.champs,
                     "attendus": list(n.attendus),
+                    "sans_contrat": n.sans_contrat,
                     "hypotheses": n.hypotheses,
                     "options_vivantes": len(n.options_vivantes),
                     "options": [vars(o) for o in n.options],
@@ -370,10 +374,12 @@ def composer(
     # reprise partout (RFC-013, K-06). Le nom de la chaîne ne sert qu'aux
     # nœuds qui ne sont pas des kata : un jalon, une étape externe.
     noms_de_kata = {k.id: k.nom for k in harness.kata}
+    orphelins = {k.id for k in harness.kata if k.orphelin or harness.exogene}
     noeuds = {
         n.id: VueNoeud(
             id=n.id, type=n.type, nom=noms_de_kata.get(n.id, n.nom),
             attendus=produits.get(n.id, ()),
+            sans_contrat=n.id in orphelins and not produits.get(n.id),
         )
         for n in harness.chaine.noeuds
     }

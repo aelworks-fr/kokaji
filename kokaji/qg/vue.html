@@ -1011,6 +1011,10 @@ const jeton = (nom) => `var(--color-${nom})`;
 
 // La rampe de chaleur — cinq marches, jamais un binaire.
 function marche(noeud) {
+  // Un kata en texte n'a pas de contrat (RFC-011 D11.3) : rien à établir,
+  // rien à colorer — éteint, jamais vert ni rouge.
+  if (noeud.sans_contrat)
+    return { fond: "neutral-100", bord: "neutral-400", encre: "neutral-700", tirets: true, texte: "—", sans_contrat: true };
   if (!noeud.pratique || noeud.chaleur === null)
     return { fond: "neutral-100", bord: "neutral-400", encre: "neutral-500", tirets: true, texte: "—" };
   const h = noeud.chaleur, pct = Math.round(h * 100) + "%";
@@ -1116,7 +1120,7 @@ function rendreFil() {
            title="${n.refutees} hypothèse(s) infirmée(s) — une trempe ratée est une information"></span>` : ""}
       </button>
       <div class="nom-noeud">${e(n.nom)}</div>
-      <div class="type-noeud">${e(n.type)}</div>
+      <div class="type-noeud">${m.sans_contrat ? "sans contrat" : e(n.type)}</div>
       <div class="fraicheur ${f.ancienne ? "ancienne" : ""}">${e(f.texte)}</div>`;
     col.querySelector("button").onclick = () => {
       noeudChoisi = noeudChoisi === n.id ? null : n.id;
@@ -1700,6 +1704,8 @@ function proposition() {
     // Le livrable est exigé par le manifest : un kata neuf qui n'en porte pas
     // est refusé, et le refus parlerait d'un champ que la page n'a jamais montré.
     if (!origine || origine.livrable !== k.livrable) { entree.livrable = k.livrable; bouge = true; }
+    // RFC-011 D11.3 — remplacer un texte par un densho : la source redevient une source de forge.
+    if (k.remplacer_par_densho) { entree.source = `kata/${k.id}.yaml`; bouge = true; }
     if (bouge) kata.push(entree);
   });
   if (kata.length) p.kata = kata;
@@ -1724,15 +1730,24 @@ function proposition() {
     if (def.template && brouillon.template !== def.template.texte) p.template = brouillon.template;
     const src = {};
     brouillon.kata.forEach(k => {
+      const apres = brouillon.source[k.id] || {};
+      // Un texte importé dans la page : il voyage tel quel, avec sa provenance (RFC-011).
+      if (k.texte_importe && typeof apres.texte === "string") { src[k.id] = { texte: apres.texte }; return; }
       const origine = def.kata.find(o => o.id === k.id);
-      if (!origine) return;
-      const avant = origine.source || {}, apres = brouillon.source[k.id] || {};
+      if (!origine || k.orphelin) return;
+      const avant = origine.source || {};
       DENSHO.forEach(cle => {
         if (JSON.stringify(apres[cle] ?? null) !== JSON.stringify(avant[cle] ?? null))
           (src[k.id] = src[k.id] || {})[cle] = apres[cle];
       });
     });
     if (Object.keys(src).length) p.source = src;
+    const importe = {};
+    Object.entries(brouillon.importe || {}).forEach(([quoi, prov]) => {
+      if (quoi === "template" ? p.template !== undefined : !!(src[quoi] && src[quoi].texte !== undefined))
+        importe[quoi] = prov;
+    });
+    if (Object.keys(importe).length) p.importe = importe;
   }
   return p;
 }
@@ -1772,6 +1787,8 @@ async function chargerDesign() {
     // Le gabarit et les densho, tels que la forge les lit (RFC-010 D10.1, D10.2).
     template: def.template ? def.template.texte : null,
     source: Object.fromEntries(def.kata.map(k => [k.id, copie(k.source || {})])),
+    // RFC-011 — la provenance des textes importés dans cette page, par kata ou `template`.
+    importe: {},
   };
   epreuve = null; coupeRendue = null; coupeDit = "";
   kataChoisi = brouillon.kata.length ? brouillon.kata[0].id : null;
@@ -1871,7 +1888,7 @@ function marquesDe(k) {
   const rompus = liensRompus().filter(r => r.kata === k.id).length;
   const src = brouillon.source[k.id];
   // Un orphelin (RFC-011) est un texte : ni densho à compléter, ni seuil.
-  if (k.orphelin) return { contrat: rompus, densho: false, seuil: false };
+  if ((k.orphelin && !k.remplacer_par_densho) || k.texte_importe) return { contrat: rompus, densho: false, seuil: false };
   const incomplet = !def.harness.exogene && (!src
     || !(src.role || "").trim() || !(src.questions || []).length
     || !(src.livrable_structure || []).length || !(src.passage || "").trim());
@@ -1946,6 +1963,40 @@ function idLibre() {
   return `etape-${n}`;
 }
 
+// La zone d'import (RFC-011 §4) : un texte collé, trois champs de provenance.
+// Rien ne part avant l'épreuve — le texte entre au brouillon, comme le reste.
+let importOuvert = null;   // "template" ou l'id d'un kata, quand la zone est ouverte
+function zoneImport(quoi) {
+  return `<div class="card elev-sm" id="import-zone" style="padding:16px 18px;margin-top:10px;display:flex;flex-direction:column;gap:8px">
+    <span style="font-size:13.5px;font-weight:600">Importer un texte ${quoi === "template" ? "comme gabarit" : "comme base de ce kata"}</span>
+    <p class="rien" style="margin:0">Il entre tel quel — jamais réécrit — avec sa provenance. ${quoi === "template"
+      ? "Sans variable, il rend les densho inertes : l'épreuve le dira, ce n'est pas un refus."
+      : "Le kata devient un texte servi tel quel, sans densho ni contrat, jusqu'à ce qu'on le remplace par un densho."}</p>
+    <textarea class="densho-zone mono" id="import-texte" rows="8" placeholder="Le texte, collé tel quel." aria-label="texte à importer"></textarea>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <input class="champ-large" id="import-source" style="flex:2;min-width:12rem" autocomplete="off" placeholder="d'où il vient — obligatoire" aria-label="provenance">
+      <input class="champ-large" id="import-version" style="flex:1;min-width:8rem" autocomplete="off" placeholder="version" aria-label="version de la source">
+      <input class="champ-large" id="import-date" style="flex:1;min-width:8rem" autocomplete="off" placeholder="date — sinon aujourd'hui" aria-label="date d'import">
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn-plein" id="import-valider">mettre au brouillon</button>
+      <button class="btn-fantome" id="import-annuler">annuler</button>
+      <span class="diff-val" id="import-dit"></span>
+    </div>
+  </div>`;
+}
+function brancherImport(quoi, appliquer) {
+  $("import-annuler").onclick = () => { importOuvert = null; rendreDesign(); };
+  $("import-valider").onclick = () => {
+    const texte = $("import-texte").value, source = $("import-source").value.trim();
+    if (!texte.trim()) { $("import-dit").textContent = "un texte vide n'importe rien."; return; }
+    if (!source) { $("import-dit").textContent = "une provenance dit d'où vient le texte."; return; }
+    brouillon.importe[quoi] = { source, version_source: $("import-version").value.trim(),
+                                date_import: $("import-date").value.trim() };
+    appliquer(texte); importOuvert = null; retoucheCoupe();
+  };
+}
+
 let gabaritOuvert = false;
 function rendreGabarit() {
   const zone = $("gabarit-corps");
@@ -1964,15 +2015,20 @@ function rendreGabarit() {
   zone.innerHTML = `<p class="rien" style="margin:0 0 8px">La doctrine commune à toute la chaîne. Ses
       variables — ${variables.length ? variables.map(v => `<code>{{ ${e(v)} }}</code>`).join(", ") : "aucune"} —
       sont remplies par le densho de chaque kata à la forge.</p>
-    <textarea class="densho-zone mono" id="gabarit-texte" rows="12" aria-label="Le gabarit du harness">${e(brouillon.template ?? "")}</textarea>`;
+    <textarea class="densho-zone mono" id="gabarit-texte" rows="12" aria-label="Le gabarit du harness">${e(brouillon.template ?? "")}</textarea>
+    <div style="margin-top:8px"><button class="btn-fantome" id="gabarit-importer">importer un texte comme gabarit</button></div>
+    ${importOuvert === "template" ? zoneImport("template") : ""}`;
   $("gabarit-texte").onchange = (ev) => { brouillon.template = ev.target.value; retoucheCoupe(); };
+  $("gabarit-importer").onclick = () => { importOuvert = "template"; rendreGabarit(); };
+  if (importOuvert === "template") brancherImport("template", (texte) => { brouillon.template = texte; });
 }
 
 function rendreVerdict() {
   const p = proposition();
   const combien = Object.keys(p).length ? (p.kata || []).length + (p.retirer || []).length
     + (p.trempe ? Object.keys(p.trempe).length : 0)
-    + (p.template !== undefined ? 1 : 0) + (p.source ? Object.keys(p.source).length : 0) : 0;
+    + (p.template !== undefined ? 1 : 0) + (p.source ? Object.keys(p.source).length : 0)
+    + (p.importe ? Object.keys(p.importe).length : 0) : 0;
   const rompus = liensRompus();
   let pastille, detail, scellable = false;
 
@@ -2669,7 +2725,7 @@ const depuisLignes = (texte) => texte.split("\n").map(l => l.trim()).filter(Bool
 function retoucheCoupe() { coupeRendue = null; coupeDit = ""; retouche(); }
 
 function rendreCoupes(k) {
-  const exogene = def.harness.exogene || k.orphelin;
+  const exogene = def.harness.exogene || k.orphelin || k.texte_importe;
   const densho = brouillon.source[k.id] || {};
   const zone = (cle, libelle, aide, rows = 3) => `
     <div>
@@ -2684,9 +2740,16 @@ function rendreCoupes(k) {
   const gauche = exogene ? `
     <p class="rien">${def.harness.exogene
       ? "Un harness adopté n'a ni gabarit ni densho : ses étapes sont des textes servis tels quels. Ils se lisent ici ; les éditer est le geste du RFC-011."
+      : k.texte_importe ? "Un texte importé dans cette page, tel quel : il entrera au scellement, avec sa provenance, comme source de ce kata."
       : "Ce kata est un texte importé, servi tel quel (RFC-011) : sans densho ni contrat. Il se lit ici ; le remplacer par un densho est un geste à part."}</p>
     ${k.provenance ? `<p class="mot">provenance : ${e(k.provenance.source || "?")}</p>` : ""}
-    <pre class="hds" id="densho-texte" style="margin-top:10px">${e(densho.texte || "")}</pre>`
+    ${k.texte_importe ? `<p class="mot">provenance : ${e((brouillon.importe[k.id] || {}).source || "?")}</p>` : ""}
+    <pre class="hds" id="densho-texte" style="margin-top:10px">${e(densho.texte || "")}</pre>
+    ${!def.harness.exogene ? `<div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      ${k.orphelin && !k.remplacer_par_densho ? `<button class="btn-fantome" id="densho-remplacer">remplacer par un densho</button>` : ""}
+      ${k.remplacer_par_densho ? `<span class="tag tag-outline">au scellement, ce kata reçoit un densho à écrire — le texte reste à côté</span>` : ""}
+      ${k.texte_importe ? `<button class="btn-fantome" id="import-retirer">retirer ce texte du brouillon</button>` : ""}
+    </div>` : ""}`
   : `<div style="display:flex;flex-direction:column;gap:16px">
       ${zone("role", "Rôle", "obligatoire", 4)}
       ${zone("questions", "Questions", "une par ligne, obligatoire", 5)}
@@ -2737,8 +2800,19 @@ function rendreCoupes(k) {
     <p class="mot" style="margin:0 0 16px;max-width:76ch">Le seul endroit du produit où l'on écrit longuement :
       pleine largeur, hauteur libre, l'aperçu de la coupe rendue à côté. Les adjonctions — ce que le
       kata hérite, ce qu'il produit — entrent à la forge depuis l'axe Contrats et se lisent dans la coupe.</p>
-    <div class="densho-grille"><div>${gauche}</div><div>${droite}</div></div>`;
+    <div class="densho-grille"><div>${gauche}${!exogene && !def.harness.exogene
+      ? `<div style="margin-top:10px"><button class="btn-fantome" id="kata-importer">importer un texte comme base de ce kata</button></div>
+         ${importOuvert === k.id ? zoneImport(k.id) : ""}` : ""}</div><div>${droite}</div></div>`;
 
+  if ($("kata-importer")) $("kata-importer").onclick = () => { importOuvert = k.id; rendreDesign(); };
+  if (importOuvert === k.id && $("import-valider"))
+    brancherImport(k.id, (texte) => { brouillon.source[k.id] = { texte }; k.texte_importe = true; });
+  if ($("densho-remplacer")) $("densho-remplacer").onclick = () => { k.remplacer_par_densho = true; retouche(); };
+  if ($("import-retirer")) $("import-retirer").onclick = () => {
+    const origine = def.kata.find(o => o.id === k.id);
+    brouillon.source[k.id] = copie(origine && origine.source || {});
+    delete brouillon.importe[k.id]; k.texte_importe = false; retoucheCoupe();
+  };
   $("axe-corps").querySelectorAll("button[data-cible]").forEach(b => {
     b.onclick = () => { cibleChoisie = b.dataset.cible; coupeRendue = null; rendreDesign(); };
   });

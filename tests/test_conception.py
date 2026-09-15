@@ -539,6 +539,24 @@ class ImporterUnTexte(Scellement):
         self.assertEqual(v.avis, ())
 
 
+class RemplacerParUnDensho(Scellement):
+    """RFC-011 D11.3 — un orphelin reprend une source de forge ; sa provenance part avec."""
+
+    def test_le_texte_cede_la_place_a_un_densho_a_ecrire(self):
+        (self.racine / "kata" / "venu.md").write_text("Tu accompagnes.\n", encoding="utf-8")
+        self.sceller(Proposition(kata=[{
+            "id": "venu", "nom": "Venu", "source": "kata/venu.md", "amont": [], "herite": [], "produit": [],
+            "provenance": {"source": "manuel", "checksum_import": "abc", "date_import": "2026-09-14"},
+        }]))
+        self.sceller(Proposition(kata=[{"id": "venu", "source": "kata/venu.yaml"}]))
+        entree = next(k for k in self.manifest()["kata"] if k["id"] == "venu")
+        self.assertEqual(entree["source"], "kata/venu.yaml")
+        self.assertNotIn("provenance", entree)
+        self.assertIn("À écrire", (self.racine / "kata" / "venu.yaml").read_text(encoding="utf-8"))
+        # Le texte reste à côté, pour référence.
+        self.assertEqual((self.racine / "kata" / "venu.md").read_text(encoding="utf-8"), "Tu accompagnes.\n")
+
+
 class VocabulaireDeProposition(unittest.TestCase):
     def test_le_gabarit_est_un_texte(self):
         with self.assertRaises(TypeError):

@@ -317,3 +317,31 @@ class LeNomDUnNoeud(Bac):
         noms = {n.id: n.nom for n in vue.noeuds}
         self.assertEqual(noms["k1"], "K1")
         self.assertEqual(noms["j1"], "J1")
+
+
+class UnNoeudSansContrat(Bac):
+    """RFC-011 D11.3, sabotage 5 — le carré d'un kata en texte est éteint, les autres vivants."""
+
+    def test_le_kata_en_texte_est_sans_contrat_et_les_autres_non(self):
+        from kokaji.hds import charger
+        from kokaji.qg import composer
+
+        manifest = (self.racine / "harness.yaml").read_text(encoding="utf-8")
+        manifest = manifest.replace(
+            "chaine:",
+            """  - id: venu
+    nom: Venu
+    source: kata/venu.md
+    amont: []
+    herite: []
+    produit: []
+    provenance: { source: manuel, checksum_import: abc, date_import: "2026-09-14" }
+chaine:""",
+        ).replace("  noeuds:\n", "  noeuds:\n    - { id: venu, type: kata, nom: Venu }\n")
+        (self.racine / "harness.yaml").write_text(manifest, encoding="utf-8")
+        (self.racine / "kata" / "venu.md").write_text("Tu accompagnes.\n", encoding="utf-8")
+        vue = composer(charger(self.racine), "S")
+        sans = {n.id: n.sans_contrat for n in vue.noeuds}
+        self.assertTrue(sans["venu"])
+        self.assertFalse(sans["k1"])
+        self.assertFalse(sans["k2"])

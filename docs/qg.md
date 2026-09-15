@@ -122,6 +122,15 @@ détail d'un nœud** — à côté des champs et des hypothèses — et non une 
 nouvelle. Une nature n'est pas un score : elle ne colore rien, elle ne classe
 rien, elle se lit.
 
+## Importer un texte, et un kata en texte (RFC-011)
+
+Depuis le gabarit ou depuis un kata, « importer un texte » ouvre une zone de
+collage et trois champs de provenance ; le texte entre au brouillon, tel
+quel, et passe par l'épreuve comme le reste. Un kata en texte est *orphelin* :
+sans densho ni contrat, servi tel quel ; sa facette Coupes le lit et propose
+de le remplacer par un densho. Au QG, son nœud s'affiche éteint, marqué
+« sans contrat » — jamais vert ni rouge.
+
 ## La page v2 — la passe 3 (RFC-013)
 
 Écrire et lire mieux. Les gris secondaires sont en `neutral-700` — 5,5 : 1 sur

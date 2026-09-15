@@ -538,6 +538,32 @@ class LesAvisDeLEpreuve(unittest.TestCase):
         self.assertIn(">Avis — ${e(a)}</p>", PAGE)
 
 
+class ImporterDansLaPage(unittest.TestCase):
+    """RFC-011, lot C — importer un texte, remplacer par un densho, le nœud éteint."""
+
+    def test_la_zone_d_import_existe_aux_deux_places(self):
+        self.assertIn('id="gabarit-importer"', PAGE)
+        self.assertIn('id="kata-importer"', PAGE)
+        self.assertIn("function zoneImport(quoi)", PAGE)
+        self.assertIn('placeholder="d\'où il vient — obligatoire"', PAGE)
+
+    def test_rien_ne_part_sans_provenance_ni_texte(self):
+        self.assertIn("une provenance dit d'où vient le texte.", PAGE)
+        self.assertIn("un texte vide n'importe rien.", PAGE)
+
+    def test_le_texte_et_sa_provenance_entrent_dans_la_proposition(self):
+        self.assertIn("src[k.id] = { texte: apres.texte }", PAGE)
+        self.assertIn("if (Object.keys(importe).length) p.importe = importe;", PAGE)
+
+    def test_remplacer_par_un_densho_est_offert_a_un_orphelin(self):
+        self.assertIn('id="densho-remplacer"', PAGE)
+        self.assertIn("entree.source = `kata/${k.id}.yaml`", PAGE)
+
+    def test_un_noeud_sans_contrat_s_eteint_au_qg(self):
+        self.assertIn("if (noeud.sans_contrat)", PAGE)
+        self.assertIn('${m.sans_contrat ? "sans contrat" : e(n.type)}', PAGE)
+
+
 class LesCoupes(unittest.TestCase):
     """L'axe 4 — le gabarit, les densho, la coupe qu'on voit (RFC-010 §4.4)."""
 

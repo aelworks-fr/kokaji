@@ -1,6 +1,6 @@
 # RFC-011 — Importer un prompt tel quel, comme gabarit ou comme kata
 
-> **Statut : proposé** (établi, septembre 2026).
+> **Statut : appliqué** (établi et appliqué, septembre 2026).
 > Dépend de : RFC-008 (l'échelle d'adoption, la coupe orpheline), RFC-010 (le gabarit et les densho s'éditent depuis le QG), RFC-006 (proposition, épreuve, scellement), RFC-004 §3. Objet : faire entrer dans un harness un texte écrit ailleurs, **sans le réécrire**, à l'une des deux places où un texte peut vivre.
 
 ---
@@ -128,7 +128,7 @@ Remplacer le gabarit par un texte sans variables rend les densho **inertes** : l
 |---|---|
 | A — le kata orphelin dans un harness natif | appliqué — `Kata.orphelin` et `Kata.provenance` ; une source `.md` fait l'orphelin ; sa provenance est exigée, un contrat refusé (sabotage 4), la provenance interdite à un natif ; la forge choisit par kata, une cible instrumentée le sert sans bloc (D11.3) ; la trempe statique trempe le texte (sabotages 1, 2) et ne consulte pas le registre pour lui ; le scellement ne lui sème pas de densho ; la page le lit sans l'éditer |
 | B — l'import comme proposition | appliqué — `Proposition.importe` (provenance, `source` exigée : sabotage 3) et `source.<kata>.texte` ; l'épreuve pose le texte sur la copie et le trempe (sabotage 1) ; le scellement l'écrit octet pour octet (sabotage 6), pose `source: kata/<id>.md` et la provenance avec empreinte au manifest, `provenance_du_gabarit` pour un gabarit ; l'avis D11.4 sur les densho inertes, rendu par l'épreuve |
-| C — la page et les observatoires | à faire — les trois encres par kata, le geste « remplacer par un densho » |
+| C — la page et les observatoires | appliqué — « importer un texte » sur le gabarit et sur un kata, avec la zone de collage et la provenance, rien ne part avant l'épreuve ; « remplacer par un densho » sur un orphelin, qui reçoit un densho à écrire et un champ à nommer, le texte restant à côté ; au QG, un kata en texte est *sans contrat* : son nœud s'éteint, les autres vivent (sabotage 5) |
 
 ---
 *Note d'établi : le RFC-008 disait qu'un harness n'est pas dedans-ou-dehors, mais plus ou moins* su *par la forge. Ce RFC dit la même chose d'un kata : un texte collé est une étape que la forge ne sait pas encore lire — pas une étape qu'elle refuse.*

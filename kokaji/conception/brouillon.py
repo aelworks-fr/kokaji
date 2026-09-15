@@ -146,6 +146,19 @@ def appliquer(manifest: dict, proposition: Proposition, copier: bool = True) -> 
                 arrivants.append(entree)
         else:
             existant.update(propose)
+            # RFC-011 D11.3 — « remplacer par un densho » : un orphelin qui
+            # reprend une source de forge cesse d'être un texte importé, et sa
+            # provenance — réservée à un orphelin — part avec.
+            if str(propose.get("source") or "").endswith(".yaml"):
+                existant.pop("provenance", None)
+                # Un kata natif déclare un livrable et garantit quelque chose :
+                # on sème les deux, à nommer — comme pour un kata qui naît.
+                existant.setdefault("livrable", existant.get("nom") or id_kata)
+                if not existant.get("livrable"):
+                    existant["livrable"] = existant.get("nom") or id_kata
+                if not existant.get("produit"):
+                    statuts = list((apres.get("etat") or {}).get("statuts_champ") or ["fait_etabli"])
+                    existant["produit"] = [{f"{id_kata}.a-nommer": statuts[0]}]
 
     # RFC-011 D11.1 — un texte importé devient la source d'un kata orphelin :
     # `kata/<id>.md`, une provenance estampillée (empreinte comprise), pas de
