@@ -608,6 +608,15 @@ class LesCoupes(unittest.TestCase):
         self.assertIn("Ce kata est un texte importé, servi tel quel (RFC-011)", RENDU)
         self.assertIn("if (exogene) return;", RENDU)
 
+    def test_le_contrat_d_un_kata_importe_s_edite_comme_un_natif(self):
+        """RFC-015 — le contrat f♯ décrit l'état, pas la source du prompt."""
+        # Le court-circuit qui déclarait l'importé « sans contrat » a disparu.
+        self.assertNotIn("ne tient pas de contrat (RFC-011)", RENDU)
+        # La facette Coupes ne dit plus « ni contrat » et renvoie vers Contrats f♯.
+        self.assertIn("son contrat f♯ s'édite dans « Contrats f♯ » (RFC-015)", RENDU)
+        # Un texte importé garde densho:false, mais retrouve contrat et seuil.
+        self.assertIn("const importe = (k.orphelin && !k.remplacer_par_densho)", RENDU)
+
     def test_les_adjonctions_ne_s_editent_pas_ici(self):
         """Elles vivent à l'axe Contrats et se lisent dans la coupe (RFC-010 §2)."""
         self.assertNotIn('data-densho="herite"', RENDU)

@@ -113,6 +113,7 @@ corpus: corpus/               # les ha capturés et promus (standard §6)
 - R2.2 — Plusieurs harness chargeables côte à côte, isolés (id préfixe tout : modèles virtuels, logs, ha, corpus).
 - R2.3 — Le HDS est versionné indépendamment de Kokaji ; ce fichier en est la **v0.1**.
 - R2.4 — **Le contrat d'un kata (f♯) vit sur le kata, pas sur l'arête** : le couple (`herite`, `produit`), dans le vocabulaire des champs des blocs d'état. La loi qui les relie à la pratique — *l'état final d'un ha livre au moins ce que `produit` promet* — est vérifiée par la trempe (§5) et, en continu, par le middleware (§7). Sous-promettre est permis ; sur-promettre est une non-conformité. L'ordre des statuts est celui de leur déclaration dans `etat.statuts_champ`, du plus fort au plus faible. Voir [RFC-002](docs/rfc-002-check-galoisien.md).
+- R2.5 — **Natif ou orphelin dit la source du prompt, pas le contrat.** Un kata est *natif* quand son prompt s'assemble depuis le gabarit et un densho, *orphelin* quand sa source est un texte servi tel quel (`source: …/<id>.md`, RFC-011) ; un harness est *exogène* quand tous ses kata sont orphelins (RFC-008). Un kata orphelin **porte et édite un contrat f♯ comme un natif** — le contrat décrit l'état, pas la forme du prompt ; seule sa réécriture en densho attend (RFC-011 D11.3, amendée par [RFC-015](docs/rfc-015-contrats-des-harness-importes.md)).
 
 ## 3. Le Dojo — passerelle + chat
 

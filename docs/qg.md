@@ -127,9 +127,12 @@ rien, elle se lit.
 Depuis le gabarit ou depuis un kata, « importer un texte » ouvre une zone de
 collage et trois champs de provenance ; le texte entre au brouillon, tel
 quel, et passe par l'épreuve comme le reste. Un kata en texte est *orphelin* :
-sans densho ni contrat, servi tel quel ; sa facette Coupes le lit et propose
-de le remplacer par un densho. Au QG, son nœud s'affiche éteint, marqué
-« sans contrat » — jamais vert ni rouge.
+sans densho, servi tel quel ; sa facette Coupes le lit et propose de le
+remplacer par un densho. Son contrat f♯, lui, s'édite dans « Contrats f♯ »
+comme celui d'un natif (RFC-015) : hériter, produire, poser un seuil — le
+contrat décrit l'état, pas la forme du prompt. Au QG, un nœud ne s'affiche
+éteint et « sans contrat » que s'il ne déclare **aucun** `produit`, jamais
+parce que sa source est un texte.
 
 ## La page v2 — la passe 3 (RFC-013)
 

@@ -107,3 +107,22 @@ leur objet et le jettent aussitôt ; un scénario qui n'appelle jamais deux fois
 le même service de fond ; une correction posée sans qu'on ait fait tomber le
 test qui la couvre ; un geste ajouté sans qu'on ait dit ce qu'il advient quand
 un autre repasse derrière.
+
+
+## #11 — Confondre la source d'un kata et son contrat
+
+Un kata importé (RFC-011) a un prompt qui est un **texte**, pas un densho. La
+tentation est de le tenir pour un citoyen de seconde zone : « un texte servi
+tel quel ne tient pas de contrat ». C'est une confusion. Le contrat f♯ (RFC-002)
+décrit la **structure de l'état** que le kata produit et hérite — ce qu'un ha
+laisse derrière lui —, et cela ne dépend en rien de la forme du prompt qui l'a
+produit. `carto-be`, harness exogène, déclarait six contrats complets pendant
+que la page refusait de les éditer.
+
+**Ce qu'on oppose** : la source (texte ou densho) et le contrat (le f♯) sont
+deux axes séparés, deux gestes séparés. « Remplacer par un densho » change la
+source ; « Contrats f♯ » édite le contrat ; l'un n'attend pas l'autre (RFC-015).
+
+**Ce qui trahirait la vigilance** : une facette qui déclare un kata « sans
+contrat » parce que sa source est un texte, et non parce qu'il ne produit rien ;
+un nœud du QG éteint pour un kata importé qui déclare pourtant un `produit`.

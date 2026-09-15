@@ -72,4 +72,4 @@ D11.3 disait « ni densho ni contrat propre tant qu'il n'a pas été réécrit �
 
 | Lot | État |
 |---|---|
-| unique — la facette s'ouvre aux importés | à faire |
+| unique — la facette s'ouvre aux importés | appliqué — `rendreContrats` n'a plus de court-circuit orphelin : un kata importé édite hérité, produit et seuils comme un natif (le serveur les sérialisait déjà de la même façon, le backend les acceptait déjà) ; `marquesDe` garde `densho: false` pour un texte importé mais rend contrat et seuil ; la facette Coupes ne dit plus « ni contrat » et renvoie vers « Contrats f♯ » ; tests de page ; RFC-011, SPECS §2, docs/qg.md et le carnet suivis |

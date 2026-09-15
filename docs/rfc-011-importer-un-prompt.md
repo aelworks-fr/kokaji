@@ -84,6 +84,7 @@ Remplacer le gabarit par un texte sans variables rend les densho **inertes** : l
 | SPECS §2 | R2.5 (proposée) : un kata est natif ou orphelin ; un harness est exogène quand tous ses kata sont orphelins |
 | RFC-008 | §3 : l'échelle d'adoption vaut par kata ; §4 : `exogene: true` devient le cas où tous le sont |
 | RFC-010 | l'axe « Coupes » porte l'import et le geste « remplacer par un densho » |
+| RFC-015 | amende D11.3 : le contrat f♯ d'un kata importé s'édite avant toute réécriture ; seul le densho attend |
 | Carnet de vigilances | + « un gabarit sans variable rend les densho inertes sans les effacer — l'épreuve doit le dire » |
 
 ## 6. Non-objectifs
