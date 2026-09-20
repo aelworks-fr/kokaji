@@ -10,7 +10,12 @@ FROM mcr.microsoft.com/playwright/python:v1.62.0-noble
 WORKDIR /kokaji
 COPY pyproject.toml README.md ./
 COPY kokaji ./kokaji
-RUN pip install --quiet --no-input ".[service]" playwright
+# `playwright` **épinglé sur la version de l'image de base** : elle embarque le
+# navigateur d'une révision précise (build 1234 pour la 1.62.0), et un
+# `playwright` non épinglé tire la dernière version de PyPI, qui réclame un
+# navigateur plus récent que l'image ne contient pas — le rendu tombe alors sur
+# « Executable doesn't exist ». Bouger le tag `FROM` = bouger ce pin, ensemble.
+RUN pip install --quiet --no-input ".[service]" playwright==1.62.0
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 # Pas d'ENTRYPOINT : les autres services du dojo nomment `kokaji` dans leur
