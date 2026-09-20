@@ -75,6 +75,10 @@ class Bac(unittest.TestCase):
             charger(self.racine)
         return [str(f) for f in capture.exception.fautes]
 
+    def charger_ok(self, manifest: str, **kw):
+        _ecrire_harness(self.racine, manifest, **kw)
+        return charger(self.racine)
+
 
 class ManifestValide(Bac):
     def test_charge_un_harness_minimal(self):
@@ -240,6 +244,67 @@ class ManifestRefuse(Bac):
             "packaging: dossier", "packaging: tarball"
         )
         self.assertGreaterEqual(len(self.fautes(manifest)), 2)
+
+
+class LesCycles(Bac):
+    """RFC-016 D16.4 — les boucles sont permises, mais déclarées avec un budget."""
+
+    def _chaine(self, aretes: str, cycles: str = "") -> str:
+        avec_k2 = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            "    produit:\n      - k1.c1: fait_etabli\n"
+            "  - id: k2\n    nom: K2\n    source: kata/k2.yaml\n    livrable: L2\n"
+            "    amont: []\n    herite: []\n    produit:\n      - k2.c2: fait_etabli",
+        )
+        return avec_k2.replace(
+            """chaine:
+  noeuds:
+    - { id: k1, type: kata, nom: K1 }
+  aretes: []""",
+            "chaine:\n  noeuds:\n"
+            "    - { id: k1, type: kata, nom: K1 }\n"
+            "    - { id: k2, type: kata, nom: K2 }\n"
+            f"  aretes:\n{aretes}" + (f"\n  cycles:\n{cycles}" if cycles else ""),
+        )
+
+    def test_une_chaine_sans_boucle_ne_demande_aucun_cycle(self):
+        m = self._chaine("    - { de: k1, vers: k2 }")
+        self.assertEqual(self.charger_ok(m, kata=("k1", "k2")).chaine.cycles, ())
+
+    def test_une_boucle_non_declaree_est_refusee(self):
+        m = self._chaine("    - { de: k1, vers: k2 }\n    - { de: k2, vers: k1 }")
+        self.assertTrue(any("boucle non déclarée" in f for f in self.fautes(m, kata=("k1", "k2"))))
+
+    def test_une_boucle_declaree_avec_budget_tient(self):
+        m = self._chaine(
+            "    - { de: k1, vers: k2 }\n    - { de: k2, vers: k1 }",
+            "    - { noeuds: [k1, k2], budget: { passages: 3 } }",
+        )
+        chaine = self.charger_ok(m, kata=("k1", "k2")).chaine
+        self.assertEqual(chaine.cycles[0].budget.passages, 3)
+        self.assertTrue(chaine.cycles[0].budget.borne)
+
+    def test_une_boucle_declaree_sans_budget_est_refusee(self):
+        m = self._chaine(
+            "    - { de: k1, vers: k2 }\n    - { de: k2, vers: k1 }",
+            "    - { noeuds: [k1, k2] }",
+        )
+        self.assertTrue(any("budget absent" in f for f in self.fautes(m, kata=("k1", "k2"))))
+
+    def test_un_budget_vide_ne_borne_rien(self):
+        m = self._chaine(
+            "    - { de: k1, vers: k2 }\n    - { de: k2, vers: k1 }",
+            "    - { noeuds: [k1, k2], budget: {} }",
+        )
+        self.assertTrue(any("ne borne rien" in f for f in self.fautes(m, kata=("k1", "k2"))))
+
+    def test_un_cycle_declare_qui_ne_boucle_pas_est_refuse(self):
+        m = self._chaine(
+            "    - { de: k1, vers: k2 }",
+            "    - { noeuds: [k1, k2], budget: { passages: 2 } }",
+        )
+        self.assertTrue(any("ne forment pas une boucle" in f for f in self.fautes(m, kata=("k1", "k2"))))
 
 
 class LeTriplet(Bac):

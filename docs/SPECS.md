@@ -87,7 +87,8 @@ kata:                         # les formes, dans l'ordre logique du domaine
 
 chaine:                       # topologie pour le QG (nœuds, jalons, arêtes)
   noeuds: [ { id: "", type: "kata | jalon | externe", nom: "" } ]
-  aretes: [ { de: "", vers: "", label: "" } ]
+  aretes: [ { de: "", vers: "", label: "" } ]   # RFC-016 — une arête peut refermer une boucle
+  cycles: [ { noeuds: [], budget: { passages: 0, cout: 0.0 } } ]  # RFC-016 — toute boucle déclarée, avec budget
 
 template: template.md         # le template commun du harness (blocs fixes/variables)
 
@@ -117,6 +118,7 @@ corpus: corpus/               # les ha capturés et promus (standard §6)
 - R2.2 — Plusieurs harness chargeables côte à côte, isolés (id préfixe tout : modèles virtuels, logs, ha, corpus).
 - R2.3 — Le HDS est versionné indépendamment de Kokaji ; ce fichier en est la **v0.1**.
 - R2.4 — **Le contrat d'un kata (f♯) vit sur le kata, pas sur l'arête** : le couple (`herite`, `produit`), dans le vocabulaire des champs des blocs d'état. La loi qui les relie à la pratique — *l'état final d'un ha livre au moins ce que `produit` promet* — est vérifiée par la trempe (§5) et, en continu, par le middleware (§7). Sous-promettre est permis ; sur-promettre est une non-conformité. L'ordre des statuts est celui de leur déclaration dans `etat.statuts_champ`, du plus fort au plus faible. Voir [RFC-002](docs/rfc-002-check-galoisien.md).
+- R2.7 — **Une boucle se déclare avec un budget** ([RFC-016](docs/rfc-016-kata-d-action.md) D16.4). La chaîne cesse d'être linéaire : une arête peut refermer un cycle (tests → correction → tests). Toute boucle réelle du graphe des arêtes doit figurer dans `chaine.cycles` avec un `budget` (`passages` et/ou `cout`, au moins l'un) ; une boucle non déclarée, un cycle déclaré qui n'en est pas, ou un budget vide sont refusés par la validation du manifeste. Budget épuisé arme la conduite d'urgence (RFC-003 : état gelé, main rendue) — c'est l'interdit n°3, pas de surprise avalée. L'évaluation du budget à l'exécution suit avec le routage (D16.3).
 - R2.6 — **Toute étape est une action ; la conversation en est un cas** ([RFC-016](docs/rfc-016-kata-d-action.md)). Un kata déclare un triplet — perception (`entrees`, `retours`), intention méta, effets par canal (`modele` universel, `monde_lecture`, `monde_ecriture`). Absent, il vaut l'`echange` : un manifeste d'avant la RFC-016 reste valide et se joue à l'identique. Interdit n°1, tenu par la validation du manifeste : tout effet du monde exige son retour de perception — pas d'action aveugle. Les vérificateurs exécutables, le routage conditionnel et les cycles à budget suivent aux lots suivants de la RFC-016.
 - R2.5 — **Natif ou orphelin dit la source du prompt, pas le contrat.** Un kata est *natif* quand son prompt s'assemble depuis le gabarit et un densho, *orphelin* quand sa source est un texte servi tel quel (`source: …/<id>.md`, RFC-011) ; un harness est *exogène* quand tous ses kata sont orphelins (RFC-008). Un kata orphelin **porte et édite un contrat f♯ comme un natif** — le contrat décrit l'état, pas la forme du prompt ; seule sa réécriture en densho attend (RFC-011 D11.3, amendée par [RFC-015](docs/rfc-015-contrats-des-harness-importes.md)).
 

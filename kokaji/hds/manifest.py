@@ -16,9 +16,11 @@ import yaml
 from .modele import (
     RACCOURCIS,
     Arete,
+    Budget,
     Chaine,
     Cible,
     Corpus,
+    Cycle,
     Effets,
     Etat,
     Harness,
@@ -662,7 +664,96 @@ def _chaine(l: _Lecture, kata: tuple[Kata, ...]) -> Chaine:
         if k.id not in vus:
             l.faute("chaine.noeuds", f"kata absent de la chaîne : {k.id!r}")
 
-    return Chaine(noeuds=tuple(noeuds), aretes=tuple(aretes))
+    cycles = _cycles(l, bloc, tuple(aretes), vus)
+    return Chaine(noeuds=tuple(noeuds), aretes=tuple(aretes), cycles=cycles)
+
+
+def _noeuds_en_cycle(aretes: tuple[Arete, ...]) -> tuple[set[str], dict[str, set[str]]]:
+    """Les nœuds pris dans une boucle, et qui atteint qui (RFC-016 D16.4).
+
+    Un nœud est « en cycle » s'il se rejoint lui-même en suivant les arêtes —
+    un pas au moins. Deux nœuds sont d'une même boucle s'ils s'atteignent l'un
+    l'autre. Les graphes sont minuscules : une fermeture par accessibilité suffit.
+    """
+    suivants: dict[str, set[str]] = {}
+    for a in aretes:
+        if a.de and a.vers:
+            suivants.setdefault(a.de, set()).add(a.vers)
+
+    def atteints(depart: str) -> set[str]:
+        vus_, pile = set(), list(suivants.get(depart, ()))
+        while pile:
+            n = pile.pop()
+            if n in vus_:
+                continue
+            vus_.add(n)
+            pile.extend(suivants.get(n, ()))
+        return vus_
+
+    portee = {n: atteints(n) for n in suivants}
+    en_cycle = {n for n, accessibles in portee.items() if n in accessibles}
+    return en_cycle, portee
+
+
+def _cycles(
+    l: _Lecture, bloc: dict, aretes: tuple[Arete, ...], noeuds: set[str]
+) -> tuple[Cycle, ...]:
+    """Les boucles déclarées, et la garde du RFC-016 D16.4 : aucune boucle sans
+    budget ne passe. Une boucle non déclarée est refusée ; un cycle déclaré qui
+    ne boucle pas, ou sans budget, aussi."""
+    en_cycle, portee = _noeuds_en_cycle(aretes)
+    declares: list[Cycle] = []
+    couverts: set[str] = set()
+
+    for rang, item in enumerate(l.liste(bloc, "chaine", "cycles")):
+        ou = f"chaine.cycles[{rang}]"
+        if not isinstance(item, dict):
+            l.faute(ou, "attendu : une section")
+            continue
+        ids = tuple(str(n) for n in l.liste(item, ou, "noeuds"))
+        for n in ids:
+            if n not in noeuds:
+                l.faute(f"{ou}.noeuds", f"nœud inconnu : {n!r}")
+        # Les nœuds déclarés doivent former une vraie boucle : chacun rejoint
+        # les autres. Déclarer un cycle qui n'en est pas endort la garde.
+        vrais = [n for n in ids if n in noeuds]
+        for n in vrais:
+            if not all(m == n or m in portee.get(n, set()) for m in vrais):
+                l.faute(f"{ou}.noeuds", f"ces nœuds ne forment pas une boucle — {n!r} n'y revient pas")
+                break
+        budget = _budget(l, item.get("budget"), f"{ou}.budget")
+        declares.append(Cycle(noeuds=ids, budget=budget))
+        couverts.update(vrais)
+
+    # Interdit n°3 (D16.4) : toute boucle réelle doit être déclarée avec un budget.
+    for n in sorted(en_cycle - couverts):
+        l.faute(
+            "chaine.cycles",
+            f"boucle non déclarée passant par {n!r} : un cycle se déclare avec un budget "
+            "(RFC-016 D16.4 — aucun cycle sans sortie garantie)",
+        )
+    return tuple(declares)
+
+
+def _budget(l: _Lecture, brut, ou: str) -> Budget:
+    if brut is None:
+        l.faute(ou, "budget absent : un cycle sans budget n'a pas de sortie garantie (D16.4)")
+        return Budget()
+    if not isinstance(brut, dict):
+        l.faute(ou, "attendu : une section (passages, cout)")
+        return Budget()
+    passages = brut.get("passages")
+    if passages is not None and (not isinstance(passages, int) or isinstance(passages, bool) or passages < 1):
+        l.faute(f"{ou}.passages", f"attendu : un entier positif — {passages!r}")
+        passages = None
+    cout = brut.get("cout")
+    if cout is not None and (not isinstance(cout, (int, float)) or isinstance(cout, bool) or cout <= 0):
+        l.faute(f"{ou}.cout", f"attendu : un nombre positif — {cout!r}")
+        cout = None
+    budget = Budget(passages=passages, cout=cout)
+    if not budget.borne:
+        l.faute(ou, "un budget vide ne borne rien : déclare `passages` et/ou `cout`")
+    return budget
 
 
 def _trempe(l: _Lecture) -> Trempe:

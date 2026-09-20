@@ -130,11 +130,41 @@ class Arete:
 
 
 @dataclass(frozen=True)
+class Budget:
+    """L'enveloppe d'un cycle (RFC-016 D16.4) : passages maximaux et/ou coût.
+
+    Un cycle sans budget est un cycle sans sortie garantie : la trempe le
+    refuse. Épuisé, le budget arme la conduite d'urgence (RFC-003) — état gelé,
+    main rendue à l'humain, l'interdit n°3 incarné (pas de surprise avalée).
+    """
+
+    passages: int | None = None
+    cout: float | None = None
+
+    @property
+    def borne(self) -> bool:
+        return self.passages is not None or self.cout is not None
+
+
+@dataclass(frozen=True)
+class Cycle:
+    """Une boucle déclarée de la chaîne (RFC-016 D16.4) : ses nœuds, son budget."""
+
+    noeuds: tuple[str, ...]
+    budget: Budget
+
+
+@dataclass(frozen=True)
 class Chaine:
-    """La topologie rendue par le QG (§8). Kokaji ne l'interprète pas."""
+    """La topologie rendue par le QG (§8). Kokaji ne l'interprète pas.
+
+    Depuis la RFC-016, la chaîne cesse d'être linéaire : une arête peut refermer
+    une boucle, et toute boucle est déclarée avec son budget (D16.4).
+    """
 
     noeuds: tuple[Noeud, ...]
     aretes: tuple[Arete, ...]
+    cycles: tuple[Cycle, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -96,6 +96,22 @@ Ce que le QG rendra (§8). Kokaji la valide, ne l'interprète pas.
 - **Tout kata déclaré doit figurer dans la chaîne.** L'inverse est permis : la
   chaîne peut porter des jalons et des étapes externes au harness.
 
+#### Les cycles (RFC-016 D16.4)
+
+La chaîne peut refermer une boucle — une arête `de: correction, vers: tests`.
+Toute boucle est alors **déclarée** dans `chaine.cycles`, avec un budget :
+
+```yaml
+chaine:
+  cycles:
+    - noeuds: [tests, correction]
+      budget: { passages: 3 }   # et/ou `cout:` — au moins l'un
+```
+
+La validation refuse une boucle non déclarée, un cycle déclaré dont les nœuds
+ne bouclent pas, et un budget qui ne borne rien. Un cycle sans budget est un
+cycle sans sortie garantie.
+
 ### `template` — le fichier commun
 
 Chemin du template. Les blocs fixes portent la doctrine du harness ; les
