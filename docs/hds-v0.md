@@ -54,6 +54,37 @@ Une liste ordonnée, dans l'ordre logique du domaine. Chaque entrée :
 | `herite` | **f♯ domaine** — les champs attendus de l'amont, qualifiés `<kata>.<champ>`. Le préfixe doit désigner un amont déclaré. Hériter sans amont est une faute. Anciennement `heritage` ; l'ancien nom est refusé avec un message de renommage. |
 | `produit` | **f♯ codomaine** — une liste de `<kata>.<champ>: <statut>`. Le préfixe doit être le kata lui-même ; le statut doit appartenir à `etat.statuts_champ` et vaut le **minimum garanti** par la pratique. |
 | `emet_options` | booléen, `false` par défaut. `true` : ce kata élicite et suit des options, et son bloc d'état porte `options` et `decision` (SPECS §7, R8.4). Kokaji ne sait pas ce qu'est une option dans ce domaine — il sait seulement que ce kata en déclare. |
+| `raccourci` | RFC-016 — nom d'usage : `echange` (défaut, modèle seul), `sonde` (+ lecture du monde), `production`/`commande` (+ écriture). Absent, il se déduit des `effets` ; inconnu, c'est une faute. |
+| `intention` | RFC-016 — l'objet décisionnel de l'étape, libre. Optionnel. |
+| `perception` | RFC-016 — `entrees:` et `retours:`. Les **retours** sont les canaux par lesquels le kata constate ses effets sur le monde. |
+| `effets` | RFC-016 — par canal : `monde_lecture:` (échantillonné sans être modifié), `monde_ecriture:` (modifié). Le canal `modele` est universel et implicite (le bloc d'état, cf. `produit`). |
+
+### Le triplet — une étape qui agit (HDS refondu, RFC-016)
+
+Un kata est une étape décisionnelle qui **agit** : elle perçoit, porte une
+intention méta, produit des effets. La conversation en est le cas le plus simple
+— l'échange, où le seul effet est le bloc d'état (canal `modele`, universel).
+
+```yaml
+kata:
+  - id: tests
+    raccourci: sonde              # optionnel — se déduit des effets sinon
+    intention: "établir si la suite passe sur le périmètre figé"
+    perception:
+      entrees: [suite_de_tests, perimetre_fige]
+      retours: [rapport_de_tests]  # par où l'on constate l'effet
+    effets:
+      monde_lecture: [execution_suite]
+```
+
+Deux règles tiennent le triplet à ce niveau (les vérificateurs exécutables et le
+routage viennent aux lots suivants de la RFC-016) :
+
+- **Migration mécanique.** Tout absent, le kata vaut l'échange. Un manifeste
+  d'avant la RFC-016 reste valide sans une retouche, et se joue à l'identique.
+- **Interdit n°1 — pas d'action aveugle.** Tout effet du monde
+  (`monde_lecture`/`monde_ecriture`) doit avoir son **retour** de perception :
+  agir sans pouvoir constater ce qu'on a fait rend le manifeste invalide.
 
 ### `chaine` — la topologie
 

@@ -12,9 +12,57 @@ from pathlib import Path
 VERSION_HDS = "0"
 
 
+# RFC-016 §2 — le triplet. Un kata est une étape qui agit : il perçoit, il porte
+# une intention méta, il produit des effets. Deux systèmes, trois canaux.
+CANAUX = ("modele", "monde_lecture", "monde_ecriture")
+
+# Les raccourcis du manifeste (RFC-016 §2) : des noms d'usage qui se développent
+# mécaniquement en canaux. `echange` (le kata conversationnel) est le cas par
+# défaut — un manifeste d'avant la RFC-016 le vaut sans retouche. Un raccourci
+# n'ajoute aucune sémantique : il dit seulement quels canaux du monde s'ouvrent.
+RACCOURCIS = {
+    "echange": (),
+    "sonde": ("monde_lecture",),
+    "production": ("monde_ecriture",),
+    "commande": ("monde_ecriture",),
+}
+
+
+@dataclass(frozen=True)
+class Effets:
+    """Ce qu'une étape change, par canal (RFC-016 §2).
+
+    `modele` est universel : tout kata émet un bloc d'état, c'est cet effet-là,
+    et il se lit dans le `produit` du contrat f♯ — on ne le redéclare pas ici.
+    Les deux canaux du monde sont optionnels et nommés champ par champ.
+    """
+
+    monde_lecture: tuple[str, ...] = ()
+    monde_ecriture: tuple[str, ...] = ()
+
+    @property
+    def touche_le_monde(self) -> bool:
+        return bool(self.monde_lecture or self.monde_ecriture)
+
+    @property
+    def sur_le_monde(self) -> tuple[str, ...]:
+        """Tous les effets du monde, lecture et écriture — ce que la perception
+        doit pouvoir constater (interdit n°1, RFC-016 §2)."""
+        return self.monde_lecture + self.monde_ecriture
+
+
+@dataclass(frozen=True)
+class Perception:
+    """Ce qu'une étape perçoit (RFC-016 §2) : ses entrées, et les **retours**
+    par lesquels elle constate ce que son action a fait."""
+
+    entrees: tuple[str, ...] = ()
+    retours: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True)
 class Kata:
-    """Une forme codifiée d'étape décisionnelle."""
+    """Une forme codifiée d'étape décisionnelle qui agit (RFC-016 §2)."""
 
     id: str
     nom: str
@@ -42,6 +90,19 @@ class Kata:
     # tous le sont.
     orphelin: bool = False
     provenance: tuple[tuple[str, str], ...] = ()
+    # RFC-016 §2 — le triplet. Absents, ils valent l'échange : un kata qui ne
+    # touche que le modèle (le bloc d'état). `raccourci` est le nom d'usage,
+    # `effets` la déclaration par canal, `perception` les entrées et les retours,
+    # `intention` l'objet décisionnel de l'étape (le champ `objet` du bloc).
+    raccourci: str = "echange"
+    intention: str = ""
+    perception: Perception = field(default_factory=Perception)
+    effets: Effets = field(default_factory=Effets)
+
+    @property
+    def agit_sur_le_monde(self) -> bool:
+        """Ce kata dépasse-t-il l'échange — touche-t-il le monde ? (RFC-016)"""
+        return self.effets.touche_le_monde
 
 
 @dataclass(frozen=True)

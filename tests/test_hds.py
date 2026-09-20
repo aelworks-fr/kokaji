@@ -242,6 +242,85 @@ class ManifestRefuse(Bac):
         self.assertGreaterEqual(len(self.fautes(manifest)), 2)
 
 
+class LeTriplet(Bac):
+    """RFC-016 §2 — le triplet, et sa migration mécanique."""
+
+    def charger(self, manifest: str, **kw):
+        _ecrire_harness(self.racine, manifest, **kw)
+        return charger(self.racine)
+
+    def test_un_kata_sans_triplet_vaut_l_echange(self):
+        """Migration mécanique : un manifeste d'avant la RFC-016 reste valide."""
+        k = self.charger(MINIMAL).kata_par_id("k1")
+        self.assertEqual(k.raccourci, "echange")
+        self.assertFalse(k.agit_sur_le_monde)
+        self.assertEqual(k.effets.monde_lecture, ())
+        self.assertEqual(k.perception.entrees, ())
+        self.assertEqual(k.intention, "")
+
+    def test_une_sonde_ouvre_la_lecture_du_monde(self):
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    raccourci: sonde
+    intention: établir si la suite passe
+    perception:
+      entrees: [suite]
+      retours: [rapport]
+    effets:
+      monde_lecture: [rapport]""",
+        )
+        k = self.charger(manifest).kata_par_id("k1")
+        self.assertEqual(k.raccourci, "sonde")
+        self.assertEqual(k.effets.monde_lecture, ("rapport",))
+        self.assertTrue(k.agit_sur_le_monde)
+        self.assertEqual(k.intention, "établir si la suite passe")
+
+    def test_le_raccourci_se_deduit_des_effets_s_il_est_tu(self):
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }""",
+        )
+        self.assertEqual(self.charger(manifest).kata_par_id("k1").raccourci, "production")
+
+    def test_un_effet_du_monde_sans_retour_est_refuse(self):
+        """Interdit n°1 — pas d'action aveugle (sabotage 4)."""
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    effets: { monde_ecriture: [patch] }""",
+        )
+        fautes = self.fautes(manifest)
+        self.assertTrue(any("action aveugle" in f for f in fautes), fautes)
+
+    def test_un_raccourci_inconnu_est_refuse(self):
+        manifest = MINIMAL.replace(
+            "    source: kata/k1.yaml", "    source: kata/k1.yaml\n    raccourci: teleportation"
+        )
+        self.assertTrue(any("raccourci inconnu" in f for f in self.fautes(manifest)))
+
+    def test_un_echange_qui_ecrit_le_monde_est_incoherent(self):
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    raccourci: echange
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }""",
+        )
+        fautes = self.fautes(manifest)
+        self.assertTrue(any("n'ouvre pas l'écriture" in f for f in fautes), fautes)
+
+
 if __name__ == "__main__":
     unittest.main()
 

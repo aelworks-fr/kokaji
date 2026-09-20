@@ -13,7 +13,20 @@ from pathlib import Path
 
 import yaml
 
-from .modele import Arete, Chaine, Cible, Corpus, Etat, Harness, Kata, Noeud, Trempe
+from .modele import (
+    RACCOURCIS,
+    Arete,
+    Chaine,
+    Cible,
+    Corpus,
+    Effets,
+    Etat,
+    Harness,
+    Kata,
+    Noeud,
+    Perception,
+    Trempe,
+)
 
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 # RFC-002 §3 — un champ se nomme toujours par le kata qui l'établit.
@@ -300,6 +313,75 @@ def _provenance_de_kata(
     return tuple((str(c), str(v)) for c, v in brut.items())
 
 
+def _triplet(
+    l: _Lecture, item: dict, ou: str
+) -> tuple[str, str, Perception, Effets]:
+    """Le triplet d'un kata (RFC-016 §2) : raccourci, intention, perception, effets.
+
+    Migration mécanique : tout absent → l'échange, un kata qui ne touche que le
+    modèle. Un manifeste d'avant la RFC-016 le vaut sans une retouche. Trois
+    règles tiennent :
+
+    - le raccourci, s'il est nommé, doit être connu, et n'ouvre que ses canaux :
+      un `sonde` n'écrit pas le monde, un `echange` n'y touche pas du tout ;
+    - **interdit n°1, pas d'action aveugle** : tout effet sur le monde doit avoir
+      son retour de perception — agir sans pouvoir constater n'est pas un kata ;
+    - `intention` est l'objet décisionnel de l'étape, libre et optionnel.
+    """
+    perc = item.get("perception") or {}
+    if not isinstance(perc, dict):
+        l.faute(f"{ou}.perception", "attendu : une section (entrees, retours)")
+        perc = {}
+    perception = Perception(
+        entrees=tuple(l.liste(perc, f"{ou}.perception", "entrees")),
+        retours=tuple(l.liste(perc, f"{ou}.perception", "retours")),
+    )
+
+    eff = item.get("effets") or {}
+    if not isinstance(eff, dict):
+        l.faute(f"{ou}.effets", "attendu : une section (monde_lecture, monde_ecriture)")
+        eff = {}
+    for cle in eff:
+        if cle not in ("modele", "monde_lecture", "monde_ecriture"):
+            l.faute(f"{ou}.effets.{cle}", "canal inconnu (modele, monde_lecture, monde_ecriture)")
+    effets = Effets(
+        monde_lecture=tuple(l.liste(eff, f"{ou}.effets", "monde_lecture")),
+        monde_ecriture=tuple(l.liste(eff, f"{ou}.effets", "monde_ecriture")),
+    )
+
+    declare = str(item.get("raccourci") or "").strip()
+    if declare and declare not in RACCOURCIS:
+        l.faute(f"{ou}.raccourci", f"raccourci inconnu : {declare!r} (attendu : {', '.join(RACCOURCIS)})")
+        declare = ""
+    # Le raccourci nommé borne les canaux du monde ; à défaut on le déduit des
+    # effets déclarés, pour que la page et le rapport aient un nom à montrer.
+    if declare:
+        permis = RACCOURCIS[declare]
+        if effets.monde_lecture and "monde_lecture" not in permis:
+            l.faute(f"{ou}.effets.monde_lecture", f"le raccourci {declare!r} n'ouvre pas la lecture du monde")
+        if effets.monde_ecriture and "monde_ecriture" not in permis:
+            l.faute(f"{ou}.effets.monde_ecriture", f"le raccourci {declare!r} n'ouvre pas l'écriture du monde")
+        raccourci = declare
+    elif effets.monde_ecriture:
+        raccourci = "production"
+    elif effets.monde_lecture:
+        raccourci = "sonde"
+    else:
+        raccourci = "echange"
+
+    # Interdit n°1 — pas d'action aveugle : un effet sur le monde sans retour de
+    # perception rend le manifeste invalide (RFC-016 §2, sabotage 4).
+    for effet in effets.sur_le_monde:
+        if effet not in perception.retours:
+            l.faute(
+                f"{ou}.effets",
+                f"effet {effet!r} sans retour de perception : une action se constate "
+                "(interdit n°1 — pas d'action aveugle)",
+            )
+
+    return raccourci, str(item.get("intention") or "").strip(), perception, effets
+
+
 def _herite(
     l: _Lecture, item: dict, ou: str, statuts_champ: tuple[str, ...]
 ) -> tuple[tuple[str, ...], dict[str, str]]:
@@ -450,6 +532,10 @@ def _kata(
                 emet_options=l.booleen(item, ou, "emet_options"),
                 orphelin=orphelin,
                 provenance=_provenance_de_kata(l, item, ou, orphelin=orphelin, exogene=exogene),
+                raccourci=(triplet := _triplet(l, item, ou))[0],
+                intention=triplet[1],
+                perception=triplet[2],
+                effets=triplet[3],
             )
         )
         # Un texte ne tient pas de contrat (RFC-011 sabotage 4) : dans un

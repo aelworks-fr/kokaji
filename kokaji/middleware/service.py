@@ -691,6 +691,18 @@ def creer_harness(
                     ],
                     "produit": [{"champ": r, "statut": s} for r, s in k.produit],
                     "emet_options": k.emet_options,
+                    # RFC-016 §2 — le triplet, tel qu'il se lit et s'édite. Absent
+                    # au manifeste, il vaut l'échange (modèle seul).
+                    "raccourci": k.raccourci,
+                    "intention": k.intention,
+                    "perception": {
+                        "entrees": list(k.perception.entrees),
+                        "retours": list(k.perception.retours),
+                    },
+                    "effets": {
+                        "monde_lecture": list(k.effets.monde_lecture),
+                        "monde_ecriture": list(k.effets.monde_ecriture),
+                    },
                     # Un texte servi tel quel (RFC-008, RFC-011) : sans densho ni contrat.
                     "orphelin": harness.exogene or k.orphelin,
                     # Le densho, tel que la forge le lit ; un texte tel quel
