@@ -320,6 +320,57 @@ class Forge(Bac):
         self.assertFalse((self.sortie / "h" / "instrumentee").exists())
 
 
+class LaCoupeOutil(Bac):
+    """RFC-016 D16.2 — la coupe d'un kata d'action est un outil prêt à l'usage :
+    son estampille empaquette capacités, effets et vérificateurs."""
+
+    def _manifest_action(self) -> str:
+        return MANIFEST.replace(
+            """  - id: k1
+    nom: K1
+    source: kata/k1.yaml
+    livrable: L1
+    amont: []
+    herite: []
+    produit:
+      - k1.c2: fait_etabli""",
+            """  - id: k1
+    nom: K1
+    source: kata/k1.yaml
+    livrable: L1
+    amont: []
+    herite: []
+    produit:
+      - k1.c2: fait_etabli
+    raccourci: sonde
+    perception: { entrees: [suite], retours: [rapport] }
+    effets: { monde_lecture: [rapport] }
+    capacites: [execution_shell]
+    trempe:
+      verificateurs:
+        - { type: executable, check: "couvre la suite", source: rapport.xml }""",
+        )
+
+    def test_l_estampille_d_un_kata_d_action_porte_l_outil(self):
+        import json
+
+        forger_harness(_harness(self.racine, manifest=self._manifest_action()),
+                       sortie=self.sortie, trempe=False)
+        estampille = json.loads((self.sortie / "h" / "nue" / "k1.json").read_text(encoding="utf-8"))
+        self.assertIn("outil", estampille)
+        self.assertEqual(estampille["outil"]["capacites"], ["execution_shell"])
+        self.assertEqual(estampille["outil"]["effets"]["monde_lecture"], ["rapport"])
+        self.assertEqual(estampille["outil"]["verificateurs"][0]["source"], "rapport.xml")
+
+    def test_un_kata_d_echange_n_a_pas_d_outil(self):
+        import json
+
+        forger_harness(_harness(self.racine, manifest=self._manifest_action()),
+                       sortie=self.sortie, trempe=False)
+        estampille = json.loads((self.sortie / "h" / "nue" / "k2.json").read_text(encoding="utf-8"))
+        self.assertNotIn("outil", estampille)
+
+
 class ForgeRefuse(Bac):
     def test_cible_inconnue(self):
         with self.assertRaises(ForgeImpossible) as capture:

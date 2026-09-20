@@ -316,6 +316,27 @@ def _provenance_de_kata(
     return tuple((str(c), str(v)) for c, v in brut.items())
 
 
+def _capacites(l: _Lecture, item: dict, ou: str) -> tuple[str, ...]:
+    """Les capacités qu'un kata requiert du moteur (RFC-016 D16.2).
+
+    Des noms de capacité, jamais un produit : l'instance les mappe sur son agent
+    CLI. On valide qu'ils sont des slugs non vides, et sans doublon.
+    """
+    trouves: list[str] = []
+    for rang, c in enumerate(l.liste(item, ou, "capacites")):
+        situe = f"{ou}.capacites[{rang}]"
+        nom = str(c or "").strip()
+        if not nom:
+            l.faute(situe, "attendu : un nom de capacité non vide")
+            continue
+        if not re.match(r"^[a-z0-9]+(?:[_-][a-z0-9]+)*$", nom):
+            l.faute(situe, f"attendu : un nom en minuscules (a-z, 0-9, _ ou -) — {nom!r}")
+        if nom in trouves:
+            l.faute(situe, f"capacité déjà requise : {nom!r}")
+        trouves.append(nom)
+    return tuple(trouves)
+
+
 def _verificateurs(l: _Lecture, item: dict, ou: str) -> tuple[Verificateur, ...]:
     """Les vérificateurs d'un kata (RFC-016 D16.6), sous sa clé `trempe`.
 
@@ -573,6 +594,7 @@ def _kata(
                 perception=triplet[2],
                 effets=triplet[3],
                 verificateurs=(verifs := _verificateurs(l, item, ou)),
+                capacites=(capacites := _capacites(l, item, ou)),
             )
         )
         # Interdit n°1, seconde moitié (RFC-016 D16.6) : un effet du monde exige
@@ -583,6 +605,15 @@ def _kata(
                 f"{ou}.trempe.verificateurs",
                 "un kata qui agit sur le monde doit déclarer un vérificateur — "
                 "on juge le résultat, pas le rapport (interdit n°1, RFC-016 D16.6)",
+            )
+        # RFC-016 D16.2 — agir sur le monde demande une capacité : sans elle,
+        # l'instance n'a rien à mapper sur son agent, et la coupe n'est pas un
+        # outil prêt à l'usage.
+        if triplet[3].touche_le_monde and not capacites:
+            l.faute(
+                f"{ou}.capacites",
+                "un kata qui agit sur le monde doit requérir au moins une capacité "
+                "(ex. `execution_shell`) — RFC-016 D16.2",
             )
         # Un texte ne tient pas de contrat (RFC-011 sabotage 4) : dans un
         # harness natif, un orphelin n'hérite ni ne produit — ce sont les

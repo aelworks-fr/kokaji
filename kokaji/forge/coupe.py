@@ -36,15 +36,40 @@ class Estampille:
     version_kata: str
     version_coupe: str
     cible: str
+    # RFC-016 D16.2 — pour un kata qui touche le monde, la coupe est un outil
+    # prêt à l'usage : l'estampille empaquette ses capacités, ses effets et ses
+    # vérificateurs, que l'agent CLI lira. Absent pour un pur échange.
+    outil: dict | None = None
 
     def as_dict(self) -> dict:
-        return {
+        base = {
             "harness": self.harness,
             "kata": self.kata,
             "version_kata": self.version_kata,
             "version_coupe": self.version_coupe,
             "cible": self.cible,
         }
+        if self.outil is not None:
+            base["outil"] = self.outil
+        return base
+
+
+def _outil_de(kata: Kata) -> dict | None:
+    """L'empaquetage d'un kata d'action pour l'agent (RFC-016 D16.2) — ou rien
+    pour un pur échange, qui n'a pas d'outil à porter."""
+    if not kata.agit_sur_le_monde:
+        return None
+    return {
+        "capacites": list(kata.capacites),
+        "effets": {
+            "monde_lecture": list(kata.effets.monde_lecture),
+            "monde_ecriture": list(kata.effets.monde_ecriture),
+        },
+        "verificateurs": [
+            {"type": v.type, "check": v.check, "source": v.source}
+            for v in kata.verificateurs
+        ],
+    }
 
 
 @dataclass(frozen=True)
@@ -402,6 +427,7 @@ def forger(harness: Harness, kata: Kata, cible: Cible, template: str, registre: 
         version_kata=str(source.get("version") or harness.version),
         version_coupe=empreinte,
         cible=cible.id,
+        outil=_outil_de(kata),
     )
     marque = (
         f"\n<!-- {estampille.harness}/{estampille.kata} "
@@ -447,6 +473,7 @@ def _forger_orpheline(harness: Harness, kata: Kata, cible: Cible) -> Coupe:
         version_kata=harness.version,
         version_coupe=empreinte,
         cible=cible.id,
+        outil=_outil_de(kata),
     )
     marque = (
         f"\n<!-- {estampille.harness}/{estampille.kata} "

@@ -119,6 +119,10 @@ class Kata:
     effets: Effets = field(default_factory=Effets)
     # RFC-016 D16.6 — ce qui juge le résultat d'une action, par kata.
     verificateurs: tuple[Verificateur, ...] = ()
+    # RFC-016 D16.2 — les capacités que ce kata requiert du moteur (ex.
+    # `execution_shell`). Le manifeste déclare une **capacité**, jamais un
+    # produit : l'instance la mappe sur son agent CLI, qui reste interchangeable.
+    capacites: tuple[str, ...] = ()
 
     @property
     def agit_sur_le_monde(self) -> bool:

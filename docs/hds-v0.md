@@ -75,6 +75,7 @@ kata:
       retours: [rapport_de_tests]  # par où l'on constate l'effet
     effets:
       monde_lecture: [execution_suite]
+    capacites: [execution_shell]   # RFC-016 D16.2 — requise dès qu'on touche le monde
     trempe:
       verificateurs:
         - { type: executable, check: "le rapport couvre la suite", source: rapport.xml }
@@ -93,6 +94,11 @@ l'exécution des vérificateurs viennent aux lots suivants de la RFC-016) :
 - **Interdit n°2 — pas de monde auto-rapporté.** Un vérificateur déclare la
   `source` qu'il échantillonne de son côté : le rapport du pratiquant n'est
   jamais sa propre preuve. Sans source, il est refusé.
+- **Une capacité, jamais un produit (D16.2).** Un kata qui touche le monde
+  requiert au moins une `capacites` (ex. `execution_shell`) : l'instance la
+  mappe sur son agent CLI, qui reste interchangeable. La forge empaquette alors
+  capacités, effets et vérificateurs dans l'estampille de la coupe — un outil
+  prêt à l'usage.
 
 ### `chaine` — la topologie
 

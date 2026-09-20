@@ -336,6 +336,7 @@ class LeTriplet(Bac):
       retours: [rapport]
     effets:
       monde_lecture: [rapport]
+    capacites: [execution_shell]
     trempe:
       verificateurs:
         - { type: executable, check: "couvre la suite", source: rapport.xml }""",
@@ -354,6 +355,7 @@ class LeTriplet(Bac):
       - k1.c1: fait_etabli
     perception: { retours: [patch] }
     effets: { monde_ecriture: [patch] }
+    capacites: [execution_shell]
     trempe: { verificateurs: [ { type: executable, check: "compile", source: build.log } ] }""",
         )
         self.assertEqual(self.charger(manifest).kata_par_id("k1").raccourci, "production")
@@ -404,11 +406,37 @@ class LeTriplet(Bac):
       - k1.c1: fait_etabli
     perception: { retours: [patch] }
     effets: { monde_ecriture: [patch] }
+    capacites: [execution_shell]
     trempe: { verificateurs: [ { type: executable, check: "compile", source: build.log } ] }""",
         )
         k = self.charger(manifest).kata_par_id("k1")
         self.assertEqual(k.verificateurs[0].source, "build.log")
         self.assertEqual(k.verificateurs[0].type, "executable")
+
+    def test_un_kata_du_monde_sans_capacite_est_refuse(self):
+        """RFC-016 D16.2 — agir demande une capacité à mapper sur l'agent."""
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }
+    trempe: { verificateurs: [ { type: executable, check: "compile", source: build.log } ] }""",
+        )
+        self.assertTrue(any("au moins une capacité" in f for f in self.fautes(manifest)))
+
+    def test_une_capacite_mal_nommee_est_refusee(self):
+        manifest = MINIMAL.replace(
+            "    source: kata/k1.yaml", "    source: kata/k1.yaml\n    capacites: ['Execution Shell']"
+        )
+        self.assertTrue(any("un nom en minuscules" in f for f in self.fautes(manifest)))
+
+    def test_une_capacite_a_underscore_est_admise(self):
+        manifest = MINIMAL.replace(
+            "    source: kata/k1.yaml", "    source: kata/k1.yaml\n    capacites: [execution_shell]"
+        )
+        self.assertEqual(self.charger(manifest).kata_par_id("k1").capacites, ("execution_shell",))
 
     def test_un_effet_du_monde_sans_retour_est_refuse(self):
         """Interdit n°1 — pas d'action aveugle (sabotage 4)."""
