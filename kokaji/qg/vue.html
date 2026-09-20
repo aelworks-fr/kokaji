@@ -770,6 +770,7 @@
       <button class="axe" id="axe-contrats">Contrats f♯<span class="badge-encre"
         id="badge-contrats" hidden></span></button>
       <button class="axe" id="axe-trempe">Trempe</button>
+      <button class="axe" id="axe-triplet">Triplet<span class="badge-encre" id="badge-triplet" hidden></span></button>
       <button class="axe" id="axe-coupes">Coupes</button>
     </div>
   </div>
@@ -1282,7 +1283,7 @@ const ONGLETS = { decouvrir: "module-decouvrir", profil: "module-profil",
                   vigie: "module-vigie", comptes: "module-comptes" };
 const NOMS_DE_VUE = { qg: "QG", design: "Design", profil: "Profil", decouvrir: "Découvrir",
                       vigie: "Vigie", comptes: "Comptes & invitations" };
-const NOMS_D_AXE = { partition: "Partitionnement", contrats: "Contrats f♯", trempe: "Trempe", coupes: "Coupes" };
+const NOMS_D_AXE = { partition: "Partitionnement", contrats: "Contrats f♯", trempe: "Trempe", triplet: "Triplet", coupes: "Coupes" };
 
 // ---------------------------------------------------------------------------
 // Le routage (K-07, K-17). Chaque vue a une adresse — dans le fragment, pour
@@ -1646,7 +1647,7 @@ let axe = "partition", kataChoisi = null, membresOuverts = false, montreYaml = f
 // serveur — nulle tant qu'on ne l'a pas demandée, et dès qu'on retouche.
 let cibleChoisie = null, coupeRendue = null, coupeDit = "";
 // Ce que la forge lit dans un densho, et rien d'autre (HDS : `source`).
-const AXES = { partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe", coupes: "axe-coupes" };
+const AXES = { partition: "axe-partition", contrats: "axe-contrats", trempe: "axe-trempe", triplet: "axe-triplet", coupes: "axe-coupes" };
 const DENSHO = ["role", "interdits", "questions", "livrable_nom", "livrable_structure", "passage", "natures"];
 const DENSHO_LISTES = ["interdits", "questions", "livrable_structure", "natures"];
 
@@ -1716,6 +1717,17 @@ function proposition() {
     if (!origine || origine.livrable !== k.livrable) { entree.livrable = k.livrable; bouge = true; }
     // RFC-011 D11.3 — remplacer un texte par un densho : la source redevient une source de forge.
     if (k.remplacer_par_densho) { entree.source = `kata/${k.id}.yaml`; bouge = true; }
+    // RFC-016 — le triplet, quand il bouge : raccourci, intention, perception, effets.
+    const triplet = JSON.stringify([k.raccourci, k.intention, k.perception, k.effets]);
+    const tripletOrig = origine
+      ? JSON.stringify([origine.raccourci, origine.intention, origine.perception, origine.effets]) : null;
+    if (!origine || triplet !== tripletOrig) {
+      entree.raccourci = k.raccourci || "echange";
+      entree.intention = k.intention || "";
+      entree.perception = k.perception || { entrees: [], retours: [] };
+      entree.effets = k.effets || { monde_lecture: [], monde_ecriture: [] };
+      bouge = true;
+    }
     if (bouge) kata.push(entree);
   });
   if (kata.length) p.kata = kata;
@@ -1869,6 +1881,9 @@ function rendreDesign() {
   const rompus = liensRompus();
   $("badge-contrats").hidden = rompus.length === 0;
   $("badge-contrats").textContent = rompus.length;
+  const aveugles = brouillon.kata.reduce((n, k) => n + _aveuglesDe(k).length, 0);
+  $("badge-triplet").hidden = aveugles === 0;
+  $("badge-triplet").textContent = aveugles;
   for (const [nom, id] of Object.entries(AXES))
     $(id).setAttribute("aria-current", axe === nom ? "page" : "false");
   rendreGabarit();
@@ -1882,7 +1897,7 @@ function rendreDesign() {
          <button class="btn-fantome" id="btn-ajouter-kata" style="margin-top:12px">＋ Ajouter une étape</button>
          <p class="rien" id="ajout-dit" style="margin-top:8px"></p>`;
   } else {
-    ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe, coupes: rendreCoupes })[axe](k);
+    ({ partition: rendrePartition, contrats: rendreContrats, trempe: rendreTrempe, triplet: rendreTriplet, coupes: rendreCoupes })[axe](k);
   }
   // Reconstruit avec l'axe : sans ce rebranchement, le bouton existerait sans agir.
   // Deux natures d'étape, deux gestes : dans un harness adopté, une étape est
@@ -2436,6 +2451,75 @@ async function adopterUneEtape() {
   }
   // La définition servie vient de changer : on la relit au lieu de la deviner.
   def = null; await chargerDesign();
+}
+
+// --- axe · le triplet : perception + intention → effets (RFC-016 §2) ----------
+// Une étape agit. L'échange — le modèle seul, le bloc d'état — est le défaut ;
+// les canaux du monde sont optionnels, et tout effet du monde exige son retour
+// de perception (interdit n°1). Le runtime des effets vient aux lots suivants ;
+// ici on déclare.
+function _aveuglesDe(k) {
+  const p = k.perception || {}, e_ = k.effets || {};
+  const retours = p.retours || [];
+  return (e_.monde_lecture || []).concat(e_.monde_ecriture || []).filter(x => !retours.includes(x));
+}
+
+function rendreTriplet(k) {
+  const p = k.perception || (k.perception = { entrees: [], retours: [] });
+  const eff = k.effets || (k.effets = { monde_lecture: [], monde_ecriture: [] });
+  p.entrees = p.entrees || []; p.retours = p.retours || [];
+  eff.monde_lecture = eff.monde_lecture || []; eff.monde_ecriture = eff.monde_ecriture || [];
+  const aveugles = _aveuglesDe(k);
+  const cible = (cle) => (cle === "entrees" || cle === "retours") ? p : eff;
+
+  const liste = (arr, cle, mot, aide) => {
+    const chips = arr.length
+      ? arr.map((v, i) => `<span class="tag tag-neutral">${e(v)}
+          <button class="btn-fantome" data-ret="${cle}:${i}" title="retirer" style="padding:0 4px">×</button></span>`).join(" ")
+      : `<span class="rien">—</span>`;
+    return `<div class="ligne-f" style="align-items:baseline">
+      <span class="mot" style="min-width:150px">${mot}</span>
+      <span style="flex:1;display:flex;gap:6px;flex-wrap:wrap;align-items:baseline">${chips}</span>
+      <input class="champ-pilule" data-add="${cle}" placeholder="+ ${aide}" style="width:11rem;text-align:left" aria-label="ajouter à ${mot}">
+    </div>`;
+  };
+
+  const RAC = ["echange", "sonde", "production", "commande"];
+  $("axe-corps").innerHTML = `
+    <div style="display:flex;align-items:flex-start;gap:10px">
+    <h2 style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);font-size:20px;margin:0 0 4px;flex:1">Triplet — ${e(k.nom || k.id)}</h2>
+    <a class="aide" href="#/kokaji/decouvrir?terme=kata" aria-label="Qu'est-ce qu'un kata d'action ?" title="Qu'est-ce qu'un kata d'action ?">?</a></div>
+    <p class="mot" style="margin:0 0 12px;max-width:76ch">Une étape <strong>agit</strong> : elle perçoit, porte une intention, produit des effets (RFC-016).
+      L'échange — le modèle seul, le bloc d'état — est le défaut ; les canaux du monde sont optionnels.</p>
+    <div class="ligne-f"><span class="mot" style="min-width:150px">Raccourci</span>
+      <select class="select-pilule" id="triplet-raccourci">${RAC.map(r => `<option ${r === k.raccourci ? "selected" : ""}>${r}</option>`).join("")}</select>
+      <span class="mot" style="margin-left:8px">${k.raccourci === "echange" ? "modèle seul" : k.raccourci === "sonde" ? "+ lecture du monde" : "+ écriture du monde"}</span></div>
+    <div class="ligne-f" style="margin-top:8px"><span class="mot" style="min-width:150px">Intention</span>
+      <input class="champ-large" id="triplet-intention" value="${e(k.intention || "")}"
+             placeholder="l'objet décisionnel de l'étape" style="flex:1"></div>
+    <p class="mot" style="margin:18px 0 8px">Perception — ce qu'il perçoit, et par où il constate ses effets</p>
+    ${liste(p.entrees, "entrees", "entrées", "une entrée")}
+    ${liste(p.retours, "retours", "retours", "un retour")}
+    <p class="mot" style="margin:18px 0 8px">Effets sur le monde — le canal <em>modèle</em> (le bloc d'état) est universel, il vit dans « Contrats f♯ »</p>
+    ${liste(eff.monde_lecture, "monde_lecture", "lecture", "échantillonné")}
+    ${liste(eff.monde_ecriture, "monde_ecriture", "écriture", "modifié")}
+    ${aveugles.length ? `<p class="regle-f">Interdit n°1 — <strong>pas d'action aveugle</strong> :
+      ${aveugles.map(e).join(", ")} ${aveugles.length > 1 ? "n'ont" : "n'a"} pas de retour de perception.
+      Une action se constate ; sans retour, le scellement refuse.</p>` : ""}
+    <p class="regle-f">Le runtime des effets — vérificateurs, routage, cycles — vient aux lots suivants de la RFC-016.
+      Ici, on déclare ; en échange, ce bloc reste vide et sans effet.</p>`;
+
+  $("triplet-raccourci").onchange = (ev) => { k.raccourci = ev.target.value; retouche(); };
+  $("triplet-intention").onchange = (ev) => { k.intention = ev.target.value.trim(); retouche(); };
+  $("axe-corps").querySelectorAll("button[data-ret]").forEach(b => {
+    b.onclick = () => { const [cle, i] = b.dataset.ret.split(":"); cible(cle)[cle].splice(Number(i), 1); retouche(); };
+  });
+  $("axe-corps").querySelectorAll("input[data-add]").forEach(inp => {
+    inp.onchange = () => {
+      const cle = inp.dataset.add, v = inp.value.trim();
+      if (v && !cible(cle)[cle].includes(v)) { cible(cle)[cle].push(v); retouche(); }
+    };
+  });
 }
 
 function rendreContrats(k) {

@@ -143,6 +143,26 @@ class Jugement(Bac):
         self.assertTrue(verdict.tient, verdict.fautes + verdict.anomalies)
         self.assertFalse(verdict.touche_contrat)
 
+    def test_un_triplet_se_scelle_par_la_proposition(self):
+        """RFC-016 — le triplet passe au manifest par la fusion clé à clé."""
+        apres = appliquer(self.manifest(), Proposition(kata=[{
+            "id": "k2", "raccourci": "sonde",
+            "perception": {"entrees": ["suite"], "retours": ["rapport"]},
+            "effets": {"monde_lecture": ["execution"], "monde_ecriture": []},
+        }]))
+        k2 = next(k for k in apres["kata"] if k["id"] == "k2")
+        self.assertEqual(k2["raccourci"], "sonde")
+        self.assertEqual(k2["effets"]["monde_lecture"], ["execution"])
+        self.assertEqual(k2["perception"]["retours"], ["rapport"])
+
+    def test_un_effet_du_monde_sans_retour_est_refuse_a_l_epreuve(self):
+        """Interdit n°1 (sabotage 4) : la trempe du manifeste refuse avant toute forge."""
+        verdict = juger(self.racine, Proposition(kata=[{
+            "id": "k2", "effets": {"monde_ecriture": ["patch"]},
+        }]))
+        self.assertFalse(verdict.tient)
+        self.assertTrue(any("action aveugle" in f for f in verdict.fautes), verdict.fautes)
+
     def test_exiger_plus_que_l_amont_ne_promet_est_refuse(self):
         """Le lint `ordre-des-statuts` garde la conception comme il garde la forge."""
         verdict = juger(

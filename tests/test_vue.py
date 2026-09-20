@@ -617,6 +617,15 @@ class LesCoupes(unittest.TestCase):
         # Un texte importé garde densho:false, mais retrouve contrat et seuil.
         self.assertIn("const importe = (k.orphelin && !k.remplacer_par_densho)", RENDU)
 
+    def test_la_facette_triplet_existe_et_declare_les_canaux(self):
+        """RFC-016 D16.1 — le triplet s'édite dans la page."""
+        self.assertIn('id="axe-triplet"', RENDU)
+        self.assertIn("function rendreTriplet(k)", RENDU)
+        self.assertIn("triplet: rendreTriplet", RENDU)
+        # l'interdit n°1 est dit à l'écran, et compté en badge
+        self.assertIn("pas d'action aveugle", RENDU)
+        self.assertIn("badge-triplet", RENDU)
+
     def test_les_adjonctions_ne_s_editent_pas_ici(self):
         """Elles vivent à l'axe Contrats et se lisent dans la coupe (RFC-010 §2)."""
         self.assertNotIn('data-densho="herite"', RENDU)
