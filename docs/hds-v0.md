@@ -75,16 +75,24 @@ kata:
       retours: [rapport_de_tests]  # par où l'on constate l'effet
     effets:
       monde_lecture: [execution_suite]
+    trempe:
+      verificateurs:
+        - { type: executable, check: "le rapport couvre la suite", source: rapport.xml }
 ```
 
-Deux règles tiennent le triplet à ce niveau (les vérificateurs exécutables et le
-routage viennent aux lots suivants de la RFC-016) :
+Trois règles tiennent le triplet à ce niveau (le routage conditionnel et
+l'exécution des vérificateurs viennent aux lots suivants de la RFC-016) :
 
 - **Migration mécanique.** Tout absent, le kata vaut l'échange. Un manifeste
   d'avant la RFC-016 reste valide sans une retouche, et se joue à l'identique.
 - **Interdit n°1 — pas d'action aveugle.** Tout effet du monde
-  (`monde_lecture`/`monde_ecriture`) doit avoir son **retour** de perception :
-  agir sans pouvoir constater ce qu'on a fait rend le manifeste invalide.
+  (`monde_lecture`/`monde_ecriture`) doit avoir son **retour** de perception
+  *et* un **vérificateur** (`trempe.verificateurs`) : agir sans pouvoir
+  constater ce qu'on a fait, ou sans rien pour juger le résultat, rend le
+  manifeste invalide.
+- **Interdit n°2 — pas de monde auto-rapporté.** Un vérificateur déclare la
+  `source` qu'il échantillonne de son côté : le rapport du pratiquant n'est
+  jamais sa propre preuve. Sans source, il est refusé.
 
 ### `chaine` — la topologie
 

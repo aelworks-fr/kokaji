@@ -43,6 +43,9 @@ kata:
     raccourci: sonde
     perception: { entrees: [suite], retours: [execution] }
     effets: { monde_lecture: [execution] }
+    trempe:
+      verificateurs:
+        - { type: executable, check: "le rapport couvre la suite", source: rapport.xml }
 chaine:
   noeuds:
     - { id: echange, type: kata, nom: Échange }

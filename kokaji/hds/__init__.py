@@ -19,6 +19,7 @@ from .modele import (
     Noeud,
     Perception,
     Trempe,
+    Verificateur,
 )
 
 __all__ = [
@@ -41,6 +42,7 @@ __all__ = [
     "Noeud",
     "Perception",
     "Trempe",
+    "Verificateur",
     "charger",
     "charger_tous",
     "charger_valides",

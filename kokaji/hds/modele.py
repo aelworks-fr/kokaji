@@ -61,6 +61,25 @@ class Perception:
 
 
 @dataclass(frozen=True)
+class Verificateur:
+    """Ce qui juge le **résultat** d'une action (RFC-016 D16.6), pas son rapport.
+
+    `type` dit comment (v1 : `executable` — un test, une compilation, un lint) ;
+    `check` ce qu'il exige ; `source` l'artefact qu'il échantillonne **de son
+    côté** — interdit n°2, pas de monde auto-rapporté : le rapport du pratiquant
+    n'est jamais sa propre preuve. L'exécution vient avec le runtime (D16.2/3) ;
+    ici on déclare, on valide, et l'interdit n°1 exige qu'un effet ait le sien.
+    """
+
+    type: str
+    check: str
+    source: str
+
+
+TYPES_VERIFICATEUR = ("executable",)
+
+
+@dataclass(frozen=True)
 class Kata:
     """Une forme codifiée d'étape décisionnelle qui agit (RFC-016 §2)."""
 
@@ -98,6 +117,8 @@ class Kata:
     intention: str = ""
     perception: Perception = field(default_factory=Perception)
     effets: Effets = field(default_factory=Effets)
+    # RFC-016 D16.6 — ce qui juge le résultat d'une action, par kata.
+    verificateurs: tuple[Verificateur, ...] = ()
 
     @property
     def agit_sur_le_monde(self) -> bool:

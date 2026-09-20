@@ -28,6 +28,7 @@ from .modele import (
     Noeud,
     Perception,
     Trempe,
+    Verificateur,
 )
 
 SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -315,6 +316,39 @@ def _provenance_de_kata(
     return tuple((str(c), str(v)) for c, v in brut.items())
 
 
+def _verificateurs(l: _Lecture, item: dict, ou: str) -> tuple[Verificateur, ...]:
+    """Les vérificateurs d'un kata (RFC-016 D16.6), sous sa clé `trempe`.
+
+    Chacun juge le résultat d'une action. `type` connu (v1 : `executable`),
+    `check` non vide, et `source` non vide — interdit n°2, le vérificateur
+    échantillonne le monde de son côté ; sans source, il n'a rien à lire que le
+    dire du pratiquant, et ce n'est pas une preuve.
+    """
+    from .modele import TYPES_VERIFICATEUR
+
+    bloc = item.get("trempe") or {}
+    if not isinstance(bloc, dict):
+        l.faute(f"{ou}.trempe", "attendu : une section (verificateurs)")
+        return ()
+    trouves: list[Verificateur] = []
+    for rang, v in enumerate(l.liste(bloc, f"{ou}.trempe", "verificateurs")):
+        situe = f"{ou}.trempe.verificateurs[{rang}]"
+        if not isinstance(v, dict):
+            l.faute(situe, "attendu : une section (type, check, source)")
+            continue
+        type_v = str(v.get("type") or "").strip()
+        if type_v not in TYPES_VERIFICATEUR:
+            l.faute(f"{situe}.type", f"type inconnu : {type_v!r} (attendu : {', '.join(TYPES_VERIFICATEUR)})")
+        check = str(v.get("check") or "").strip()
+        if not check:
+            l.faute(f"{situe}.check", "attendu : ce que le vérificateur exige, non vide")
+        source = str(v.get("source") or "").strip()
+        if not source:
+            l.faute(f"{situe}.source", "attendu : l'artefact échantillonné — interdit n°2, pas de monde auto-rapporté")
+        trouves.append(Verificateur(type=type_v, check=check, source=source))
+    return tuple(trouves)
+
+
 def _triplet(
     l: _Lecture, item: dict, ou: str
 ) -> tuple[str, str, Perception, Effets]:
@@ -538,8 +572,18 @@ def _kata(
                 intention=triplet[1],
                 perception=triplet[2],
                 effets=triplet[3],
+                verificateurs=(verifs := _verificateurs(l, item, ou)),
             )
         )
+        # Interdit n°1, seconde moitié (RFC-016 D16.6) : un effet du monde exige
+        # un vérificateur, pas seulement un retour. Sabotage 4 : « sans retour…
+        # ni vérificateur ». La première moitié (le retour) est dans `_triplet`.
+        if triplet[3].touche_le_monde and not verifs:
+            l.faute(
+                f"{ou}.trempe.verificateurs",
+                "un kata qui agit sur le monde doit déclarer un vérificateur — "
+                "on juge le résultat, pas le rapport (interdit n°1, RFC-016 D16.6)",
+            )
         # Un texte ne tient pas de contrat (RFC-011 sabotage 4) : dans un
         # harness natif, un orphelin n'hérite ni ne produit — ce sont les
         # gestes de la réécriture en densho, pas de l'import.

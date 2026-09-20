@@ -335,7 +335,10 @@ class LeTriplet(Bac):
       entrees: [suite]
       retours: [rapport]
     effets:
-      monde_lecture: [rapport]""",
+      monde_lecture: [rapport]
+    trempe:
+      verificateurs:
+        - { type: executable, check: "couvre la suite", source: rapport.xml }""",
         )
         k = self.charger(manifest).kata_par_id("k1")
         self.assertEqual(k.raccourci, "sonde")
@@ -350,9 +353,62 @@ class LeTriplet(Bac):
             """    produit:
       - k1.c1: fait_etabli
     perception: { retours: [patch] }
-    effets: { monde_ecriture: [patch] }""",
+    effets: { monde_ecriture: [patch] }
+    trempe: { verificateurs: [ { type: executable, check: "compile", source: build.log } ] }""",
         )
         self.assertEqual(self.charger(manifest).kata_par_id("k1").raccourci, "production")
+
+    def test_un_effet_du_monde_sans_verificateur_est_refuse(self):
+        """Interdit n°1, D16.6 — un effet a un retour ET un vérificateur."""
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }""",
+        )
+        fautes = self.fautes(manifest)
+        self.assertTrue(any("doit déclarer un vérificateur" in f for f in fautes), fautes)
+
+    def test_un_verificateur_sans_source_est_refuse(self):
+        """Interdit n°2 — pas de monde auto-rapporté."""
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }
+    trempe: { verificateurs: [ { type: executable, check: "compile" } ] }""",
+        )
+        self.assertTrue(any("interdit n°2" in f for f in self.fautes(manifest)))
+
+    def test_un_verificateur_de_type_inconnu_est_refuse(self):
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }
+    trempe: { verificateurs: [ { type: vibe, check: "ok", source: x } ] }""",
+        )
+        self.assertTrue(any("type inconnu" in f for f in self.fautes(manifest)))
+
+    def test_un_verificateur_qui_juge_le_resultat_tient(self):
+        manifest = MINIMAL.replace(
+            """    produit:
+      - k1.c1: fait_etabli""",
+            """    produit:
+      - k1.c1: fait_etabli
+    perception: { retours: [patch] }
+    effets: { monde_ecriture: [patch] }
+    trempe: { verificateurs: [ { type: executable, check: "compile", source: build.log } ] }""",
+        )
+        k = self.charger(manifest).kata_par_id("k1")
+        self.assertEqual(k.verificateurs[0].source, "build.log")
+        self.assertEqual(k.verificateurs[0].type, "executable")
 
     def test_un_effet_du_monde_sans_retour_est_refuse(self):
         """Interdit n°1 — pas d'action aveugle (sabotage 4)."""
