@@ -1,6 +1,6 @@
 [project]
 name = "kokaji"
-version = "0.1.0"
+version = "2.0.0"
 description = "Forge générique de harness conversationnels"
 requires-python = ">=3.11"
 # `ruamel.yaml` sert à réécrire un manifest **sans perdre ses commentaires** :
