@@ -121,6 +121,87 @@ def fautes_de_bloc(
         fautes.append(("etat-passage-declare", f"`pret_pour` hors chaîne — {pret!r}"))
 
     fautes += _fautes_options(harness, kata, etat, connues)
+    fautes += _fautes_actions(kata, etat)
+    return fautes
+
+
+# RFC-016 D16.5 — le bloc d'état gagne `actions[]`, obligatoire pour tout kata
+# dont les effets dépassent `modele`. Une action déclare son intention, le canal
+# du monde qu'elle touche, l'artefact qu'elle laisse, et un verdict — ce que le
+# kata **constate** de son effet, jamais ce qu'il affirme sans preuve.
+CANAUX_DU_MONDE = ("monde_lecture", "monde_ecriture")
+
+
+def _fautes_actions(kata: Kata, etat: dict) -> list[tuple[str, str]]:
+    actions = etat.get("actions")
+    agit = kata.agit_sur_le_monde
+
+    # Un kata qui n'agit pas sur le monde n'a pas d'actions à porter — comme les
+    # options, en émettre sans les déclarer est une faute (symétrie avec RFC-001).
+    if actions in (None, []):
+        if agit:
+            return [("etat-actions-declarees",
+                     "un kata qui agit sur le monde doit dire ce qu'il a fait — `actions` absent")]
+        return []
+    if not agit:
+        return [("etat-actions-declarees",
+                 "actions émises par un kata qui ne touche que le modèle (RFC-016)")]
+    if not isinstance(actions, list):
+        return [("etat-bien-forme", "`actions` mal formé — attendu une liste")]
+
+    fautes: list[tuple[str, str]] = []
+    # Les canaux réellement ouverts par ce kata, pour refuser une action sur un
+    # canal qu'il ne déclare pas.
+    ouverts = set()
+    if kata.effets.monde_lecture:
+        ouverts.add("monde_lecture")
+    if kata.effets.monde_ecriture:
+        ouverts.add("monde_ecriture")
+
+    canaux_vus: set[str] = set()
+    for action in actions:
+        if not isinstance(action, dict):
+            fautes.append(("etat-bien-forme", "action mal formée"))
+            continue
+        if not str(action.get("intention") or "").strip():
+            fautes.append(("etat-actions-declarees", "action sans intention"))
+        canal = action.get("canal")
+        if canal not in CANAUX_DU_MONDE:
+            fautes.append(("etat-actions-declarees", f"action sur un canal inconnu — {canal!r}"))
+        elif canal not in ouverts:
+            fautes.append(
+                ("etat-actions-declarees",
+                 f"action sur `{canal}` que ce kata ne déclare pas dans ses effets")
+            )
+        else:
+            canaux_vus.add(canal)
+        verdict = action.get("verdict")
+        if not isinstance(verdict, dict):
+            fautes.append(("etat-actions-declarees", "action sans verdict"))
+        else:
+            if not str(verdict.get("valeur") or "").strip():
+                fautes.append(("etat-actions-declarees", "verdict d'action sans valeur"))
+            confiance = verdict.get("confiance")
+            if not isinstance(confiance, (int, float)) or isinstance(confiance, bool)                     or not (0 <= confiance <= 1):
+                fautes.append(
+                    ("etat-actions-declarees",
+                     f"confiance d'action hors [0, 1] — {confiance!r}")
+                )
+
+    # Interdit n°1 au runtime : un canal déclaré aux effets doit être exercé.
+    for canal in ouverts - canaux_vus:
+        fautes.append(
+            ("etat-actions-declarees",
+             f"effet `{canal}` déclaré mais aucune action ne l'exerce")
+        )
+
+    # RFC-003 A16.2 — en nature émergente, lire le monde avant de l'écrire.
+    nature = (etat.get("nature") or {}).get("valeur") if isinstance(etat.get("nature"), dict) else None
+    if nature == "emergent" and "monde_ecriture" in canaux_vus and "monde_lecture" not in canaux_vus:
+        fautes.append(
+            ("etat-actions-declarees",
+             "nature émergente : lire le monde avant de l'écrire (RFC-003 A16.2)")
+        )
     return fautes
 
 

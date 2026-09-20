@@ -186,9 +186,13 @@ Service léger (FastAPI) adossé aux logs du Dojo.
     "options": [ { "id": "OPT-1", "libelle": "", "noeud": "", "statut": "ouverte|engagee|ecartee" } ],
     "decision": { "libelle": "", "ferme": ["OPT-2"], "ouvre": ["OPT-4"] },
     "nature": { "valeur": "<nature>", "confiance": "faible|moyen|eleve", "revisee_le": "<etape>" },
+    "actions": [ { "intention": "", "canal": "monde_lecture|monde_ecriture", "artefact": "",
+                   "verdict": { "valeur": "", "detail": "", "confiance": 0.0 } } ],
     "pret_pour": null } }
 ```
 `nature` est **facultatif** et appartient au [RFC-003](docs/rfc-003-diagnostic-de-nature.md) : le kata l'émet dès l'ouverture puis à chaque révision, et **Kokaji le transporte sans jamais l'interpréter**. Le HDS ne change pas d'un iota — les natures sont du vocabulaire de harness, écrit dans son template — c'est un pattern de template, pas une structure de manifest. Le diagnostic dit dans quel genre de problème on se trouve, et le kata en adapte sa conduite ; la valeur peut basculer en cours de session, et chaque bascule est déclarée.
+
+`actions` est **facultatif en échange, obligatoire dès qu'un kata touche le monde** ([RFC-016](docs/rfc-016-kata-d-action.md) D16.5) : un kata dont les `effets` dépassent `modele` doit dire ce qu'il a fait — l'intention, le canal exercé, l'artefact laissé, et un **verdict** (valeur, détail, confiance dans [0, 1]) qui est ce qu'il *constate* de son effet, jamais ce qu'il affirme sans preuve. Émettre des actions sans agir sur le monde, ou déclarer un effet qu'aucune action n'exerce, sont des fautes ; en nature émergente, une écriture du monde sans lecture préalable en est une aussi (RFC-003 A16.2). Le canal `modele` reste universel et implicite (le bloc lui-même).
 
 `options` et `decision` sont **facultatifs** : seuls les kata déclarés `emet_options: true` les émettent. Une option est une possibilité nommée et non engagée ; une décision déclare le delta de possibles qu'elle referme et qu'elle ouvre. On mesure l'espace **déclaré**, jamais l'espace réel — même geste épistémique que les statuts de champs.
 - R7.2 — Bloc malformé : loggé, jamais bloquant pour la session.
