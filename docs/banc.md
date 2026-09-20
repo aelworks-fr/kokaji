@@ -244,6 +244,12 @@ le kata contre la `typologie:` déclarée du kin, le tour où le diagnostic s'es
 posé, les révisions en chemin, les natures jamais jouées, et le verdict face au
 seuil que le harness s'est donné dans `trempe.justesse`.
 
+Avec `--passes N`, chaque kin est rejoué N fois et le rapport devient une
+**distribution** (RFC-003 §7) : un compte de réussite par kin, et un verdict de
+stabilité — tenu seulement si chaque kin passe son seuil et si tout kin piège
+tombe juste à *chaque* passe. Une réussite unique prouve qu'un harness *peut*
+diagnostiquer ; N passes disent s'il le *sait*.
+
 Avec `--juge`, la **conformité de conduite** s'y ajoute : le juge est interrogé
 sur le contrat du §3 correspondant à la nature *diagnostiquée* — les questions
 viennent de `conduite_par_nature` au registre du harness, aucune n'est écrite

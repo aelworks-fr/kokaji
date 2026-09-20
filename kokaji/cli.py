@@ -696,9 +696,31 @@ def _resserrer(args) -> int:
     return 0
 
 
-def _rapport_nature(harness, kata: str, personas, diagnostics) -> str:
-    """La justesse du diagnostic, sa couverture, et le verdict face au seuil."""
-    from .trempe.banc.nature import couverture, verdict
+def _rapport_nature(harness, kata: str, personas, diagnostics, passes: int = 1) -> str:
+    """La justesse du diagnostic, sa couverture, et le verdict face au seuil.
+
+    À `passes > 1`, on ne rend plus un verdict par campagne mais une
+    **distribution** : un compte de réussite par kin, et un verdict de stabilité
+    (RFC-003 §7)."""
+    from .trempe.banc.nature import couverture, verdict, verdict_distribue
+
+    if passes > 1:
+        lignes = [f"justesse du diagnostic de nature — {passes} passes par kin"]
+        rendu = verdict_distribue(harness, kata, diagnostics)
+        for d in rendu.distributions:
+            lignes.append(f"  {d}")
+        naturelles = _natures_du_kata(harness, kata)
+        couv = couverture(kata, personas, naturelles)
+        if couv.manquantes:
+            lignes.append(f"\n  natures jamais jouées : {', '.join(couv.manquantes)}")
+        lignes.append(f"\n  {rendu}")
+        if rendu.pieges and not rendu.pieges_stables:
+            lignes.append("  un piège tombe sur au moins une passe — le §7 le veut tenu à chaque fois")
+        if rendu.seuil == 0:
+            lignes.append(
+                "  aucun seuil déclaré dans `trempe.justesse` : rien à quoi confronter ces taux"
+            )
+        return "\n".join(lignes)
 
     lignes = ["justesse du diagnostic de nature"]
     for d in diagnostics:
@@ -786,6 +808,17 @@ def _banc(args) -> int:
             if args.nature and tours:
                 diagnostic = mesurer(persona, kata.id, tours)
                 diagnostics.append(diagnostic)
+                # RFC-003 §7 — la stabilité se mesure sur plusieurs passes du
+                # même kin. Les passes de plus ne rejouent que le diagnostic :
+                # pas de juge ni de constats, pour ne pas multiplier le coût.
+                for passe in range(2, args.passes + 1):
+                    print(f"→ {persona.id} × {modele} (passe {passe}/{args.passes})", file=sys.stderr)
+                    tours_n, _ = jouer(
+                        persona, modele_kata=modele, modele_persona=args.persona_modele,
+                        passerelle=passerelle, tours_max=args.tours, temperature=args.temperature,
+                    )
+                    if tours_n:
+                        diagnostics.append(mesurer(persona, kata.id, tours_n))
                 if args.juge and diagnostic.finale:
                     conduite = juger_conduite(
                         harness, list(tours), diagnostic.finale,
@@ -821,7 +854,7 @@ def _banc(args) -> int:
     print(rapport(resultats))
     if args.nature:
         print()
-        print(_rapport_nature(harness, kata.id, personas, diagnostics))
+        print(_rapport_nature(harness, kata.id, personas, diagnostics, passes=args.passes))
     if args.detail:
         for resultat in resultats:
             if not resultat.constats and not resultat.verdicts:
@@ -1518,6 +1551,10 @@ def main(argv: list[str] | None = None) -> int:
     banc.add_argument(
         "--nature", action="store_true",
         help="mesurer la justesse du diagnostic de nature (RFC-003 §5.4)",
+    )
+    banc.add_argument(
+        "--passes", type=int, default=1, metavar="N",
+        help="rejouer chaque kin N fois et mesurer la stabilité du diagnostic (RFC-003 §7)",
     )
     banc.add_argument(
         "--juge", metavar="MODELE",

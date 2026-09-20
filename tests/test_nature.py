@@ -18,7 +18,14 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kokaji.hds import charger
-from kokaji.trempe.banc.nature import couverture, mesurer, natures_emises, verdict
+from kokaji.trempe.banc.nature import (
+    couverture,
+    distribuer,
+    mesurer,
+    natures_emises,
+    verdict,
+    verdict_distribue,
+)
 
 MANIFEST = """
 harness:
@@ -230,6 +237,71 @@ class CouvertureDesNatures(unittest.TestCase):
     def test_une_couverture_complete_ne_signale_rien(self):
         couv = couverture("k1", [Kin("a", "n1"), Kin("b", "n2")], ("n1", "n2"))
         self.assertEqual(couv.manquantes, ())
+
+
+class Distribution(Bac):
+    """RFC-003 §7 — la stabilité se mesure sur plusieurs passes, pas un tir."""
+
+    def passes(self, *cas):
+        """(id, typologie, [natures d'une passe, ...], énoncé_comme) → diagnostics à plat."""
+        diagnostics = []
+        for pid, attendue, passes, enonce in cas:
+            for emises in passes:
+                diagnostics.append(mesurer(Kin(pid, attendue, enonce), "k1", echange(*emises)))
+        return diagnostics
+
+    def test_les_passes_d_un_kin_se_regroupent(self):
+        dists = distribuer(self.passes(
+            ("kin", "n1", [("n1",), ("n2",), ("n1",)], ""),
+        ))
+        self.assertEqual(len(dists), 1)
+        self.assertEqual((dists[0].justes, dists[0].passes), (2, 3))
+        self.assertAlmostEqual(dists[0].taux, 2 / 3)
+
+    def test_un_kin_ordinaire_tient_au_seuil(self):
+        # seuil 0.75 : 3/4 tient, pas 2/4.
+        stable = distribuer(self.passes(("a", "n1", [("n1",)] * 3 + [("n2",)], "")))[0]
+        self.assertTrue(stable.stable(0.75))
+        vacille = distribuer(self.passes(("b", "n1", [("n1",)] * 2 + [("n2",)] * 2, "")))[0]
+        self.assertFalse(vacille.stable(0.75))
+
+    def test_un_piege_se_veut_juste_a_chaque_passe(self):
+        """En distribution, « dont impérativement le piège » = le piège à chaque fois."""
+        presque = distribuer(self.passes(("p", "n1", [("n1",)] * 3 + [("n2",)], "n2")))[0]
+        self.assertTrue(presque.piege)
+        self.assertFalse(presque.stable(0.75))  # 3/4 ne suffit pas pour un piège
+        parfait = distribuer(self.passes(("p", "n1", [("n1",)] * 4, "n2")))[0]
+        self.assertTrue(parfait.stable(0.75))
+
+    def test_le_verdict_est_tenu_quand_chaque_kin_est_stable(self):
+        rendu = verdict_distribue(self.harness, "k1", self.passes(
+            ("a", "n1", [("n1",)] * 3, ""),
+            ("b", "n2", [("n2",)] * 3, ""),
+        ))
+        self.assertEqual(rendu.passes, 3)
+        self.assertEqual(rendu.kin_stables, 2)
+        self.assertTrue(rendu.tenu)
+
+    def test_un_seul_kin_qui_vacille_fait_tomber_le_verdict(self):
+        rendu = verdict_distribue(self.harness, "k1", self.passes(
+            ("a", "n1", [("n1",)] * 3, ""),
+            ("b", "n2", [("n2",), ("n1",), ("n1",)], ""),  # 1/3
+        ))
+        self.assertFalse(rendu.tenu)
+        self.assertEqual(rendu.kin_stables, 1)
+
+    def test_le_piege_qui_tombe_une_fois_fait_tomber_le_verdict(self):
+        """Le cas de la seconde campagne du fil rouge : juste une fois, pas l'autre."""
+        rendu = verdict_distribue(self.harness, "k1", self.passes(
+            ("facile", "n1", [("n1",)] * 4, ""),
+            ("piege", "n2", [("n2",), ("n1",)], "n1"),  # tombe à la 2e passe
+        ))
+        self.assertFalse(rendu.pieges_stables)
+        self.assertFalse(rendu.tenu)
+
+    def test_sans_mesure_le_verdict_ne_ment_pas(self):
+        rendu = verdict_distribue(self.harness, "k1", [])
+        self.assertIsNone(rendu.tenu)
 
 
 if __name__ == "__main__":

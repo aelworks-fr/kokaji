@@ -81,6 +81,26 @@ Les quatre kin du fil rouge passés au banc sur un même kata : le diagnostic é
 
 ---
 
+## 8. Amendement RFC-016 — la nature conditionne les canaux d'effet
+
+> Écrit avant la construction de la [RFC-016](rfc-016-kata-d-action.md), comme elle le prescrit : la 003 se construit déjà amendée. Le vocabulaire des **canaux** (`modele`, `monde_lecture`, `monde_ecriture`) et le **triplet** viennent de la 016 ; ce qui suit dit comment la nature s'y branche.
+
+### A16.1 — La sonde est l'effet `modele + monde_lecture`
+
+La conduite **sonde** du §3 — « premier pas dimensionné pour le feedback » — gagne sa définition générale : c'est un kata qui, en plus d'émettre son bloc d'état (`modele`, universel), **échantillonne le monde sans le modifier** (`monde_lecture`). La sonde de la nature émergente et le kata `sonde` de la 016 sont une seule et même chose, vue une fois par la doctrine et une fois par le modèle.
+
+### A16.2 — Émergent ⇒ lire avant d'écrire
+
+En nature **émergente**, un kata ne touche pas le monde en écriture (`monde_ecriture`) avant de l'avoir lu (`monde_lecture`) : l'essai précède l'engagement, la sonde précède le patch. C'est l'« interdiction du plan complet » du §3, portée au niveau des canaux. Un manifeste qui, sous nature émergente déclarée, ouvre un effet d'écriture sans effet de lecture amont est une faute que la trempe relève (RFC-016, interdit n°1, croisé avec la nature).
+
+### A16.3 — Urgence ⇒ la conduite de sortie de budget
+
+Le **renvoi assumé** de la nature urgence (§3) est la conduite que la 016 arme quand un **cycle épuise son budget** (D16.4) : état gelé, départage, main rendue à l'humain — l'écart que l'étage ne résout pas remonte à l'étage au-dessus. La nature urgence n'est donc plus seulement un mode de conversation : c'est aussi la sortie d'un cycle d'action qui n'a pas convergé. Le même geste, deux déclencheurs — un incendie perçu, ou un budget consommé.
+
+### A16.4 — La nature reste transportée, jamais interprétée par le produit
+
+Rien de ce qui précède ne fait interpréter la nature par Kokaji (§5.2 tient). La règle nature × canaux vit dans le **manifeste** (ce que le harness déclare permis par nature) et dans la **trempe** (ce qu'elle refuse) ; le dojo route sur le bloc d'état, il ne juge pas la nature. Le produit transporte, le harness décide.
+
 ## État d'application
 
 | Changement | Pas | État |
@@ -94,7 +114,8 @@ Les quatre kin du fil rouge passés au banc sur un même kata : le diagnostic é
 | §5.2 — HDS | — | **sans objet, et c'est le point** : Kokaji transporte `nature` sans l'interpréter |
 | §5.4 — banc : matrice kata × typologie, justesse et conformité | 4 | appliqué — `kokaji banc --nature`, `--juge` pour la conduite |
 | §5.5 — QG : la nature au détail du nœud | — | **pas construit — au backlog, non bloquant** |
-| §7 — le critère « juste assez » | 4 | **atteint une fois, démenti la fois suivante** — le piège n'est pas stable (voir ci-dessous) |
+| §7 — le critère « juste assez » | 4 | mesuré en **distribution** (`kokaji banc --nature --passes N`) : un compte de réussite par kin sur N passes, un verdict de stabilité (chaque kin au-dessus du seuil, tout piège stable), au lieu d'un verdict par campagne — voir ci-dessous |
+| §8 (A16.1→A16.4) — nature × canaux d'effet | doc | écrit, en attente de la RFC-016 pour la trempe des canaux |
 
 ### La première campagne (2026-08, `idee@instrumentee`)
 
@@ -133,9 +154,13 @@ réussite non reproductible ne démontre pas qu'un harness sait diagnostiquer :
 elle démontre qu'il le peut. La différence compte, et le tableau ci-dessus le
 dit maintenant.
 
-Ce qu'il faudrait pour trancher : plusieurs passes des mêmes kin, et un compte de
-réussite par kin plutôt qu'un verdict par campagne. Rien de tel n'est construit —
-le banc mesure une campagne, pas une distribution.
+Ce qu'il fallait pour trancher — plusieurs passes des mêmes kin, un compte de
+réussite par kin plutôt qu'un verdict par campagne — est **désormais construit** :
+`kokaji banc --nature --passes N` rejoue chaque kin N fois et rend une
+distribution. Le verdict de stabilité n'est tenu que si **chaque** kin passe son
+seuil, et un kin piège doit tomber juste à **chaque** passe — une seule chute le
+disqualifie, exactement le cas de la seconde campagne. Une moyenne masquerait le
+kin qui vacille ; ici il ressort.
 
 **Ce que la première campagne ne dit pas.** C'est un tirage, sur un kata, sur une
 cible, avec un moteur donné. Trois des quatre kin ont révisé leur diagnostic en

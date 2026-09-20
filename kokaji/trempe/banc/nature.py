@@ -33,11 +33,15 @@ from ...hds import Harness
 __all__ = [
     "Couverture",
     "Diagnostic",
+    "Distribution",
     "Verdict",
+    "VerdictDistribue",
     "couverture",
+    "distribuer",
     "mesurer",
     "natures_emises",
     "verdict",
+    "verdict_distribue",
 ]
 
 BLOC = re.compile(r"```json\s+kokaji_state\s*(\{.*?\})\s*```", re.DOTALL)
@@ -230,4 +234,139 @@ def verdict(harness: Harness, kata: str, diagnostics) -> Verdict:
         pieges_justes=sum(1 for d in pieges if d.juste),
         pieges=len(pieges),
         muets=sum(1 for d in mesurables if d.muet),
+    )
+
+
+# --- La stabilité : plusieurs passes du même kin (RFC-003 §7) -----------------
+# Une réussite unique ne prouve pas qu'un harness *sait* diagnostiquer : elle
+# prouve qu'il le *peut*. Le piège du fil rouge est tombé au second tirage sur
+# une forme que rien n'avait changée. On mesure donc une **distribution** — N
+# passes du même kin — et un compte de réussite par kin, jamais un verdict par
+# campagne. La révisabilité reste comptée comme au §4 : c'est la dernière nature
+# de chaque passe qui compte.
+
+
+@dataclass(frozen=True)
+class Distribution:
+    """Ce qu'un kin donne sur N passes du même kata — la stabilité, pas un tir."""
+
+    persona: str
+    kata: str
+    attendue: str
+    piege: bool
+    justes: int
+    passes: int
+    muets: int
+
+    @property
+    def taux(self) -> float | None:
+        return self.justes / self.passes if self.passes else None
+
+    def stable(self, seuil: float) -> bool:
+        """Assez de passes justes pour ce seuil — et un piège se veut sans faille.
+
+        Un kin ordinaire tient s'il passe le seuil du harness. Un piège, lui,
+        n'a rien démontré tant qu'une seule passe tombe : « dont impérativement
+        le piège » (§7) devient, en distribution, « le piège à chaque passe ».
+        """
+        if not self.passes:
+            return False
+        if self.piege:
+            return self.justes == self.passes
+        return self.taux >= seuil
+
+    def __str__(self) -> str:
+        piege = " [piège]" if self.piege else ""
+        marque = "✓" if self.passes and self.justes == self.passes else (
+            "±" if self.justes else "✗"
+        )
+        detail = f"{self.justes}/{self.passes} passes justes"
+        if self.muets:
+            detail += f", {self.muets} sans diagnostic"
+        return f"{marque} {self.persona}{piege} — attendu {self.attendue} — {detail}"
+
+
+def distribuer(diagnostics) -> list[Distribution]:
+    """Regroupe des diagnostics — plusieurs par kin — en une distribution par kin.
+
+    L'ordre de première apparition est gardé : un rapport se lit dans l'ordre où
+    les kin ont été joués, pas trié par un taux qui bougerait d'une passe à l'autre.
+    """
+    par_kin: dict[str, list] = {}
+    ordre: list[str] = []
+    for d in diagnostics:
+        if not d.attendue:
+            continue  # un kin sans nature déclarée n'entre pas dans la mesure
+        if d.persona not in par_kin:
+            par_kin[d.persona] = []
+            ordre.append(d.persona)
+        par_kin[d.persona].append(d)
+    distributions = []
+    for persona in ordre:
+        lot = par_kin[persona]
+        distributions.append(
+            Distribution(
+                persona=persona,
+                kata=lot[0].kata,
+                attendue=lot[0].attendue,
+                piege=lot[0].piege,
+                justes=sum(1 for d in lot if d.juste),
+                passes=len(lot),
+                muets=sum(1 for d in lot if d.muet),
+            )
+        )
+    return distributions
+
+
+@dataclass(frozen=True)
+class VerdictDistribue:
+    """Le verdict de stabilité d'une campagne à passes multiples (RFC-003 §7)."""
+
+    kata: str
+    seuil: float
+    distributions: tuple[Distribution, ...]
+
+    @property
+    def passes(self) -> int:
+        return max((d.passes for d in self.distributions), default=0)
+
+    @property
+    def kin_stables(self) -> int:
+        return sum(1 for d in self.distributions if d.stable(self.seuil))
+
+    @property
+    def pieges(self) -> tuple[Distribution, ...]:
+        return tuple(d for d in self.distributions if d.piege)
+
+    @property
+    def pieges_stables(self) -> bool:
+        return all(d.stable(self.seuil) for d in self.pieges)
+
+    @property
+    def tenu(self) -> bool | None:
+        """`None` si rien n'a été mesuré. Tenu quand **chaque** kin est stable —
+        une moyenne masquerait le kin qui vacille, et c'est lui la question."""
+        if not self.distributions:
+            return None
+        return self.kin_stables == len(self.distributions)
+
+    def __str__(self) -> str:
+        if not self.distributions:
+            return f"{self.kata} : aucune mesure — rien n'a été joué"
+        etat = "stable" if self.tenu else "instable"
+        detail = (
+            f"{self.kin_stables}/{len(self.distributions)} kin stables sur "
+            f"{self.passes} passes, seuil {self.seuil:.0%}"
+        )
+        if self.pieges:
+            detail += f", piège {'tenu' if self.pieges_stables else 'tombé'}"
+        return f"{self.kata} : {etat} ({detail})"
+
+
+def verdict_distribue(harness: Harness, kata: str, diagnostics) -> VerdictDistribue:
+    """Confronte une campagne à passes multiples au seuil du harness, kin par kin."""
+    return VerdictDistribue(
+        kata=kata,
+        seuil=harness.trempe.seuil_justesse(kata),
+        distributions=tuple(distribuer(diagnostics)),
     )
