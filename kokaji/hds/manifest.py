@@ -13,6 +13,7 @@ from pathlib import Path
 
 import yaml
 
+from ..routage import ConditionInvalide, parser_condition
 from .modele import (
     RACCOURCIS,
     Arete,
@@ -733,7 +734,15 @@ def _chaine(l: _Lecture, kata: tuple[Kata, ...]) -> Chaine:
         for extremite, valeur in (("de", de), ("vers", vers)):
             if valeur and valeur not in vus:
                 l.faute(f"{ou}.{extremite}", f"nœud inconnu : {valeur!r}")
-        aretes.append(Arete(de=de, vers=vers, label=str(item.get("label") or "")))
+        # RFC-016 D16.3 — la condition, si elle est là, doit se lire : le dojo
+        # l'évaluera mécaniquement, une expression illisible n'a pas sa place.
+        condition = str(item.get("condition") or "").strip()
+        if condition:
+            try:
+                parser_condition(condition)
+            except ConditionInvalide as err:
+                l.faute(f"{ou}.condition", str(err))
+        aretes.append(Arete(de=de, vers=vers, label=str(item.get("label") or ""), condition=condition))
 
     for k in kata:
         if k.id not in vus:

@@ -152,6 +152,9 @@ class Arete:
     de: str
     vers: str
     label: str
+    # RFC-016 D16.3 — la condition sur le bloc d'état amont qui ouvre cette
+    # branche. Vide, l'arête passe toujours (chaîne linéaire d'avant la RFC).
+    condition: str = ""
 
 
 @dataclass(frozen=True)

@@ -110,6 +110,22 @@ Ce que le QG rendra (§8). Kokaji la valide, ne l'interprète pas.
 - **Tout kata déclaré doit figurer dans la chaîne.** L'inverse est permis : la
   chaîne peut porter des jalons et des étapes externes au harness.
 
+#### Le routage conditionnel (RFC-016 D16.3)
+
+Une arête peut porter une `condition` sur le bloc d'état du kata amont :
+
+```yaml
+chaine:
+  aretes:
+    - { de: tests, vers: deploiement, condition: "verdict == 'tous_passes'" }
+    - { de: tests, vers: correction,  condition: "verdict == 'echecs'" }
+```
+
+La condition est déclarative — des comparaisons `<chemin> <op> <valeur>` jointes
+par `and`/`or`, jamais du code. Le dojo l'évalue mécaniquement ; sans condition
+qui tranche, ou avec plusieurs, la main revient à l'humain. Une arête sans
+condition passe toujours. Une condition illisible est refusée au manifeste.
+
 #### Les cycles (RFC-016 D16.4)
 
 La chaîne peut refermer une boucle — une arête `de: correction, vers: tests`.
