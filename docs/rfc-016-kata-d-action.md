@@ -233,7 +233,7 @@ chaine:
 
 - Sandbox durcie du produit : l'exécution a lieu là où l'instance le décide ;
   le produit norme le manifeste et la capture, pas l'isolement d'exécution
-  (RFC dédiée si besoin).
+  (RFC dédiée : [RFC-017 — l'isolement d'exécution](rfc-017-isolement-execution.md)).
 - Branches parallèles — la chaîne reste séquentielle.
 - Orchestration distribuée, files de jobs, reprise sur panne.
 - Catalogue d'outils ou standard d'outillage : le manifeste déclare des
