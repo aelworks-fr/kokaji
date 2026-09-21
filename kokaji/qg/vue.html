@@ -1163,9 +1163,16 @@ function rendreDossier() {
   if (!n) { d.hidden = true; d.innerHTML = ""; return; }
   d.hidden = false;
 
+  // RFC-003 §5.5 — la nature diagnostiquée, une donnée de plus au détail du
+  // nœud. Transportée, jamais interprétée : on montre la valeur et sa confiance.
+  const nat = n.nature && n.nature.valeur
+    ? `<span class="tag tag-outline" title="nature diagnostiquée (RFC-003)">nature : ${e(n.nature.valeur)}${
+        n.nature.confiance ? " · conf. " + e(n.nature.confiance) : ""}</span>`
+    : "";
   const tete = `
     <div class="dossier-tete"><h2>${e(n.nom)}</h2>
       <span class="tag tag-neutral">${e(n.type)}</span>
+      ${nat}
       <span class="etape">${e(n.etape || "")}</span>
       <button class="btn btn-ghost" style="margin-left:auto" id="fermer">fermer</button></div>`;
 

@@ -167,6 +167,29 @@ class Chaleur(Bac):
         self.assertEqual(self.chaleur({"c1": "inventé", "c2": "inventé"}), 0.0)
 
 
+class NatureAuNoeud(Bac):
+    """RFC-003 §5.5 — la nature diagnostiquée est portée au détail du nœud."""
+
+    def test_la_derniere_nature_est_portee_au_noeud(self):
+        self.ha("CAS-0001-x", [
+            {"horodatage": "2026-01-01T10:00:00",
+             "etat": {"sujet": "S", "kata": "k1", "champs": {},
+                      "nature": {"valeur": "emergent", "confiance": "moyen", "revisee_le": "ouverture"}}},
+            {"horodatage": "2026-01-01T11:00:00",
+             "etat": {"sujet": "S", "kata": "k1", "champs": {},
+                      "nature": {"valeur": "analysable", "confiance": "eleve", "revisee_le": "cadrage"}}},
+        ])
+        vue = composer(self.harness, "S")
+        noeud = next(n for n in vue.noeuds if n.id == "k1")
+        self.assertEqual(noeud.nature.get("valeur"), "analysable")  # la dernière l'emporte
+        self.assertEqual(vue.as_dict(self.harness)["noeuds"][0]["nature"]["confiance"], "eleve")
+
+    def test_un_noeud_sans_nature_a_un_dict_vide(self):
+        self.ha("CAS-0002-y", [self.releve("2026-01-01T10:00:00", sujet="T", kata="k1", champs={})])
+        vue = composer(self.harness, "T")
+        self.assertEqual(next(n for n in vue.noeuds if n.id == "k1").nature, {})
+
+
 class Possibles(Bac):
     def poser(self, *releves):
         self.ha("CAS-0001-x", list(releves))

@@ -210,3 +210,7 @@ Même fichier de test, même navigateur, dans un conteneur qui les porte.
 **Sans navigateur, ces tests se sautent en le disant.** Un test qui se saute en
 silence finit par ne plus exister, et c'est exactement la panne que le carnet
 décrit trois fois : ce qui se tait se lit comme ce qui va bien.
+
+## La nature au détail du nœud (RFC-003 §5.5)
+
+Le détail d'un nœud porte, quand une session l'a diagnostiquée, la **nature** du problème — sa valeur et sa confiance, la dernière émise (RFC-003 §4). C'est une donnée de plus, transportée sans être interprétée (§5.2), pas une vue nouvelle.

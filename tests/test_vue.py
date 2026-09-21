@@ -617,6 +617,11 @@ class LesCoupes(unittest.TestCase):
         # Un texte importé garde densho:false, mais retrouve contrat et seuil.
         self.assertIn("const importe = (k.orphelin && !k.remplacer_par_densho)", RENDU)
 
+    def test_la_nature_diagnostiquee_s_affiche_au_detail_du_noeud(self):
+        """RFC-003 §5.5 — une donnée de plus, pas une vue nouvelle."""
+        self.assertIn("nature diagnostiquée (RFC-003)", RENDU)
+        self.assertIn("n.nature && n.nature.valeur", RENDU)
+
     def test_la_facette_triplet_existe_et_declare_les_canaux(self):
         """RFC-016 D16.1 — le triplet s'édite dans la page."""
         self.assertIn('id="axe-triplet"', RENDU)

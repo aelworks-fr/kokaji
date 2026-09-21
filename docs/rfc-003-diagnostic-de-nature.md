@@ -113,7 +113,7 @@ Rien de ce qui précède ne fait interpréter la nature par Kokaji (§5.2 tient)
 | §6 — les quatre kin du fil rouge, au standard corpus | 2 | appliqué — matériau seul |
 | §5.2 — HDS | — | **sans objet, et c'est le point** : Kokaji transporte `nature` sans l'interpréter |
 | §5.4 — banc : matrice kata × typologie, justesse et conformité | 4 | appliqué — `kokaji banc --nature`, `--juge` pour la conduite |
-| §5.5 — QG : la nature au détail du nœud | — | **pas construit — au backlog, non bloquant** |
+| §5.5 — QG : la nature au détail du nœud | 5 | appliqué — `VueNoeud.nature` (la dernière émise l'emporte, §4), portée au détail du nœud comme une pastille ; transportée, jamais interprétée (§5.2) |
 | §7 — le critère « juste assez » | 4 | mesuré en **distribution** (`kokaji banc --nature --passes N`) : un compte de réussite par kin sur N passes, un verdict de stabilité (chaque kin au-dessus du seuil, tout piège stable), au lieu d'un verdict par campagne — voir ci-dessous |
 | §8 (A16.1→A16.4) — nature × canaux d'effet | doc | écrit, en attente de la RFC-016 pour la trempe des canaux |
 

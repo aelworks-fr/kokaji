@@ -50,6 +50,10 @@ class VueNoeud:
     etape: str | None = None
     provenance: dict = field(default_factory=dict)
     sessions: list[dict] = field(default_factory=list)
+    # RFC-003 §5.5 — la dernière nature diagnostiquée sur ce nœud (valeur,
+    # confiance, révisée le). Transportée, jamais interprétée (§5.2) : une
+    # donnée de plus au détail du nœud, pas une vue nouvelle.
+    nature: dict = field(default_factory=dict)
     # RFC-011 D11.3 — un kata en texte n'a pas de contrat : son carré est
     # éteint, jamais vert ni rouge, et le nœud le dit.
     sans_contrat: bool = False
@@ -144,6 +148,7 @@ class VueQG:
                     "champs": n.champs,
                     "attendus": list(n.attendus),
                     "sans_contrat": n.sans_contrat,
+                    "nature": n.nature,
                     "hypotheses": n.hypotheses,
                     "options_vivantes": len(n.options_vivantes),
                     "options": [vars(o) for o in n.options],
@@ -384,6 +389,9 @@ def composer(
                 noeud.hypotheses = [h for h in hypotheses if isinstance(h, dict)]
             noeud.dernier_etat = horodatage
             noeud.etape = etat.get("etape") or noeud.etape
+            nature = etat.get("nature")
+            if isinstance(nature, dict) and str(nature.get("valeur") or "").strip():
+                noeud.nature = nature  # la dernière émise l'emporte (RFC-003 §4)
             noeud.provenance = {
                 "harness": etat.get("harness"),
                 "kata": etat.get("kata"),
