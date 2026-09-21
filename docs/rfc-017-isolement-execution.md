@@ -38,7 +38,7 @@ Un kata déclare les capacités qu'il **requiert** (RFC-016 D16.2). L'instance l
 
 ### D17.4 — Le réseau est fermé, la souveraineté par défaut
 
-Le bac à sable n'a **aucune sortie réseau** par défaut. Un kata qui a besoin du réseau le déclare comme une capacité, et l'instance ouvre **exactement** ce qu'elle accorde — un hôte, un port —, jamais le large. C'est la souveraineté (RFC-009) portée à l'exécution : aucune émission qu'on ne puisse nommer. Un agent qui tente une sortie non accordée est **bloqué par le mur**, pas seulement grondé par une règle.
+Le bac à sable n'a **aucune sortie réseau** par défaut. Un kata qui a besoin du réseau le déclare comme une capacité, et l'instance ouvre **exactement** ce qu'elle accorde — un hôte, un port —, jamais le large. C'est la souveraineté (RFC-009) portée à l'exécution : aucune émission qu'on ne puisse nommer. Un agent qui tente une sortie non accordée est **bloqué par le mur**, pas seulement grondé par une règle. Le seul réseau qu'un agent de Kokaji a le droit de vouloir — la passerelle de l'instance, jamais Internet — est décidé par la [RFC-018](rfc-018-agent-qui-raisonne.md).
 
 ### D17.5 — L'interdit n°2 est tenu par la construction, pas par la confiance
 
