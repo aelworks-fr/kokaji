@@ -13,7 +13,14 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from kokaji.execution import Executeur, ExecuteurInerte, executeur_pour
+from kokaji.execution import (
+    CapaciteRefusee,
+    Executeur,
+    ExecuteurBoite,
+    ExecuteurInerte,
+    ExecutionEnRetard,
+    executeur_pour,
+)
 from kokaji.routage import Parcours, pas
 
 
@@ -31,6 +38,80 @@ class Inerte(unittest.TestCase):
 
     def test_un_moteur_inconnu_reste_inerte(self):
         self.assertIsInstance(executeur_pour("un-agent-quelconque"), ExecuteurInerte)
+
+
+class Boite(unittest.TestCase):
+    """RFC-017 D17.8 — la boîte aux lettres : job déposé, résultat attendu."""
+
+    def setUp(self):
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.boite = Path(self._tmp.name)
+
+    def _faux_bac(self, resultat: dict, delai: float = 5.0):
+        """Un bac à sable de test : prend le premier job prêt, écrit un résultat."""
+        import json
+        import threading
+        import time
+
+        def surveiller():
+            fin = time.monotonic() + delai
+            while time.monotonic() < fin:
+                for pret in self.boite.glob("*/pret"):
+                    job = pret.parent
+                    if not (job / "resultat.json").is_file():
+                        (job / "resultat.json").write_text(json.dumps(resultat), encoding="utf-8")
+                        return
+                time.sleep(0.02)
+
+        t = threading.Thread(target=surveiller, daemon=True)
+        t.start()
+        return t
+
+    def test_un_job_depose_et_un_resultat_lu(self):
+        self._faux_bac({"actions": [{"intention": "x"}], "verdict": {"valeur": "ok"}})
+        ex = ExecuteurBoite(self.boite, accordees=("execution_shell",), delai=5, intervalle=0.02)
+        r = ex.executer({"capacites": ["execution_shell"]}, {"entree": 1})
+        self.assertEqual(r.verdict, {"valeur": "ok"})
+        self.assertEqual(len(r.actions), 1)
+        self.assertFalse(r.inerte)
+
+    def test_une_capacite_non_accordee_refuse_avant_depot(self):
+        ex = ExecuteurBoite(self.boite, accordees=("lecture",), delai=1, intervalle=0.02)
+        with self.assertRaises(CapaciteRefusee):
+            ex.executer({"capacites": ["execution_shell"]}, {})
+        # rien n'a été déposé : le run refuse de partir
+        self.assertEqual(list(self.boite.glob("*/job.json")), [])
+
+    def test_un_resultat_en_retard_remonte_en_urgence(self):
+        ex = ExecuteurBoite(self.boite, accordees=("execution_shell",), delai=0.3, intervalle=0.05)
+        with self.assertRaises(ExecutionEnRetard):
+            ex.executer({"capacites": ["execution_shell"]}, {})
+
+    def test_sans_boite_l_executeur_est_inerte(self):
+        import os
+
+        avant = os.environ.pop("KOKAJI_BOITE_EXECUTION", None)
+        try:
+            self.assertIsInstance(executeur_pour(), ExecuteurInerte)
+        finally:
+            if avant is not None:
+                os.environ["KOKAJI_BOITE_EXECUTION"] = avant
+
+    def test_une_boite_declaree_donne_l_executeur_boite(self):
+        import os
+
+        avant = dict(os.environ)
+        os.environ["KOKAJI_BOITE_EXECUTION"] = str(self.boite)
+        os.environ["KOKAJI_CAPACITES_ACCORDEES"] = "execution_shell, lecture_depot"
+        try:
+            ex = executeur_pour()
+            self.assertIsInstance(ex, ExecuteurBoite)
+            self.assertEqual(ex.accordees, {"execution_shell", "lecture_depot"})
+        finally:
+            os.environ.clear()
+            os.environ.update(avant)
 
 
 @dataclass

@@ -1221,6 +1221,60 @@ def _note(args) -> int:
     return 0
 
 
+def _executer(args) -> int:
+    """RFC-016 D16.3 / RFC-017 — exécuter un kata d'action, puis router un pas.
+
+    L'exécuteur est celui que l'instance déclare : inerte par défaut (rien ne
+    s'exécute), la boîte aux lettres si `KOKAJI_BOITE_EXECUTION` est là. On
+    exécute, on lit le résultat, et on demande au routage le nœud suivant.
+    """
+    from .execution import CapaciteRefusee, ExecutionEnRetard, executeur_pour
+    from .forge.coupe import _outil_de
+    from .routage import Parcours, pas
+
+    try:
+        harness = charger(args.harness)
+    except ManifestInvalide as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    kata = harness.kata_par_id(args.kata)
+    if kata is None:
+        print(f"✗ kata inconnu : {args.kata!r}", file=sys.stderr)
+        return 1
+
+    outil = _outil_de(kata) or {"capacites": [], "effets": {}, "verificateurs": []}
+    executeur = executeur_pour()
+    print(f"→ {harness.id}/{kata.id} via {type(executeur).__name__}")
+    try:
+        resultat = executeur.executer(outil, {})
+    except CapaciteRefusee as err:
+        print(f"✗ capacité refusée — {err}", file=sys.stderr)
+        return 1
+    except ExecutionEnRetard as err:
+        print(f"⚠ urgence — {err} ; état gelé, main rendue (RFC-017 D17.6)", file=sys.stderr)
+        return 2
+
+    if resultat.inerte:
+        print(f"  {resultat.note}")
+    else:
+        print(f"  {len(resultat.actions)} action(s), verdict : {resultat.verdict}")
+
+    # Le pas de routage se lit sur l'état que l'exécution laisse — ses actions,
+    # son verdict. Inerte, il n'y a pas de verdict : le routage rendra la main.
+    etat = {"actions": list(resultat.actions)}
+    if resultat.verdict is not None:
+        etat["actions"] = list(resultat.actions) or [{"verdict": resultat.verdict}]
+    etape = pas(harness, kata.id, etat, Parcours())
+    if etape.urgence:
+        print(f"  urgence : {etape.conduite}")
+    elif etape.routage.tranche:
+        print(f"  routage → {etape.routage.vers}")
+    else:
+        print(f"  checkpoint humain : {etape.routage.checkpoint}"
+              + (f" (candidats : {', '.join(etape.routage.candidats)})" if etape.routage.candidats else ""))
+    return 0
+
+
 def _promouvoir(args) -> int:
     """La promotion est un geste humain (SPECS §6) : la fiche passe `annote`,
     et l'ha entre au dépôt du harness malgré l'ignore des ha bruts (RFC-014).
@@ -1676,6 +1730,12 @@ def main(argv: list[str] | None = None) -> int:
     promouvoir.add_argument("harness", type=Path, help="dossier du harness")
     promouvoir.add_argument("ha", nargs="+", help="dossier(s) CAS-XXXX à promouvoir")
 
+    executer = sous.add_parser(
+        "executer", help="exécute un kata d'action (inerte par défaut) et route un pas (RFC-016/017)"
+    )
+    executer.add_argument("harness", type=Path, help="dossier du harness")
+    executer.add_argument("kata", help="id du kata à exécuter")
+
     instance = sous.add_parser(
         "instance", help="exporte la base de l'instance au format fichiers, ou l'importe (RFC-014)"
     )
@@ -1692,6 +1752,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parseur.parse_args(argv)
     if args.commande == "promouvoir":
         return _promouvoir(args)
+    if args.commande == "executer":
+        return _executer(args)
     if args.commande == "instance":
         return _instance(args)
     if args.commande in ("pousser", "tirer", "enregistrer"):
