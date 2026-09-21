@@ -1243,8 +1243,13 @@ def _executer(args) -> int:
         return 1
 
     outil = _outil_de(kata) or {"capacites": [], "effets": {}, "verificateurs": []}
-    executeur = executeur_pour()
-    print(f"→ {harness.id}/{kata.id} via {type(executeur).__name__}")
+    cle = f"{harness.id}/{kata.id}"
+    executeur = executeur_pour(cle)
+    inerte = type(executeur).__name__ == "ExecuteurInerte"
+    print(f"→ {cle} via {type(executeur).__name__}")
+    if inerte and os.environ.get("KOKAJI_BOITE_EXECUTION", "").strip() and kata.agit_sur_le_monde:
+        print("  verrou par kata : ce kata n'est pas sur la liste blanche "
+              "`KOKAJI_KATA_EXECUTABLES` de l'instance (RFC-017 D17.7)")
     try:
         resultat = executeur.executer(outil, {})
     except CapaciteRefusee as err:

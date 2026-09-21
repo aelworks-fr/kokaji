@@ -142,15 +142,30 @@ class ExecuteurBoite:
         )
 
 
-def executeur_pour(moteur: str = "") -> Executeur:
-    """L'exécuteur en service. La boîte aux lettres si l'instance en déclare une
-    (`KOKAJI_BOITE_EXECUTION`), l'inerte sinon — le régime par défaut.
+def katas_executables() -> set[str]:
+    """La liste blanche des kata que l'instance autorise à s'exécuter — le verrou
+    par kata (RFC-017 D17.7). Des clés `<harness>/<kata>`, séparées par des
+    virgules dans `KOKAJI_KATA_EXECUTABLES`. Vide, personne ne s'exécute."""
+    return {
+        c.strip() for c in os.environ.get("KOKAJI_KATA_EXECUTABLES", "").split(",") if c.strip()
+    }
 
-    `KOKAJI_CAPACITES_ACCORDEES` (séparées par des virgules) dit ce que l'instance
-    accorde : une capacité requise hors de cette liste fait refuser le run (D17.3).
+
+def executeur_pour(cle: str = "") -> Executeur:
+    """L'exécuteur en service, pour le kata `cle` (`<harness>/<kata>`).
+
+    Trois gardes, dans l'ordre : sans boîte déclarée (`KOKAJI_BOITE_EXECUTION`),
+    l'inerte — le régime par défaut ; **avec** une boîte mais un kata **hors de
+    la liste blanche** (`KOKAJI_KATA_EXECUTABLES`), l'inerte aussi — le verrou par
+    kata (D17.7 : « un kata d'essai, et seulement lui ») ; sinon la boîte aux
+    lettres, avec les capacités que l'instance accorde (`KOKAJI_CAPACITES_ACCORDEES`,
+    D17.3).
     """
     boite = os.environ.get("KOKAJI_BOITE_EXECUTION", "").strip()
     if not boite:
+        return ExecuteurInerte()
+    if cle and cle not in katas_executables():
+        logger.info("verrou par kata — %r n'est pas autorisé à s'exécuter (RFC-017 D17.7)", cle)
         return ExecuteurInerte()
     accordees = tuple(
         c.strip() for c in os.environ.get("KOKAJI_CAPACITES_ACCORDEES", "").split(",") if c.strip()

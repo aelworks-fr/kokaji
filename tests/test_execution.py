@@ -20,6 +20,7 @@ from kokaji.execution import (
     ExecuteurInerte,
     ExecutionEnRetard,
     executeur_pour,
+    katas_executables,
 )
 from kokaji.routage import Parcours, pas
 
@@ -63,7 +64,7 @@ class Boite(unittest.TestCase):
                     if not (job / "resultat.json").is_file():
                         (job / "resultat.json").write_text(json.dumps(resultat), encoding="utf-8")
                         return
-                time.sleep(0.02)
+                time.sleep(0.005)
 
         t = threading.Thread(target=surveiller, daemon=True)
         t.start()
@@ -112,6 +113,38 @@ class Boite(unittest.TestCase):
         finally:
             os.environ.clear()
             os.environ.update(avant)
+
+
+class Verrou(unittest.TestCase):
+    """RFC-017 D17.7 — le verrou par kata : « un kata d'essai, et seulement lui »."""
+
+    def setUp(self):
+        import os
+        import tempfile
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self._avant = dict(os.environ)
+        self.addCleanup(lambda: (os.environ.clear(), os.environ.update(self._avant)))
+        os.environ["KOKAJI_BOITE_EXECUTION"] = self._tmp.name
+        os.environ["KOKAJI_KATA_EXECUTABLES"] = "atelier/tests, atelier/deploiement"
+
+    def test_un_kata_de_la_liste_blanche_prend_la_boite(self):
+        self.assertIsInstance(executeur_pour("atelier/tests"), ExecuteurBoite)
+
+    def test_un_kata_hors_liste_reste_inerte_malgre_la_boite(self):
+        self.assertIsInstance(executeur_pour("atelier/idee"), ExecuteurInerte)
+
+    def test_sans_cle_le_verrou_ne_s_applique_pas(self):
+        # l'appel sans clé (usage bas niveau) prend la boîte si elle est là
+        self.assertIsInstance(executeur_pour(), ExecuteurBoite)
+
+    def test_la_liste_blanche_se_lit(self):
+        self.assertEqual(katas_executables(), {"atelier/tests", "atelier/deploiement"})
+
+    def test_sans_boite_tout_reste_inerte(self):
+        import os
+        os.environ.pop("KOKAJI_BOITE_EXECUTION")
+        self.assertIsInstance(executeur_pour("atelier/tests"), ExecuteurInerte)
 
 
 @dataclass
