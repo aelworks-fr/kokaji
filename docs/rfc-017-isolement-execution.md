@@ -158,7 +158,7 @@ premier essai.
 |---|---|
 | A — le mur (instance) | à faire — le jour de l'exécution réelle |
 | B — l'exécuteur commande (produit) | à faire |
-| C — la bascule gardée | à faire — premier essai : une **sonde déterministe** (suite de tests fixe, sans LLM ni réseau), sabotages joués avant tout ; l'agent qui raisonne vient après |
+| C — la bascule gardée | **sonde déterministe construite et validée** (instance) — agent déterministe + vérificateur lu de l'extérieur ; sur-promesse démentie, verdict du vérificateur qui route ; réseau coupé, racine en lecture seule, capacité refusée déjà éprouvés. **Activation en prod en attente d'un verrou par kata** (l'exécuteur produit est global ; D17.7 veut « un kata d'essai, et seulement lui »). L'agent qui raisonne, via litellm, vient après |
 
 ---
 *Note d'établi : la RFC-016 a appris à la forge que couper, c'est agir. Celle-ci pose la seule condition pour qu'agir ne soit pas dangereux : un mur, et le monde regardé de l'extérieur. Le produit sait déjà tout déclarer et tout valider ; il reste inerte non par incapacité, mais par prudence — parce que la première instance est la machine qui nous porte, et qu'on ne lâche pas un agent dans la pièce où l'on travaille sans avoir d'abord bâti la pièce d'à côté.*
