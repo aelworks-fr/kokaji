@@ -1229,7 +1229,7 @@ def _executer(args) -> int:
     exécute, on lit le résultat, et on demande au routage le nœud suivant.
     """
     from .execution import CapaciteRefusee, ExecutionEnRetard, executeur_pour
-    from .forge.coupe import _outil_de
+    from .forge.coupe import _outil_de, charger_registre, forger
     from .routage import Parcours, pas
 
     try:
@@ -1243,6 +1243,15 @@ def _executer(args) -> int:
         return 1
 
     outil = _outil_de(kata) or {"capacites": [], "effets": {}, "verificateurs": []}
+    # RFC-018 D18.2 — la coupe pilote l'agent : on la forge et on la met au job,
+    # comme le prompt système d'un chat. La première cible suffit à l'incarner.
+    if harness.cibles:
+        registre = charger_registre(harness.trempe.registre)
+        gabarit = harness.template.read_text(encoding="utf-8") if harness.template.is_file() else ""
+        try:
+            outil["prompt"] = forger(harness, kata, harness.cibles[0], gabarit, registre).texte
+        except Exception:  # noqa: BLE001 — une coupe qui ne se forge pas n'empêche pas l'inerte
+            outil["prompt"] = ""
     cle = f"{harness.id}/{kata.id}"
     executeur = executeur_pour(cle)
     inerte = type(executeur).__name__ == "ExecuteurInerte"
