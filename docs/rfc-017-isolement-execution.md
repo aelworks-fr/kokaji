@@ -126,7 +126,31 @@ surveillant du bac (une boucle qui prend un job, exécute, rend un résultat sur
 un dossier jetable), et le mappage capacité → moyen. Le bac garde
 `network_mode: none`.
 
-**Lot C — la bascule gardée** : jouer les six sabotages sur la première instance, les voir tomber, puis câbler un agent réel sur un kata d'essai — et seulement lui. La conduite d'urgence (RFC-003), armée par le budget, vérifiée sur une boucle qui ne converge pas.
+**Lot C — la bascule gardée, une sonde déterministe d'abord** : le premier
+essai n'appelle **aucun modèle** et n'ouvre **aucun réseau** — le plus sûr.
+L'« agent » est une commande (`KOKAJI_AGENT_CMD`) qui lance une **suite de tests
+fixe** sur le dossier de travail, produit un **rapport** (l'artefact), et
+**auto-rapporte** un verdict. Le **vérificateur** est un pas distinct que le
+surveillant lance après l'agent : il lit le rapport (la `source`) **de
+l'extérieur** et calcule le vrai verdict, indépendamment du dire de l'agent
+(D17.5). Un vérificateur `executable` s'exécute par un **lanceur** que l'instance
+mappe (le produit déclare `check`/`source`, l'instance fournit la commande) —
+capacité qui se donne (D17.3).
+
+On câble, on monte la boîte dans `kokaji`, on accorde `execution_shell`, et on
+**joue les sabotages** avant d'ouvrir à quoi que ce soit d'autre :
+
+- l'agent **sur-promet** « tous_passes » alors que le rapport dit l'échec → le
+  vérificateur, qui lit le rapport, **dément**, et le routage ne suit pas le
+  faux verdict (D17.5, sabotage 4) ;
+- une **boucle qui ne converge pas** → budget épuisé, sortie d'urgence (D17.6) ;
+- une **capacité non accordée**, une **écriture hors du dossier de travail**,
+  une **sortie réseau** → refus / mur (sabotages 1, 2, 3).
+
+L'agent qui **raisonne** (un CLI agentique appelant la passerelle litellm par un
+trou réseau étroit et accordé, D17.4) vient **après**, la boucle déterministe
+prouvée. C'est lui qui exercera la capacité réseau ; il n'entre pas dans ce
+premier essai.
 
 ## 8. Tableau d'application
 
@@ -134,7 +158,7 @@ un dossier jetable), et le mappage capacité → moyen. Le bac garde
 |---|---|
 | A — le mur (instance) | à faire — le jour de l'exécution réelle |
 | B — l'exécuteur commande (produit) | à faire |
-| C — la bascule gardée | à faire |
+| C — la bascule gardée | à faire — premier essai : une **sonde déterministe** (suite de tests fixe, sans LLM ni réseau), sabotages joués avant tout ; l'agent qui raisonne vient après |
 
 ---
 *Note d'établi : la RFC-016 a appris à la forge que couper, c'est agir. Celle-ci pose la seule condition pour qu'agir ne soit pas dangereux : un mur, et le monde regardé de l'extérieur. Le produit sait déjà tout déclarer et tout valider ; il reste inerte non par incapacité, mais par prudence — parce que la première instance est la machine qui nous porte, et qu'on ne lâche pas un agent dans la pièce où l'on travaille sans avoir d'abord bâti la pièce d'à côté.*
