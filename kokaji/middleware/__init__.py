@@ -37,7 +37,7 @@ REPOS_DEFAUT = 300.0  # secondes de silence après quoi une session est close
 class Carre:
     """Le verdict de naturalité d'un ha (RFC-002 §4)."""
 
-    verdict: str  # conforme | sur-promesse | hors-premisse | sans-etat
+    verdict: str  # conforme | sur-promesse | action-sur-promesse | hors-premisse | sans-etat
     manquants: tuple[tuple[str, str, str], ...] = ()  # (champ, promis, livré)
     motif: str = ""
 
@@ -155,7 +155,45 @@ def carre_du_ha(harness: Harness, kata: Kata, releves: list[dict]) -> Carre:
                 "Sous-promettre est permis ; sur-promettre ne l'est pas."
             ),
         )
+
+    # RFC-016 amende RFC-002 : α couvre les actions. Une pratique qui agit
+    # s'abstrait aussi par ce qu'elle a fait — et le verdict qu'elle rapporte
+    # d'une action peut mentir. Le vérificateur a échantillonné le monde de son
+    # côté (interdit n°2) ; si le dire de l'agent diverge de ce constat, c'est
+    # une sur-promesse d'action, et le carré la nomme. La loi de prudence armée.
+    divergences = _divergences_d_action(lisibles)
+    if divergences:
+        return Carre(
+            "action-sur-promesse",
+            manquants=tuple(divergences),
+            motif=(
+                "Une action rapporte un verdict que le vérificateur dément. "
+                "Le monde est échantillonné hors du dire de l'agent (interdit n°2) ; "
+                "un routage sur un verdict démenti irait de travers."
+            ),
+        )
     return Carre("conforme", motif="L'état final livre au moins la promesse.")
+
+
+def _divergences_d_action(releves: list[dict]) -> list[tuple[str, str, str]]:
+    """Les actions dont le dire de l'agent diverge du constat du vérificateur.
+
+    Rend (artefact ou canal, rapporté par l'agent, constaté). Le verdict qui
+    fait foi est celui du vérificateur (`verdict.valeur`) ; `rapporte_par_l_agent`
+    est le dire, et `divergence` la marque posée à la capture (RFC-017 D17.5).
+    """
+    trouves: list[tuple[str, str, str]] = []
+    for releve in releves:
+        for action in releve["etat"].get("actions") or []:
+            if not isinstance(action, dict):
+                continue
+            constate = str((action.get("verdict") or {}).get("valeur") or "")
+            rapporte = str(action.get("rapporte_par_l_agent") or "")
+            ment = bool(action.get("divergence")) or (rapporte and constate and rapporte != constate)
+            if ment:
+                ou = str(action.get("artefact") or action.get("canal") or "action")
+                trouves.append((ou, rapporte or "?", constate or "?"))
+    return trouves
 
 
 @dataclass(frozen=True)

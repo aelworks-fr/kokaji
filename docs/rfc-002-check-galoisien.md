@@ -53,6 +53,8 @@ kata:
 
 La pratique livre **au moins** la promesse. Sous-promettre est permis (le slack). **Interdit absolu : sur-promettre** — une coupe dont les ha violent le carré est non conforme ; la trempe la casse.
 
+**α couvre les actions (amendement RFC-016).** Depuis la RFC-016, une pratique peut *agir* : α, le bloc d'état, porte alors des `actions[]`, et l'abstraction inclut ce que la pratique a **fait**. Le carré gagne un verdict, `action-sur-promesse` : quand une action rapporte un verdict que le **vérificateur** a démenti — le monde échantillonné hors du dire de l'agent (RFC-016 interdit n°2) —, le carré le nomme, car un routage sur un verdict démenti irait de travers. La sur-promesse de champ prime : on nomme d'abord ce que `produit` n'a pas livré, puis ce qu'une action a menti.
+
 ## 5. Options réelles de la décision « prudence » (complétées à l'établi)
 
 **Fermé :**
@@ -120,6 +122,7 @@ Pour chaque ha capturé : vérifier le carré (§4) par comparaison des blocs d'
 | §6.4 — lint de resserrage | 4 | appliqué — `kokaji resserrer`, propose sans appliquer |
 | §6.4 — couverture des entrées limites du carré | 4 | pas construit |
 | §6.3 — le carré continu sur chaque ha capturé | 5 | appliqué — `carre.md` par ha, `sur-promesse` en erreur |
+| §4 — α couvre les actions (amendement RFC-016) | — | appliqué — verdict `action-sur-promesse` quand le dire d'une action diverge du vérificateur ; les ha sans action jugés comme avant |
 
 Décisions prises à l'application, hors du texte du RFC :
 

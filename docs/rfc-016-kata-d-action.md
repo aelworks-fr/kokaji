@@ -157,9 +157,11 @@ vérificateurs exécutables déclarés au manifeste (tests, compilation, lint �
 l'étage 1 déterministe cesse d'être un pis-aller de regex), puis les étages
 judge et humain s'appliquent au résultat. La **trace complète** des actions
 est capturée dans le ha, sous le régime base des données vivantes
-(RFC-014), mais n'est pas évaluée en v1 : l'évaluation de trace deviendra
-possible plus tard **sans rien perdre**. Capture par défaut, jugement
-juste assez.
+(RFC-014). L'**honnêteté** de la trace est jugée dès à présent — le carré porte
+`action-sur-promesse` quand le dire d'une action diverge du vérificateur (α
+couvre les actions, amendement de la RFC-002) ; l'évaluation plus fine de la
+trace (au-delà du verdict) reste ouverte, **sans rien perdre**. Capture par
+défaut, jugement juste assez.
 
 ---
 

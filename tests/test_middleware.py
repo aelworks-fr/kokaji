@@ -63,6 +63,14 @@ def bloc(champs: dict) -> str:
     )
 
 
+def bloc_action(champs: dict, actions: list) -> str:
+    return (
+        "```json kokaji_state\n"
+        + json.dumps({"kokaji_state": {"champs": champs, "actions": actions, "pret_pour": None}})
+        + "\n```"
+    )
+
+
 class Bac(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
@@ -171,6 +179,39 @@ class CarreContinu(Bac):
         """Un statut inventé est le plus faible de tous : il ne peut rien garantir."""
         releves = self.releves(bloc({"c1": "etabli", "c2": "etabli"}))
         self.assertEqual(carre_du_ha(self.harness, self.kata, releves).verdict, "sur-promesse")
+
+
+class CarreDesActions(Bac):
+    """RFC-016 amende RFC-002 : α couvre les actions — la trace est jugée."""
+
+    def _honnete(self):
+        return {"intention": "tester", "canal": "monde_lecture", "artefact": "rapport.json",
+                "verdict": {"valeur": "tous_passes", "confiance": 1.0},
+                "rapporte_par_l_agent": "tous_passes", "divergence": False}
+
+    def _menteur(self):
+        return {"intention": "tester", "canal": "monde_lecture", "artefact": "rapport.json",
+                "verdict": {"valeur": "echecs", "confiance": 1.0},
+                "rapporte_par_l_agent": "tous_passes", "divergence": True}
+
+    def test_une_action_honnete_reste_conforme(self):
+        releves = self.releves(bloc_action({"c1": "fait_etabli", "c2": "hypothese"}, [self._honnete()]))
+        self.assertEqual(carre_du_ha(self.harness, self.kata, releves).verdict, "conforme")
+
+    def test_une_action_qui_ment_est_une_sur_promesse_d_action(self):
+        releves = self.releves(bloc_action({"c1": "fait_etabli", "c2": "hypothese"}, [self._menteur()]))
+        carre = carre_du_ha(self.harness, self.kata, releves)
+        self.assertEqual(carre.verdict, "action-sur-promesse")
+        self.assertEqual(carre.manquants, (("rapport.json", "tous_passes", "echecs"),))
+
+    def test_la_sur_promesse_de_champ_prime_sur_l_action(self):
+        # champs trop faibles ET action menteuse : c'est le champ qui est nommé d'abord
+        releves = self.releves(bloc_action({"c1": "hypothese", "c2": "hypothese"}, [self._menteur()]))
+        self.assertEqual(carre_du_ha(self.harness, self.kata, releves).verdict, "sur-promesse")
+
+    def test_un_ha_sans_action_est_jugé_comme_avant(self):
+        releves = self.releves(bloc({"c1": "fait_etabli", "c2": "hypothese"}))
+        self.assertEqual(carre_du_ha(self.harness, self.kata, releves).verdict, "conforme")
 
 
 class HeritePremisse(Bac):
