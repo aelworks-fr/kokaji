@@ -19,6 +19,8 @@ kokaji/              La forge — paquet Python, CLI `kokaji`
     journal.py       Le journal des appels : fichiers et base, lus ensemble
     instance.py      L'export et l'import de l'instance entière — rien de captif
   middleware/        Capture, état, carré continu, surface HTTP  (§7, §12)
+  routage.py           Le routage conditionnel de la chaîne          (RFC-016)
+  execution.py         L'exécution d'une coupe-outil : façade + inerte  (RFC-016)
   qg/                Fil d'ariane : agrégation + pages, sans CDN (§8, R12.5)
   comptes/           Comptes locaux, droits, portail            (RFC-004)
   conception/        Concevoir et sceller une définition        (RFC-006)

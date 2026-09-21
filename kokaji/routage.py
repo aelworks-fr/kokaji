@@ -18,13 +18,16 @@ routage. Il n'exécute rien et ne touche rien.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 __all__ = [
     "ConditionInvalide",
+    "Etape",
+    "Parcours",
     "Routage",
     "evaluer_condition",
     "parser_condition",
+    "pas",
     "projeter",
     "router",
 ]
@@ -199,3 +202,57 @@ def router(harness, kata_id: str, etat: dict) -> Routage:
             candidats=tuple(a.vers for a in passantes),
         )
     return Routage(vers=passantes[0].vers)
+
+
+@dataclass
+class Parcours:
+    """L'état vivant d'un parcours de chaîne : combien de fois chaque cycle a été
+    repassé. Ce que le budget (RFC-016 D16.4) décompte à l'exécution."""
+
+    passages: dict[int, int] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class Etape:
+    """Le résultat d'un pas de routage, budget compris (RFC-016 D16.3/D16.4)."""
+
+    routage: Routage
+    urgence: bool = False
+    conduite: str = ""
+
+
+def _cycle_de(harness, de: str, vers: str):
+    """L'indice et le cycle déclaré dont cette arête reste à l'intérieur — ou None."""
+    for i, c in enumerate(getattr(harness.chaine, "cycles", ())):
+        if de in c.noeuds and vers in c.noeuds:
+            return i, c
+    return None, None
+
+
+def pas(harness, kata_id: str, etat: dict, parcours: Parcours | None = None) -> Etape:
+    """Un pas de chaîne : route mécaniquement, et décompte le budget d'un cycle.
+
+    Router hors d'un cycle est un pas simple. Router **dans** un cycle déclaré
+    consomme un passage ; le budget épuisé, la main revient à l'humain avec la
+    conduite d'urgence (RFC-003 A16.3) — état gelé, jamais une boucle de plus.
+    """
+    parcours = parcours if parcours is not None else Parcours()
+    routage = router(harness, kata_id, etat)
+    if not routage.tranche:
+        return Etape(routage)
+    i, cycle = _cycle_de(harness, kata_id, routage.vers)
+    if cycle is None:
+        return Etape(routage)
+    faits = parcours.passages.get(i, 0) + 1
+    parcours.passages[i] = faits
+    if cycle.budget.passages is not None and faits > cycle.budget.passages:
+        return Etape(
+            Routage(
+                vers=None,
+                checkpoint=f"budget de cycle épuisé — {cycle.budget.passages} passages",
+                candidats=(routage.vers,),
+            ),
+            urgence=True,
+            conduite="urgence : état gelé, main rendue à l'humain (RFC-003 A16.3, RFC-016 D16.4)",
+        )
+    return Etape(routage)
