@@ -52,6 +52,25 @@ Tout ce qu'un run produit — actions, artefacts, journal de l'agent — entre d
 
 Passer de l'inerte au réel n'est pas une option de config qu'on coche : c'est une bascule que l'on **valide** d'abord, en voyant le mur **refuser** (§6). L'exécuteur inerte reste le défaut du produit ; un agent réel ne se câble sur la première instance qu'une fois le bac à sable posé, ses limites mesurées, et les sabotages de cette RFC vus tomber. La doctrine tient : rien n'est cru avant le sabotage.
 
+### D17.8 — Le canal est une boîte aux lettres sur volume — ni socket, ni réseau
+
+Le produit tourne dans le conteneur `kokaji` ; il atteint le bac à sable **sans
+recevoir le socket Docker** (qui vaut root sur l'hôte) et **sans réseau** (le bac
+garde `network_mode: none`, D17.4). Le canal est une **boîte aux lettres sur un
+volume partagé** entre `kokaji` et le bac à sable, et **rien d'autre** :
+
+- le produit dépose un **job** (la coupe-outil, les entrées, un dossier de
+  travail neuf) dans la boîte ;
+- le bac à sable **surveille** la boîte, prend le job, exécute l'agent sur le
+  dossier de travail, y écrit un **résultat** (actions, artefacts, verdict) ;
+- le produit lit le résultat, le capture dans le ha (régime base), et efface le
+  job. Un résultat qui n'arrive pas dans le délai imparti est un **écart qui
+  remonte** (interdit n°3) : le run sort en urgence, il ne s'oublie pas.
+
+La seule surface commune est ce volume ; le bac à sable ne voit toujours ni
+réseau, ni matière vivante, ni hôte. C'est le canal le plus étroit qu'on
+puisse donner à quelque chose qui touche le monde.
+
 ## 3. La surface
 
 - Produit : un `ExecuteurCommande` à côté de l'`ExecuteurInerte` (`kokaji/execution.py`) — il invoque la commande configurée, passe la coupe-outil et le dossier de travail, lit le résultat (actions, artefacts, verdict) et le rend tel quel. `executeur_pour` choisit l'un ou l'autre selon la configuration de l'instance ; aucune n'est câblée par défaut.
@@ -95,7 +114,17 @@ Passer de l'inerte au réel n'est pas une option de config qu'on coche : c'est u
 
 **Lot A — le mur (instance)** : le conteneur bac à sable au `compose.yaml` (plafonné, `on-failure`, réseau fermé, dossier de travail jetable, aucun montage de la matière vivante) ; le mappage capacité → moyen ; la commande d'entrée.
 
-**Lot B — l'exécuteur commande (produit)** : `ExecuteurCommande` dans `kokaji/execution.py`, `executeur_pour` qui le choisit sur configuration ; la capture du résultat dans le ha (régime base) ; le refus d'une capacité non accordée ; les vérificateurs lus de l'extérieur (D17.5).
+**Lot B — l'exécuteur commande (produit) + la boîte aux lettres (instance)** :
+`ExecuteurCommande` dans `kokaji/execution.py` (dépose un job dans la boîte,
+attend le résultat, capture dans le ha au régime base, sort en urgence sur
+délai dépassé) ; `executeur_pour` qui le choisit sur configuration, inerte tant
+qu'aucune boîte n'est déclarée ; une commande `kokaji executer <harness> <kata>`
+qui déclenche un run et un pas de routage (pas d'orchestrateur autonome, §6) ;
+le refus d'une capacité non accordée (D17.3) ; les vérificateurs lus de
+l'extérieur (D17.5). Côté instance : le volume partagé `kokaji`↔bac à sable, le
+surveillant du bac (une boucle qui prend un job, exécute, rend un résultat sur
+un dossier jetable), et le mappage capacité → moyen. Le bac garde
+`network_mode: none`.
 
 **Lot C — la bascule gardée** : jouer les six sabotages sur la première instance, les voir tomber, puis câbler un agent réel sur un kata d'essai — et seulement lui. La conduite d'urgence (RFC-003), armée par le budget, vérifiée sur une boucle qui ne converge pas.
 
