@@ -198,6 +198,18 @@ def routeur_chat(
         entetes = {"content-type": "application/json"}
         if passerelle.cle:
             entetes["authorization"] = f"Bearer {passerelle.cle}"
+        # Repasser l'identité que le chat annonce — le fil et la personne. Open
+        # WebUI les met en en-têtes ; ce relais reconstruisait les siens de zéro
+        # et les jetait, si bien que le hook de la passerelle ne voyait jamais
+        # qui pratiquait, et tout ha du chat naissait orphelin de porte
+        # (RFC-004 §5). On ne repasse que ces deux en-têtes d'identité — jamais
+        # l'`authorization` du client ni ses cookies, que la passerelle n'a pas
+        # à connaître. Open WebUI pose lui-même ces valeurs depuis la session
+        # authentifiée : un client ne peut pas se les inventer.
+        for entete in ("x-openwebui-user-email", "x-openwebui-chat-id"):
+            valeur = requete.headers.get(entete)
+            if valeur:
+                entetes[entete] = valeur
 
         client = httpx.AsyncClient(timeout=None)
         amont = client.build_request(

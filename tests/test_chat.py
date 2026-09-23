@@ -180,6 +180,110 @@ class Relais(Bac):
         self.assertEqual(reponse.status_code, 503)
 
 
+class RelaisIdentite(unittest.TestCase):
+    """Le relais repasse l'identité que le chat annonce — RFC-004 §5.
+
+    Sans cela, l'email et le fil qu'Open WebUI met en en-têtes se perdaient
+    dans le relais, la passerelle ne les journalisait pas, et tout ha du chat
+    naissait orphelin de porte, invisible au QG.
+    """
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        racine = Path(self._tmp.name)
+        _ecrire_harness(racine / "h")
+
+        self.comptes = Comptes()
+        self.addCleanup(self.comptes.fermer)
+        self.un = self.comptes.creer_utilisateur("Un", "un@exemple.test", MOT_DE_PASSE)
+        self.comptes.enregistrer_harness("h", self.un.id)
+        self.comptes.choisir_harness(self.un.id, "h")
+
+        from kokaji.middleware.chat import Passerelle
+
+        self.client = TestClient(
+            creer_tous(
+                charger_tous(racine), racine / "journal", self.comptes,
+                secret_chat=SECRET,
+                passerelle=Passerelle("http://amont", cle="K"),
+            )
+        )
+
+    def signe(self) -> dict:
+        return {"X-OpenWebUI-User-Jwt": forger_jeton({"email": "un@exemple.test", "exp": 2**31})}
+
+    def test_l_email_et_le_fil_sont_repasses_a_la_passerelle(self):
+        import httpx
+
+        capte: dict = {}
+
+        class FausseReponse:
+            status_code = 200
+            headers = {"content-type": "application/json"}
+
+            async def aread(self):
+                return b'{"ok": true}'
+
+            async def aclose(self):
+                pass
+
+        async def faux_send(soi, requete, **kw):
+            capte["headers"] = {k.lower(): v for k, v in requete.headers.items()}
+            return FausseReponse()
+
+        origine = httpx.AsyncClient.send
+        httpx.AsyncClient.send = faux_send
+        try:
+            reponse = self.client.post(
+                "/v1/chat/completions",
+                json={"model": "h/k1", "messages": []},
+                headers={
+                    **self.signe(),
+                    "x-openwebui-user-email": "p@ex.fr",
+                    "x-openwebui-chat-id": "fil-9",
+                },
+            )
+        finally:
+            httpx.AsyncClient.send = origine
+
+        self.assertEqual(reponse.status_code, 200)
+        self.assertEqual(capte["headers"].get("x-openwebui-user-email"), "p@ex.fr")
+        self.assertEqual(capte["headers"].get("x-openwebui-chat-id"), "fil-9")
+
+    def test_sans_ces_entetes_le_relais_n_en_invente_pas(self):
+        import httpx
+
+        capte: dict = {}
+
+        class FausseReponse:
+            status_code = 200
+            headers = {"content-type": "application/json"}
+
+            async def aread(self):
+                return b'{"ok": true}'
+
+            async def aclose(self):
+                pass
+
+        async def faux_send(soi, requete, **kw):
+            capte["headers"] = {k.lower(): v for k, v in requete.headers.items()}
+            return FausseReponse()
+
+        origine = httpx.AsyncClient.send
+        httpx.AsyncClient.send = faux_send
+        try:
+            self.client.post(
+                "/v1/chat/completions",
+                json={"model": "h/k1", "messages": []},
+                headers=self.signe(),
+            )
+        finally:
+            httpx.AsyncClient.send = origine
+
+        self.assertNotIn("x-openwebui-user-email", capte["headers"])
+
+
 if __name__ == "__main__":
     unittest.main()
 

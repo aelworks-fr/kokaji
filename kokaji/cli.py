@@ -194,32 +194,68 @@ def _une_passe(harness: dict, args, maintenant: str) -> tuple[list, list, list]:
     veilles: list = []
     echecs: list = []
     doubles: list = []
-    for identifiant, un_harness in sorted(harness.items()):
-        try:
-            corpus = _corpus_choisi(un_harness, args.corpus)
-        except SystemExit as err:
-            echecs.append((identifiant, str(err).removeprefix("✗ ")))
-            continue
-        try:
-            captures = veiller(
-                un_harness,
-                journal=args.journal,
-                repos=args.repos,
-                maintenant=maintenant,
-                source=args.source,
-                rattraper=args.rattraper,
-                corpus=corpus,
-                cles=tuple(args.cle_appelante),
+    par_email, comptes = _resolveur_praticien(args)
+    try:
+        for identifiant, un_harness in sorted(harness.items()):
+            try:
+                corpus = _corpus_choisi(un_harness, args.corpus)
+            except SystemExit as err:
+                echecs.append((identifiant, str(err).removeprefix("✗ ")))
+                continue
+            try:
+                captures = veiller(
+                    un_harness,
+                    journal=args.journal,
+                    repos=args.repos,
+                    maintenant=maintenant,
+                    source=args.source,
+                    rattraper=args.rattraper,
+                    corpus=corpus,
+                    cles=tuple(args.cle_appelante),
+                    praticien_par_email=par_email,
+                )
+            except Exception as err:  # noqa: BLE001 — voir la docstring : on rend, on ne meurt pas
+                echecs.append((identifiant, f"{type(err).__name__} : {err}"))
+                continue
+            veilles.extend((identifiant, capture) for capture in captures.veilles)
+            doubles.extend(
+                (identifiant, session, dossier)
+                for session, dossier in sorted(captures.doubles.items())
             )
-        except Exception as err:  # noqa: BLE001 — voir la docstring : on rend, on ne meurt pas
-            echecs.append((identifiant, f"{type(err).__name__} : {err}"))
-            continue
-        veilles.extend((identifiant, capture) for capture in captures.veilles)
-        doubles.extend(
-            (identifiant, session, dossier)
-            for session, dossier in sorted(captures.doubles.items())
-        )
+    finally:
+        if comptes is not None:
+            comptes.fermer()
     return veilles, echecs, doubles
+
+
+def _resolveur_praticien(args):
+    """Un résolveur email → compte, pour attribuer le praticien à la capture.
+
+    Le praticien d'un ha du chat, c'est la personne que le chat a annoncée par
+    son email (RFC-004 §5) — pas la clé publique qu'ils partagent tous. Sans
+    magasin de comptes, il n'y a personne à nommer : le résolveur est `None` et
+    la capture retombe sur le mapping par clé. Un magasin tombé ne fait pas
+    tomber la veille : c'est un service (NOTE-0009), il se signale et continue.
+    """
+    chemin = getattr(args, "comptes", None)
+    if not chemin:
+        return None, None
+    try:
+        from .comptes import Comptes, ou_ouvrir
+
+        comptes = Comptes(ou_ouvrir(chemin))
+    except Exception as err:  # noqa: BLE001 — le magasin tombé ne tue pas la veille
+        print(f"⚠ comptes indisponibles, capture sans praticien : {err}", file=sys.stderr)
+        return None, None
+
+    def par_email(email: str) -> str:
+        try:
+            utilisateur = comptes.par_email(email)
+        except Exception:  # noqa: BLE001 — une lecture qui échoue laisse le ha orphelin
+            return ""
+        return utilisateur.id if utilisateur else ""
+
+    return par_email, comptes
 
 
 def _veille_en_boucle(harness: dict, args) -> int:
@@ -1424,6 +1460,11 @@ def main(argv: list[str] | None = None) -> int:
     middleware.add_argument(
         "--cle-appelante", action="append", default=[], metavar="ALIAS",
         help="ne capturer que les sessions issues de cette clé ; répétable",
+    )
+    middleware.add_argument(
+        "--comptes", type=Path,
+        help="magasin des comptes — attribue le praticien depuis l'email "
+        "annoncé par le chat (RFC-004 §5) ; sans lui, les ha restent orphelins",
     )
     middleware.add_argument(
         "--boucle", type=float, metavar="SECONDES",

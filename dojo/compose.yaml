@@ -275,6 +275,12 @@ services:
       - reel
       - --cle-appelante
       - ${DOJO_ALIAS_CHAT:-chat}
+      # Le praticien d'un ha du chat, c'est la personne que le chat annonce par
+      # son email, pas la clé publique qu'ils partagent tous (RFC-004 §5). La
+      # veille résout l'email en compte via ce magasin ; sans lui, les ha du
+      # chat naissent orphelins de porte, invisibles au QG.
+      - --comptes
+      - /comptes
     environment:
       KOKAJI_BASE_URL: ${KOKAJI_BASE_URL:-}
     volumes:

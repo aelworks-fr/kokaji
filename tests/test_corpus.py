@@ -285,6 +285,57 @@ class Ecarts(Bac):
             ecarter_ha(self.harness, self.harness.corpus, "CAS-9999-z", par="u-1")
 
 
+class Praticien(Bac):
+    """Le praticien vient de la personne, pas de la clé — RFC-004 §5.
+
+    Une clé publique sert tout le monde ; l'email que le chat annonce nomme
+    une personne, et c'est lui qui attribue le ha. Un email inconnu, ou aucun,
+    laisse le ha orphelin — on ne fabrique pas de praticien.
+    """
+
+    def _appel_de(self, email=None, cle=None):
+        appel = _appel("s-1", 1, "r1")
+        if email is not None:
+            appel["identite"]["praticien_email"] = email
+        if cle is not None:
+            appel["identite"]["cle"] = cle
+        return appel
+
+    def fiche(self) -> Path:
+        return next(self.harness.corpus.glob("CAS-*")) / "fiche.md"
+
+    def _praticien(self) -> str:
+        m = re.search(r"(?m)^praticien:(.*)$", self.fiche().read_text(encoding="utf-8"))
+        return m.group(1).strip() if m else ""
+
+    def test_l_email_connu_attribue_le_ha(self):
+        self.ecrire([self._appel_de(email="p@ex.fr")])
+        verser(
+            self.harness, self.journal,
+            praticien_par_email=lambda e: "u-42" if e == "p@ex.fr" else "",
+        )
+        self.assertEqual(self._praticien(), "u-42")
+
+    def test_l_email_inconnu_laisse_orphelin(self):
+        self.ecrire([self._appel_de(email="inconnu@ex.fr")])
+        verser(self.harness, self.journal, praticien_par_email=lambda e: "")
+        self.assertEqual(self._praticien(), "")
+
+    def test_sans_email_la_cle_attribue_encore(self):
+        self.ecrire([self._appel_de(cle="chat-nico")])
+        verser(self.harness, self.journal, praticiens={"chat-nico": "u-7"})
+        self.assertEqual(self._praticien(), "u-7")
+
+    def test_l_email_prime_sur_la_cle(self):
+        self.ecrire([self._appel_de(email="p@ex.fr", cle="chat-nico")])
+        verser(
+            self.harness, self.journal,
+            praticiens={"chat-nico": "u-7"},
+            praticien_par_email=lambda e: "u-42",
+        )
+        self.assertEqual(self._praticien(), "u-42")
+
+
 class Raison(unittest.TestCase):
     """Le fichier des écartés est la seule trace qui restera de la décision."""
 

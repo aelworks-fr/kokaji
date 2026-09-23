@@ -312,6 +312,22 @@ def _amorce(appels: list[dict], longueur: int = 120) -> str:
     return premier if len(premier) <= longueur else premier[: longueur - 1].rstrip() + "…"
 
 
+def _praticien_du_ha(identite: dict, praticiens: dict[str, str], par_email) -> str:
+    """Qui a pratiqué ce ha — l'email annoncé résolu en compte, sinon la clé.
+
+    L'email est la vérité la plus fine : une clé publique sert plusieurs
+    personnes, un email en nomme une. On ne le résout que s'il correspond à un
+    compte connu — un email inconnu ne fabrique pas de praticien, il laisse le
+    ha orphelin (ce qu'il est vraiment tant que personne n'est nommé).
+    """
+    email = str(identite.get("praticien_email") or "").strip()
+    if email and par_email is not None:
+        resolu = par_email(email)
+        if resolu:
+            return str(resolu)
+    return (praticiens or {}).get(str(identite.get("cle") or ""), "")
+
+
 def verser(
     harness: Harness,
     journal: Path,
@@ -323,6 +339,7 @@ def verser(
     corpus: Path | None = None,
     cles: tuple[str, ...] = (),
     praticiens: dict[str, str] | None = None,
+    praticien_par_email=None,
 ) -> Versement:
     """Écrit un ha par session trouvée.
 
@@ -388,10 +405,16 @@ def verser(
                 cible=identite.get("cible") or "",
                 moteur=f"{dernier.get('fournisseur')}/{dernier.get('moteur')}",
                 date=identite.get("date") or dernier.get("debut"),
-                # RFC-004 §5 : le praticien vient de la clé appelante, via le
-                # mapping que le middleware détient. Vide tant que le Dojo ne
-                # sert qu'une personne — et un ha sans praticien reste privé.
-                praticien=praticiens.get(str(identite.get("cle") or ""), ""),
+                # RFC-004 §5 : le praticien, c'est la personne qui a pratiqué.
+                # Une clé publique sert tout le monde — l'attribuer par la clé
+                # rangerait la pratique de chacun sous un seul compte. On lit
+                # donc d'abord l'email que le chat annonce (`praticien_email`,
+                # posé par le hook depuis `x-openwebui-user-email`), résolu en
+                # compte ; à défaut seulement, le mapping par clé. Un ha dont
+                # on ne sait nommer le praticien reste privé, orphelin de porte.
+                praticien=_praticien_du_ha(
+                    identite, praticiens, praticien_par_email
+                ),
                 visibilite=PRIVEE,
                 # Le fil de conversation, tel que le chat l'a annoncé. Absent
                 # pour tout ha né avant que le chat ait le droit de le dire :

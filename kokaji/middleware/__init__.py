@@ -314,6 +314,7 @@ def veiller(
     corpus: Path | None = None,
     cles: tuple[str, ...] = (),
     praticiens: dict[str, str] | None = None,
+    praticien_par_email=None,
 ) -> Passe:
     """Capture les sessions, en extrait l'état, vérifie le carré.
 
@@ -347,6 +348,7 @@ def veiller(
         corpus=corpus,
         cles=cles,
         praticiens=praticiens,
+        praticien_par_email=praticien_par_email,
     )
     verses = versement.ha + retard
     closes = toutes | {ha.session for ha in retard}
