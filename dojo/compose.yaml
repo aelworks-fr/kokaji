@@ -137,8 +137,20 @@ services:
       # pour produire des suggestions : la matière d'observation est polluée
       # par de faux ha, et la dépense double. On l'envoie vers un modèle servi
       # sans coupe, et on coupe ce qui peut l'être.
+      # Deux pièges, appris sur la première instance (23 sept. 2026) :
+      #  1. Ces réglages sont **persistés** par Open WebUI dans sa base au
+      #     premier démarrage ; ensuite la base prime et ces variables ne sont
+      #     plus lues. Sur une instance déjà démarrée, les changer ici ne change
+      #     rien : poser les clés `task.*` de la table `config` (webui.db), puis
+      #     redémarrer le chat.
+      #  2. Un modèle de tâche n'est pris que s'il figure dans la liste des
+      #     modèles ; un modèle nu en est retiré par le relais (un rouage
+      #     d'interface n'est pas un kata). Router les tâches ne suffit donc pas.
+      # D'où le choix : tout éteindre, titre compris — le titre d'un chat est
+      # alors son premier message. Rien à router, rien à capturer comme un ha.
       TASK_MODEL: ${KOKAJI_MODELES_NUS:-banc/persona}
       TASK_MODEL_EXTERNAL: ${KOKAJI_MODELES_NUS:-banc/persona}
+      ENABLE_TITLE_GENERATION: "False"
       ENABLE_TAGS_GENERATION: "False"
       ENABLE_FOLLOW_UP_GENERATION: "False"
       ENABLE_AUTOCOMPLETE_GENERATION: "False"
