@@ -48,7 +48,7 @@ from ..corpus.depot import DepotDeHa, RefHa, depot_pour
 from ..corpus.visibilite import acces, lisible_par, regler_visibilite
 from ..forge import ForgeImpossible, TrempeEchouee, forger_harness
 from ..hds import Harness, ManifestInvalide, charger_valides
-from ..qg import activites, composer, composition, sujets
+from ..qg import activites, composer, composition, conversation, conversations, sujets
 from .chat import Passerelle, routeur_chat
 from .exploitation import routeur_exploitation
 from .identite import Identification, routeur_comptes, routeur_pages
@@ -338,6 +338,9 @@ def creer_harness(
                 "nom": c.nom,
                 "cles": list(c.cles),
                 "sujets": len(sujets(harness, journal, c.nom, filtre(*qui_role))),
+                # Les conversations se comptent dans les fiches, pas dans les états :
+                # un corpus sans aucun sujet peut en porter des dizaines.
+                "conversations": len(conversations(harness, c.nom, filtre(*qui_role))),
             }
             for c in harness.corpus_nommes
         ]
@@ -428,6 +431,28 @@ def creer_harness(
     @app.get("/qg/sujets", summary="Les sujets que les blocs d'état déclarent")
     def qg_sujets(corpus: str | None = None, qui_role: tuple = Depends(membre)) -> list[str]:
         return sujets(harness, journal, _corpus(corpus), filtre(*qui_role))
+
+    @app.get(
+        "/qg/conversations",
+        summary="Les conversations d'un corpus, une par ha, la plus récente en tête",
+    )
+    def qg_conversations(
+        corpus: str | None = None, qui_role: tuple = Depends(membre)
+    ) -> list[dict]:
+        """Lues dans les fiches, pas dans les états : une conversation sans bloc
+        d'état se retrouve ici alors qu'elle n'a aucun sujet au QG."""
+        return conversations(harness, _corpus(corpus), filtre(*qui_role))
+
+    @app.get("/qg/conversation", summary="Une conversation — son transcript et ce qu'on en sait")
+    def qg_conversation(
+        id: str, corpus: str | None = None, qui_role: tuple = Depends(membre)
+    ) -> dict:
+        vue = conversation(harness, _corpus(corpus), id, filtre(*qui_role))
+        if vue is None:
+            # Inconnue ou illisible, sans distinction : dire « elle existe, mais
+            # pas pour toi » renseignerait déjà sur la pratique d'autrui.
+            raise HTTPException(status_code=404, detail=f"conversation inconnue : {id!r}")
+        return vue
 
     @app.get("/qg/donnees", summary="La vue d'un sujet — chaîne, état, possibles")
     def qg_donnees(

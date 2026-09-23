@@ -234,7 +234,7 @@ class Sabotages(Bac):
         self.assertEqual(self.comptes.acl("h").proprietaire, self.patron.id)
 
     def test_2_un_non_membre_ne_lit_pas_la_definition(self):
-        for route in ("/definition", "/chaine", "/ha", "/qg/sujets"):
+        for route in ("/definition", "/chaine", "/ha", "/qg/sujets", "/qg/conversations"):
             refus = self.client.get(route, headers=self.cle(self.dehors))
             self.assertEqual(refus.status_code, 403, route)
 

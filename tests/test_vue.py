@@ -875,5 +875,23 @@ class Honnetete(unittest.TestCase):
         self.assertIn('let CHAT = "";', PAGE)
 
 
+class Conversations(unittest.TestCase):
+    """Les conversations se retrouvent une à une — le point d'entrée du QG."""
+
+    def test_la_liste_des_conversations_est_le_point_d_entree(self):
+        self.assertIn('id="conversations-liste"', PAGE)
+        self.assertIn("/qg/conversations?corpus=", PAGE)
+        self.assertIn("/qg/conversation?", PAGE)
+        self.assertIn('id="conversations-filtre"', PAGE)
+
+    def test_le_selecteur_de_sujet_n_est_plus_visible(self):
+        """Une centaine de sujets en texte libre, triés par l'alphabet, ne se parcourent pas."""
+        self.assertIn('<select id="sujets" class="pill-select" hidden>', PAGE)
+
+    def test_le_compte_du_corpus_est_celui_des_conversations(self):
+        """« reel (0) » devant cent conversations sans état disait le contraire du vrai."""
+        self.assertIn("c.conversations ?? c.sujets", PAGE)
+
+
 if __name__ == "__main__":
     unittest.main()

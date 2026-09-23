@@ -943,8 +943,11 @@
   <span class="nav-spacer"></span>
   <label class="text-muted" for="corpus" style="font-size:12px">corpus</label>
   <select id="corpus" class="pill-select"></select>
-  <label class="text-muted" for="sujets" style="font-size:12px">sujet</label>
-  <select id="sujets" class="pill-select"></select>
+  <!-- Le sélecteur de sujet n'est plus le point d'entrée : la liste des
+       conversations l'a remplacé (une centaine de sujets en texte libre, triés
+       par l'alphabet, ne se parcourent pas). Il reste dans la page, caché, parce
+       que le routage et la vue d'un sujet s'appuient encore dessus. -->
+  <select id="sujets" class="pill-select" hidden></select>
   <a id="vers-chat" class="tag tag-accent-2 nav-cta" hidden style="text-decoration:none"
      target="_blank" rel="noopener">pratiquer ↗</a>
 </nav>
@@ -955,6 +958,24 @@
     <p class="sujet-ligne">Rien n'est affiché plutôt que des données périmées présentées
       comme vivantes. Recharge quand le service est revenu.</p>
   </div>
+
+  <!-- Les conversations, une à une — le point d'entrée du QG. Lues dans les
+       fiches, pas dans les états : une conversation sans bloc d'état n'a aucun
+       sujet, et n'apparaissait donc nulle part. -->
+  <section id="conversations" class="card elev-md" style="padding:20px 24px;margin-bottom:24px"
+           aria-label="Conversations du corpus">
+    <div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+      <h2 class="titre-bloc" style="margin:0">Conversations</h2>
+      <span class="text-muted" id="conversations-compte" style="font-size:12.5px"></span>
+      <span class="rangee-espace"></span>
+      <input id="conversations-filtre" type="search" class="pill-select" style="min-width:220px"
+             placeholder="filtrer : kata, sujet, date, identifiant" aria-label="Filtrer les conversations">
+    </div>
+    <p class="text-muted" style="font-size:12.5px;margin:6px 0 12px">Une ligne par conversation,
+      la plus récente en tête. « lire » ouvre le transcript ; « voir l'état » n'existe que si la
+      conversation a émis un bloc d'état.</p>
+    <div id="conversations-liste"></div>
+  </section>
 
   <div id="vue">
     <h1 class="sujet-titre" id="titre">…</h1>
@@ -1079,6 +1100,92 @@ function vide() {
   $("rang").innerHTML = ""; $("legende").innerHTML = "";
   $("possibles").innerHTML = ""; $("possibles-sous").textContent = "";
   $("decisions").innerHTML = "";
+}
+
+// Les conversations, une à une (le point d'entrée). Le sujet, s'il existe,
+// n'est qu'une information affichée — et un bouton vers la vue d'état.
+let conversations = [], conversationOuverte = null, conversationTours = {};
+
+async function chargerConversations() {
+  try { conversations = await lire(`/qg/conversations?corpus=${encodeURIComponent(corpusChoisi)}`); }
+  catch { conversations = []; }
+  conversationOuverte = null; conversationTours = {};
+  rendreConversations();
+}
+
+function conversationsFiltrees() {
+  const q = ($("conversations-filtre").value || "").trim().toLowerCase();
+  if (!q) return conversations;
+  return conversations.filter(c =>
+    [c.id, c.kata, c.kata_nom, c.sujet, c.date].join(" ").toLowerCase().includes(q));
+}
+
+function rendreConversations() {
+  const liste = $("conversations-liste");
+  const vues = conversationsFiltrees();
+  $("conversations-compte").textContent = conversations.length
+    ? `${vues.length}${vues.length !== conversations.length ? ` / ${conversations.length}` : ""} conversation(s)`
+    : "";
+  if (!conversations.length) { liste.innerHTML = `<p class="rien">Aucune conversation dans ce corpus.</p>`; return; }
+  if (!vues.length) { liste.innerHTML = `<p class="rien">Rien ne correspond au filtre.</p>`; return; }
+  liste.innerHTML = vues.map(c => {
+    const ouverte = conversationOuverte === c.id;
+    const quand = String(c.date || "").slice(0, 16).replace("T", " ");
+    const marques = [
+      c.en_cours ? `<span class="tag tag-outline">en cours</span>` : "",
+      c.reabstrait ? `<span class="tag tag-outline" title="État relu depuis le transcript, non émis en session">relu</span>` : "",
+      c.blocs
+        ? `<span class="tag tag-outline">${c.blocs} bloc(s) d'état</span>`
+        : `<span class="tag tag-outline" title="Aucun bloc d'état émis : cette conversation n'a pas de sujet au QG">sans état</span>`,
+    ].join("");
+    const tours = ouverte ? rendreToursConversation(c.id) : "";
+    return `<div class="rangee" style="flex-wrap:wrap;padding:12px 0;border-bottom:1px solid var(--color-neutral-200)">
+      <div style="min-width:0">
+        <div class="rangee-nom">${e(c.sujet || c.kata_nom || c.kata)}</div>
+        <div class="rangee-meta">${e(quand)} · ${e(c.kata_nom || c.kata)} · ${c.tours ?? "?"} tours · ${e(c.id)}</div>
+      </div>
+      <div class="rangee-espace"></div>
+      ${marques}
+      ${c.sujet ? `<button class="btn-fantome" data-sujet-conv="${e(c.sujet)}">voir l'état</button>` : ""}
+      ${c.fil && CHAT ? `<a class="lire" style="margin-left:0" href="${e(CHAT)}/c/${e(c.fil)}" target="_blank" rel="noopener">reprendre ↗</a>` : ""}
+      <button class="btn-fantome" data-conversation="${e(c.id)}">${ouverte ? "replier" : "lire"}</button>
+      ${tours ? `<div style="flex-basis:100%">${tours}</div>` : ""}
+    </div>`;
+  }).join("");
+  liste.querySelectorAll("button[data-conversation]").forEach(b =>
+    b.onclick = () => ouvrirConversation(b.dataset.conversation));
+  liste.querySelectorAll("button[data-sujet-conv]").forEach(b => b.onclick = () => {
+    const s = b.dataset.sujetConv;
+    if ($("sujets").querySelector(`option[value="${CSS.escape(s)}"]`)) $("sujets").value = s;
+    charger(s);
+    history.replaceState(null, "", routeDe("qg", { sujet: s }));
+    $("vue").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+}
+
+function rendreToursConversation(id) {
+  const c = conversationTours[id];
+  if (!c) return `<p class="rien">Chargement…</p>`;
+  if (!c.tours.length) return `<p class="rien">Transcript vide.</p>`;
+  return `<div class="transcript">${c.tours.map(t => `<div class="tour">
+      <span class="role ${t.role === "kata" ? "kata" : "humain"}">${e(t.role)}</span>
+      <span class="dit">${e(t.texte)}</span></div>`).join("")}
+    <div class="pied-transcript">Blocs d'état émis : ${c.blocs}${
+      c.reabstrait ? " — ré-abstraits, non émis en session" : ""} · kata ${e(c.version_kata || "?")} · ${e(c.moteur || "")}</div></div>`;
+}
+
+async function ouvrirConversation(id) {
+  if (conversationOuverte === id) { conversationOuverte = null; rendreConversations(); return; }
+  conversationOuverte = id;
+  history.replaceState(null, "", routeDe("qg", { conversation: id }));
+  if (!conversationTours[id]) {
+    rendreConversations();   // « Chargement… » pendant la lecture
+    try {
+      const p = new URLSearchParams({ corpus: corpusChoisi, id });
+      conversationTours[id] = await lire(`/qg/conversation?${p}`);
+    } catch { conversationTours[id] = { tours: [], blocs: 0 }; }
+  }
+  rendreConversations();
 }
 
 async function charger(sujet) {
@@ -1311,12 +1418,17 @@ function lireRoute(hash) {
   else if (parts[0] === "kokaji") { vue = parts[1] || "decouvrir"; }
   else { vue = parts[0] || "qg"; if (vue === "design") axe = parts[1] || null; }
   if (!ONGLETS[vue]) vue = "qg";
-  return { harness, vue, axe, sujet: q.sujet || null, noeud: q.noeud || null, terme: q.terme || null };
+  return { harness, vue, axe, sujet: q.sujet || null, noeud: q.noeud || null, terme: q.terme || null,
+           conversation: q.conversation || null };
 }
 
 function routeDe(vue, extra = {}) {
   const h = offreHarness && offreHarness.courant ? `/h/${encodeURIComponent(offreHarness.courant)}` : "";
-  if (vue === "qg") return `#${h}/qg` + (extra.sujet ? `?sujet=${encodeURIComponent(extra.sujet)}` : "");
+  if (vue === "qg") {
+    const q = extra.sujet ? `?sujet=${encodeURIComponent(extra.sujet)}`
+      : extra.conversation ? `?conversation=${encodeURIComponent(extra.conversation)}` : "";
+    return `#${h}/qg` + q;
+  }
   if (vue === "design") return `#${h}/design/${extra.axe || axe || "partition"}`
     + (extra.noeud || kataChoisi ? `?noeud=${encodeURIComponent(extra.noeud || kataChoisi)}` : "");
   if (vue === "profil") return "#/moi/profil";
@@ -1369,6 +1481,9 @@ function appliquerRoute() {
   if (r.vue === "design" && r.noeud) kataChoisi = r.noeud;
   if (r.vue === "qg" && r.sujet && $("sujets").querySelector(`option[value="${CSS.escape(r.sujet)}"]`)
       && $("sujets").value !== r.sujet) { $("sujets").value = r.sujet; charger(r.sujet); }
+  // Une conversation dans l'adresse : on l'ouvre, si elle est de ce corpus.
+  if (r.vue === "qg" && r.conversation && conversationOuverte !== r.conversation
+      && conversations.some(c => c.id === r.conversation)) ouvrirConversation(r.conversation);
   montrerOnglet(r.vue);
   // L'aide contextuelle (K-15) : le lexique, l'entrée surlignée et amenée à l'écran.
   document.querySelectorAll("#lexique dt.surligne").forEach(d => d.classList.remove("surligne"));
@@ -3265,14 +3380,23 @@ async function creerHarness() {
     corpus.forEach(c => {
       const o = document.createElement("option");
       o.value = c.nom;
-      o.textContent = `${c.nom} (${c.sujets})`;
+      // Le compte affiché est celui des conversations, pas des sujets : « reel
+      // (0) » devant cent conversations sans état disait le contraire du vrai.
+      const n = c.conversations ?? c.sujets;
+      o.textContent = `${c.nom} · ${n} conversation${n > 1 ? "s" : ""}`;
       select.appendChild(o);
     });
-    corpusChoisi = (corpus.find(c => c.sujets > 0) || corpus[0]).nom;
+    corpusChoisi = (corpus.find(c => (c.conversations ?? 0) > 0)
+      || corpus.find(c => c.sujets > 0) || corpus[0]).nom;
     select.value = corpusChoisi;
-    select.onchange = () => { corpusChoisi = select.value; noeudChoisi = null; chargerSujets(); };
+    select.onchange = () => {
+      corpusChoisi = select.value; noeudChoisi = null;
+      chargerSujets(); chargerConversations();
+    };
     $("sujets").onchange = () => { charger($("sujets").value); history.replaceState(null, "", routeDe("qg", { sujet: $("sujets").value })); };
+    $("conversations-filtre").oninput = rendreConversations;
     await chargerSujets();
+    await chargerConversations();
   } catch { panne(); }
   // La vue vient de l'adresse (K-07) : un rechargement revient où l'on était.
   appliquerRoute();

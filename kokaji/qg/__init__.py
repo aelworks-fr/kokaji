@@ -328,6 +328,77 @@ def sujets(
     return sorted(s for s in vus if s)
 
 
+def _ligne_conversation(dossier, entete: dict, releves: list[dict], noms: dict[str, str]) -> dict:
+    """Ce qu'on sait d'une conversation sans l'ouvrir — sa fiche, et son sujet s'il existe."""
+    sujet = next(
+        (s for s in ((r.get("etat") or {}).get("sujet") for r in reversed(releves)) if s), ""
+    )
+    kata = str(entete.get("kata") or "")
+    return {
+        "id": dossier.nom,
+        "date": str(entete.get("date") or ""),
+        "kata": kata,
+        "kata_nom": noms.get(kata, kata),
+        "cible": str(entete.get("cible") or ""),
+        "sujet": str(sujet or ""),
+        "tours": (entete.get("scores") or {}).get("tours"),
+        "blocs": len(releves),
+        "en_cours": bool(entete.get("en_cours")),
+        "reabstrait": bool(entete.get("etat_reabstrait")),
+        "fil": str(entete.get("fil") or ""),
+    }
+
+
+def conversations(harness: Harness, corpus=None, lisible=None) -> list[dict]:
+    """Les conversations d'un corpus, une par ha, la plus récente en tête.
+
+    Lues dans les fiches, pas dans les états. Le QG est organisé par sujet, et
+    un sujet n'existe que si une session a émis un bloc d'état : une
+    conversation sur une cible sans bloc n'y apparaît donc jamais. Ici elle se
+    retrouve — avec ou sans état ; le sujet, s'il existe, n'est qu'une
+    information affichée. Le filtre `lisible` s'applique ha par ha, comme
+    partout (RFC-004 §5).
+    """
+    racine = chemin_corpus(harness, corpus) or harness.corpus
+    depot = depot_pour(harness)
+    noms = {k.id: k.nom for k in harness.kata}
+    lignes = []
+    for dossier in depot.tous(racine):
+        if lisible is not None and not lisible(dossier):
+            continue
+        entete = depot.entete(dossier)
+        if not entete:
+            continue
+        lignes.append(_ligne_conversation(dossier, entete, depot.etats(dossier), noms))
+    lignes.sort(key=lambda ligne: ligne["date"], reverse=True)
+    return lignes
+
+
+def conversation(harness: Harness, corpus, identifiant: str, lisible=None) -> dict | None:
+    """Une conversation ouverte : sa ligne, et ses tours.
+
+    `None` si elle est inconnue — ou illisible, ce qui ne se distingue pas :
+    dire « elle existe, mais pas pour toi » renseignerait déjà sur la pratique
+    d'autrui (RFC-004 §5).
+    """
+    racine = chemin_corpus(harness, corpus) or harness.corpus
+    depot = depot_pour(harness)
+    dossier = next((d for d in depot.tous(racine) if d.nom == identifiant), None)
+    if dossier is None or (lisible is not None and not lisible(dossier)):
+        return None
+    entete = depot.entete(dossier) or {}
+    transcript = depot.transcript(dossier)
+    noms = {k.id: k.nom for k in harness.kata}
+    ligne = _ligne_conversation(dossier, entete, depot.etats(dossier), noms)
+    return {
+        **ligne,
+        "nombre_tours": ligne["tours"],
+        "tours": _tours_du_transcript(transcript) if transcript else [],
+        "version_kata": str(entete.get("version_kata") or ""),
+        "moteur": str(entete.get("moteur") or ""),
+    }
+
+
 def _instant(valeur: str | None):
     try:
         return datetime.fromisoformat(valeur) if valeur else None

@@ -14,7 +14,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kokaji.hds import charger
-from kokaji.qg import composer, rendre_texte, sujets
+from kokaji.qg import composer, conversation, conversations, rendre_texte, sujets
 
 MANIFEST = """
 harness:
@@ -93,6 +93,77 @@ class Bac(unittest.TestCase):
     @staticmethod
     def releve(horodatage: str, **etat) -> dict:
         return {"horodatage": horodatage, "etat": etat}
+
+
+class Conversations(Bac):
+    """Les conversations se retrouvent une à une, avec ou sans état.
+
+    Le QG est organisé par sujet, et un sujet n'existe que si une session a
+    émis un bloc d'état : une conversation sans bloc n'y apparaissait nulle
+    part. La liste se lit dans les fiches — le sujet n'est qu'une information.
+    """
+
+    def conversation(self, nom, date, kata="k1", releves=(), transcript=None, en_cours=False):
+        dossier = self.harness.corpus / nom
+        dossier.mkdir(parents=True, exist_ok=True)
+        (dossier / "fiche.md").write_text(
+            "---\n"
+            f"harness: h\nkata: {kata}\nversion_kata: \"0.1.0\"\nversion_coupe: \"abcdef\"\n"
+            f"cible: c1\nmoteur: m\ndate: \"{date}\"\npraticien:\nvisibilite: privee\nfil:\n"
+            f"source: reel\nstatut: brut\nen_cours: {'true' if en_cours else 'false'}\n"
+            "completude: A\nscores:\n  tours: 3\n  blocs_etat: 0\n"
+            f"---\n\n# {nom}\n",
+            encoding="utf-8",
+        )
+        (dossier / "transcript.md").write_text(
+            transcript or "## Tour 1\n**Porteur** — bonjour\n**Kata** — salut\n",
+            encoding="utf-8",
+        )
+        if releves:
+            (dossier / "etats.jsonl").write_text(
+                "\n".join(json.dumps(r, ensure_ascii=False) for r in releves) + "\n",
+                encoding="utf-8",
+            )
+
+    def test_la_plus_recente_en_tete_avec_ou_sans_etat(self):
+        self.conversation("CAS-0001-a", "2026-01-01T10:00:00+00:00")
+        self.conversation(
+            "CAS-0002-b", "2026-01-03T10:00:00+00:00",
+            releves=[self.releve("2026-01-03T10:05:00", sujet="Un sujet", kata="k1", champs={})],
+        )
+        self.conversation("CAS-0003-c", "2026-01-02T10:00:00+00:00")
+        liste = conversations(self.harness, self.harness.corpus)
+        self.assertEqual([c["id"] for c in liste], ["CAS-0002-b", "CAS-0003-c", "CAS-0001-a"])
+        self.assertEqual(liste[0]["sujet"], "Un sujet")
+        self.assertEqual(liste[0]["blocs"], 1)
+        self.assertEqual(liste[1]["sujet"], "")
+        self.assertEqual(liste[1]["blocs"], 0)
+        self.assertEqual(liste[1]["tours"], 3)
+        self.assertEqual(liste[1]["kata"], "k1")
+        self.assertTrue(liste[1]["kata_nom"])
+
+    def test_le_filtre_de_lisibilite_s_applique_ha_par_ha(self):
+        self.conversation("CAS-0001-a", "2026-01-01T10:00:00+00:00")
+        self.conversation("CAS-0002-b", "2026-01-02T10:00:00+00:00")
+        liste = conversations(
+            self.harness, self.harness.corpus, lisible=lambda d: d.nom.startswith("CAS-0002")
+        )
+        self.assertEqual([c["id"] for c in liste], ["CAS-0002-b"])
+
+    def test_une_conversation_s_ouvre_avec_son_transcript(self):
+        self.conversation("CAS-0001-a", "2026-01-01T10:00:00+00:00")
+        vue = conversation(self.harness, self.harness.corpus, "CAS-0001-a")
+        self.assertEqual([t["role"] for t in vue["tours"]], ["humain", "kata"])
+        self.assertEqual(vue["tours"][0]["texte"], "bonjour")
+        self.assertEqual(vue["nombre_tours"], 3)
+        self.assertEqual(vue["blocs"], 0)
+
+    def test_inconnue_ou_illisible_ne_se_distinguent_pas(self):
+        self.conversation("CAS-0001-a", "2026-01-01T10:00:00+00:00")
+        self.assertIsNone(conversation(self.harness, self.harness.corpus, "CAS-9999-z"))
+        self.assertIsNone(
+            conversation(self.harness, self.harness.corpus, "CAS-0001-a", lisible=lambda d: False)
+        )
 
 
 class Chaine(Bac):
