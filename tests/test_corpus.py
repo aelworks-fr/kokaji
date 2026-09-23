@@ -251,7 +251,7 @@ class Ecarts(Bac):
         return dossier.name
 
     def test_ecarter_declare_puis_retire_et_la_veille_ne_reverse_pas(self):
-        from kokaji.corpus import ecarter_ha, ecartees
+        from kokaji.corpus import ecartees, ecarter_ha
 
         nom = self._versee()
         fait = ecarter_ha(self.harness, self.harness.corpus, nom, par="u-1")
