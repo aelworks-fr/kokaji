@@ -252,6 +252,28 @@ class Sabotages(Bac):
         self.ha("CAS-0001", self.co.id)
         self.assertEqual(self.client.get("/ha", headers=self.cle(self.patron)).json(), [])
 
+    def test_3quater_seul_le_praticien_ecarte_une_conversation(self):
+        """Écarter, c'est plus qu'un réglage : posséder le harness n'efface pas la pratique d'autrui."""
+        self.ha("CAS-0001", self.co.id, visibilite="verse")
+        refus = self.client.post(
+            "/qg/conversation/ecarter", json={"id": "CAS-0001-k1-c1-abc"}, headers=self.cle(self.patron)
+        )
+        self.assertEqual(refus.status_code, 403, refus.text)
+        fait = self.client.post(
+            "/qg/conversation/ecarter", json={"id": "CAS-0001-k1-c1-abc"}, headers=self.cle(self.co)
+        )
+        self.assertEqual(fait.status_code, 200, fait.text)
+        self.assertEqual(fait.json()["session"], "s-CAS-0001")
+        self.assertEqual(self.client.get("/ha", headers=self.cle(self.co)).json(), [])
+
+    def test_3quinquies_une_conversation_illisible_est_inconnue_a_l_ecart(self):
+        """Dire « elle existe, mais pas pour toi » renseignerait déjà sur la pratique d'autrui."""
+        self.ha("CAS-0001", self.co.id)
+        refus = self.client.post(
+            "/qg/conversation/ecarter", json={"id": "CAS-0001-k1-c1-abc"}, headers=self.cle(self.patron)
+        )
+        self.assertEqual(refus.status_code, 404, refus.text)
+
     def test_3ter_seul_le_praticien_regle_la_visibilite(self):
         self.ha("CAS-0001", self.co.id)
         refus = self.client.post(

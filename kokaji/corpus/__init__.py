@@ -15,6 +15,7 @@ import hashlib
 import json
 import re
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 
 from ..comptes.modele import PRIVEE
@@ -24,7 +25,7 @@ from .depot import RefHa, depot_pour, ref_de
 from .journal import lire_journal
 
 __all__ = [
-    "Ha", "Versement", "deja_ailleurs", "ecartees", "ecarter",
+    "Ha", "Versement", "deja_ailleurs", "ecartees", "ecarter", "ecarter_ha",
     "lire_journal", "rafraichir_fiche", "verser",
 ]
 
@@ -235,6 +236,42 @@ def _annote(dossier: Path | RefHa) -> bool:
     """Un ha annoté ne se réécrit jamais : la promotion humaine prime."""
     texte = depot_pour().fiche(ref_de(dossier))
     return texte is not None and "statut: brut" not in texte
+
+
+def ecarter_ha(harness: Harness, corpus, identifiant: str, par: str, quand: str | None = None) -> dict:
+    """Écarter une conversation du corpus — au choix de son praticien, et de lui seul.
+
+    Deux gestes, jamais l'un sans l'autre. D'abord **déclarer** la session
+    écartée : le journal garde tout, et sans cette déclaration la veille
+    reverserait la conversation au passage suivant — un ha supprimé en silence
+    est un ha qui revient. Ensuite **retirer** le ha : fiche, transcript, états,
+    carré, matériaux. Le geste est celui de `kokaji ecarter`, ouvert au QG.
+
+    Le praticien seul décide, comme pour la visibilité (RFC-004 §5) : posséder
+    le harness ne donne pas la pratique d'autrui, et ne donne pas non plus le
+    droit de l'effacer. Une conversation sans praticien n'est écartable par
+    personne ici — la ligne de commande reste.
+    """
+    from .visibilite import acces  # import tardif : visibilite s'appuie sur ce module
+
+    chemin = Path(corpus) if corpus is not None else harness.corpus
+    depot = depot_pour(harness)
+    ref = depot.trouver(chemin, identifiant)
+    if ref is None:
+        raise LookupError(f"conversation inconnue : {identifiant!r}")
+    porte = acces(ref)
+    if not par or porte.praticien != par:
+        raise PermissionError("seule la personne qui a pratiqué une conversation peut l'écarter")
+
+    texte = depot.fiche(ref) or ""
+    session = texte.split("session `")[-1].split("`")[0] if "session `" in texte else ""
+    if session:
+        ecarter(
+            chemin, session, "écartée au QG par son praticien",
+            quand or datetime.now(UTC).isoformat(),
+        )
+    depot.supprimer(ref)
+    return {"id": ref.nom, "session": session}
 
 
 # Les tâches d'interface d'Open WebUI — titre, étiquettes, questions suivantes —

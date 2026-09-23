@@ -1180,6 +1180,8 @@ function rendreSession(c) {
     ${c.sujet ? `<button class="btn-fantome" data-sujet-conv="${e(c.sujet)}">voir l'état</button>` : ""}
     ${c.fil && CHAT ? `<a class="lire" style="margin-left:0" href="${e(CHAT)}/c/${e(c.fil)}" target="_blank" rel="noopener">reprendre ↗</a>` : ""}
     <button class="btn-fantome" data-conversation="${e(c.id)}">${ouverte ? "replier" : "lire"}</button>
+    <button class="btn-fantome" data-ecarter="${e(c.id)}"
+      title="Retirer cette session du corpus. Le journal garde tout ; elle ne reviendra pas dans la liste.">écarter</button>
     ${tours ? `<div style="flex-basis:100%">${tours}</div>` : ""}
   </div>`;
 }
@@ -1209,6 +1211,8 @@ function rendreConversations() {
       <div class="rangee-espace"></div>
       ${f.interface ? `<span class="tag tag-outline">interface</span>` : ""}
       <button class="btn-fantome" data-fil="${e(f.racine)}">${ouvert ? "replier" : "déplier"}</button>
+      <button class="btn-fantome" data-ecarter-fil="${e(f.racine)}"
+        title="Retirer toutes les sessions de ce fil du corpus. Le journal garde tout.">écarter le fil</button>
       ${ouvert ? `<div style="flex-basis:100%">${f.sessions.map(rendreSession).join("")}</div>` : ""}
     </div>`;
   }).join("");
@@ -1219,6 +1223,13 @@ function rendreConversations() {
   });
   liste.querySelectorAll("button[data-conversation]").forEach(b =>
     b.onclick = () => ouvrirConversation(b.dataset.conversation));
+  liste.querySelectorAll("button[data-ecarter]").forEach(b =>
+    b.onclick = () => ecarterConversations([b.dataset.ecarter], "cette session"));
+  liste.querySelectorAll("button[data-ecarter-fil]").forEach(b => b.onclick = () => {
+    const f = fils(conversationsVisibles()).find(x => x.racine === b.dataset.ecarterFil);
+    if (f) ecarterConversations(f.sessions.map(s => s.id),
+      `ce fil (${f.sessions.length} session${f.sessions.length > 1 ? "s" : ""})`);
+  });
   liste.querySelectorAll("button[data-sujet-conv]").forEach(b => b.onclick = () => {
     const s = b.dataset.sujetConv;
     if ($("sujets").querySelector(`option[value="${CSS.escape(s)}"]`)) $("sujets").value = s;
@@ -1254,6 +1265,25 @@ async function ouvrirConversation(id) {
     } catch { conversationTours[id] = { tours: [], blocs: 0 }; }
   }
   rendreConversations();
+}
+
+// Écarter, au choix du praticien : la session est déclarée écartée (le journal
+// garde tout, la veille ne la reversera pas), puis le ha est retiré du corpus.
+async function ecarterConversations(ids, libelle) {
+  if (!ids.length) return;
+  if (!confirm(`Écarter ${libelle} du corpus ?\n\nLe journal garde tout, mais la conversation ne reviendra pas`
+      + ` dans la liste, et son état et son carré partent avec elle.`)) return;
+  const refus = [];
+  for (const id of ids) {
+    const r = await fetch("/qg/conversation/ecarter", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id, corpus: corpusChoisi }),
+    });
+    if (!r.ok) refus.push(`${id} : ${(await r.json().catch(() => ({}))).detail || r.status}`);
+  }
+  if (refus.length) alert("Non écarté(e)s :\n" + refus.join("\n"));
+  await chargerConversations();
+  chargerSujets();   // un sujet peut avoir disparu avec la conversation
 }
 
 async function charger(sujet) {

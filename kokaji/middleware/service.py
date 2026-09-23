@@ -48,7 +48,15 @@ from ..corpus.depot import DepotDeHa, RefHa, depot_pour
 from ..corpus.visibilite import acces, lisible_par, regler_visibilite
 from ..forge import ForgeImpossible, TrempeEchouee, forger_harness
 from ..hds import Harness, ManifestInvalide, charger_valides
-from ..qg import activites, composer, composition, conversation, conversations, sujets
+from ..qg import (
+    activites,
+    chemin_corpus,
+    composer,
+    composition,
+    conversation,
+    conversations,
+    sujets,
+)
 from .chat import Passerelle, routeur_chat
 from .exploitation import routeur_exploitation
 from .identite import Identification, routeur_comptes, routeur_pages
@@ -453,6 +461,29 @@ def creer_harness(
             # pas pour toi » renseignerait déjà sur la pratique d'autrui.
             raise HTTPException(status_code=404, detail=f"conversation inconnue : {id!r}")
         return vue
+
+    @app.post(
+        "/qg/conversation/ecarter",
+        summary="Écarter une conversation du corpus — au choix de son praticien, et de lui seul",
+    )
+    def qg_ecarter(
+        id: str = Body(embed=True),
+        corpus: str | None = Body(default=None, embed=True),
+        qui_role: tuple = Depends(membre),
+    ) -> dict:
+        """La session est déclarée écartée (le journal garde tout, la veille ne la
+        reversera pas), puis le ha est retiré. Inconnue ou illisible : 404, sans
+        distinction ; lisible mais pas la sienne : 403."""
+        from ..corpus import ecarter_ha
+
+        qui, _ = qui_role
+        vise = _corpus(corpus)
+        if conversation(harness, vise, id, filtre(*qui_role)) is None:
+            raise HTTPException(status_code=404, detail=f"conversation inconnue : {id!r}")
+        try:
+            return ecarter_ha(harness, chemin_corpus(harness, vise), id, par=qui.id if qui else "")
+        except PermissionError as err:
+            raise HTTPException(status_code=403, detail=str(err)) from err
 
     @app.get("/qg/donnees", summary="La vue d'un sujet — chaîne, état, possibles")
     def qg_donnees(

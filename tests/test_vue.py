@@ -906,5 +906,18 @@ class Fils(unittest.TestCase):
         self.assertIn("avecInterface || !c.interface", PAGE)
 
 
+class Ecarts(unittest.TestCase):
+    """Écarter une conversation ou un fil, au choix du praticien, depuis la liste."""
+
+    def test_la_liste_offre_d_ecarter_une_session_et_un_fil(self):
+        self.assertIn('data-ecarter=', PAGE)
+        self.assertIn('data-ecarter-fil=', PAGE)
+        self.assertIn('"/qg/conversation/ecarter"', PAGE)
+
+    def test_l_ecart_demande_confirmation_et_dit_que_le_journal_garde_tout(self):
+        self.assertIn("confirm(`Écarter ${libelle} du corpus ?", PAGE)
+        self.assertIn("Le journal garde tout", PAGE)
+
+
 if __name__ == "__main__":
     unittest.main()

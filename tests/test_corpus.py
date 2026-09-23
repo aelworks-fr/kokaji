@@ -231,6 +231,60 @@ class Fils(Bac):
         self.assertIn("interface: true", fiche.read_text(encoding="utf-8"))
 
 
+class Ecarts(Bac):
+    """Écarter une conversation : la déclarer, puis la retirer — jamais l'un sans l'autre.
+
+    Un ha supprimé en silence revient au passage suivant de la veille : le
+    journal garde tout. Et seul le praticien décide, comme pour la visibilité.
+    """
+
+    def _versee(self, praticien: str | None = "u-1") -> str:
+        self.ecrire([_appel("s-1", 1, "r1")])
+        verser(self.harness, self.journal)
+        dossier = next(self.harness.corpus.glob("CAS-*"))
+        if praticien is not None:
+            fiche = dossier / "fiche.md"
+            fiche.write_text(
+                re.sub(r"(?m)^praticien:.*$", f"praticien: {praticien}", fiche.read_text(encoding="utf-8"), count=1),
+                encoding="utf-8",
+            )
+        return dossier.name
+
+    def test_ecarter_declare_puis_retire_et_la_veille_ne_reverse_pas(self):
+        from kokaji.corpus import ecarter_ha, ecartees
+
+        nom = self._versee()
+        fait = ecarter_ha(self.harness, self.harness.corpus, nom, par="u-1")
+        self.assertEqual(fait["session"], "s-1")
+        self.assertEqual(list(self.harness.corpus.glob("CAS-*")), [])
+        self.assertIn("s-1", ecartees(self.harness.corpus))
+        verser(self.harness, self.journal)
+        self.assertEqual(list(self.harness.corpus.glob("CAS-*")), [])
+
+    def test_seul_le_praticien_ecarte(self):
+        from kokaji.corpus import ecarter_ha
+
+        nom = self._versee()
+        with self.assertRaises(PermissionError):
+            ecarter_ha(self.harness, self.harness.corpus, nom, par="u-2")
+        with self.assertRaises(PermissionError):
+            ecarter_ha(self.harness, self.harness.corpus, nom, par="")
+        self.assertEqual(len(list(self.harness.corpus.glob("CAS-*"))), 1)
+
+    def test_une_conversation_sans_praticien_n_est_ecartable_par_personne_ici(self):
+        from kokaji.corpus import ecarter_ha
+
+        nom = self._versee(praticien=None)
+        with self.assertRaises(PermissionError):
+            ecarter_ha(self.harness, self.harness.corpus, nom, par="u-1")
+
+    def test_une_conversation_inconnue_se_dit(self):
+        from kokaji.corpus import ecarter_ha
+
+        with self.assertRaises(LookupError):
+            ecarter_ha(self.harness, self.harness.corpus, "CAS-9999-z", par="u-1")
+
+
 class Raison(unittest.TestCase):
     """Le fichier des écartés est la seule trace qui restera de la décision."""
 
