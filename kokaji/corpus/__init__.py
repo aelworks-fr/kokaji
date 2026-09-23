@@ -11,6 +11,9 @@ supprimé.
 
 from __future__ import annotations
 
+import hashlib
+import json
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -41,6 +44,9 @@ date: "{date}"
 praticien: {praticien}
 visibilite: {visibilite}
 fil: {fil}
+interface: {interface}
+racine: "{racine}"
+amorce: {amorce}
 source: {source}
 statut: brut
 en_cours: {en_cours}
@@ -175,6 +181,10 @@ def ecarter(corpus: Path, session: str, raison: str, quand: str) -> None:
 CHAMPS_DE_LA_CAPTURE = frozenset({
     "harness", "kata", "version_kata", "version_coupe", "cible", "moteur",
     "date", "source", "completude", "en_cours", "scores",
+    # Ce que la capture sait d'une session en lisant son premier tour humain :
+    # un appel d'interface ou une pratique, la racine du fil, son amorce.
+    # Rafraîchis à chaque passage — donc posés d'eux-mêmes sur les ha déjà là.
+    "interface", "racine", "amorce",
 })
 # Ceux-là ne s'écrasent que s'ils ont quelque chose à dire : une passe qui ne
 # connaît pas le praticien ne doit pas effacer celui qu'une autre a su nommer.
@@ -225,6 +235,44 @@ def _annote(dossier: Path | RefHa) -> bool:
     """Un ha annoté ne se réécrit jamais : la promotion humaine prime."""
     texte = depot_pour().fiche(ref_de(dossier))
     return texte is not None and "statut: brut" not in texte
+
+
+# Les tâches d'interface d'Open WebUI — titre, étiquettes, questions suivantes —
+# commencent toutes par cette ligne. Elles arrivent au kata comme n'importe quel
+# appel et se capturaient comme des conversations : 138 sur 160 sur carto-be.
+MARQUE_INTERFACE = "### Task:"
+
+
+def _premier_tour_humain(appels: list[dict]) -> str:
+    """Le premier tour humain de l'historique — que chaque appel rejoue entier."""
+    for message in (appels[0].get("messages") or []) if appels else []:
+        if message.get("role") == "user":
+            return str(message.get("content") or "")
+    return ""
+
+
+def _est_interface(appels: list[dict]) -> bool:
+    """Un appel d'interface du chat, pas une pratique."""
+    return _premier_tour_humain(appels).lstrip().startswith(MARQUE_INTERFACE)
+
+
+def _racine(appels: list[dict]) -> str:
+    """La racine du fil : l'empreinte du premier tour humain, normalisé.
+
+    Une conversation vécue se poursuit sur plusieurs kata et plusieurs jours ;
+    Kokaji la découpe en sessions parce que la coupe change avec le kata. Mais
+    le chat rejoue tout l'historique à chaque appel : le premier tour humain est
+    le même pour toutes les sessions d'un même échange. C'est lui qui regroupe,
+    sans identifiant du chat à transporter — donc aussi pour ce qui est déjà là.
+    """
+    premier = re.sub(r"\s+", " ", _premier_tour_humain(appels)).strip().lower()
+    return hashlib.sha256(premier.encode("utf-8")).hexdigest()[:12] if premier else ""
+
+
+def _amorce(appels: list[dict], longueur: int = 120) -> str:
+    """Les premiers mots du fil, pour le nommer."""
+    premier = re.sub(r"\s+", " ", _premier_tour_humain(appels)).strip()
+    return premier if len(premier) <= longueur else premier[: longueur - 1].rstrip() + "…"
 
 
 def verser(
@@ -312,6 +360,13 @@ def verser(
                 # pour tout ha né avant que le chat ait le droit de le dire :
                 # on ne le reconstruit pas, on le laisse vide.
                 fil=identite.get("fil") or "",
+                # Lu dans le premier tour humain, que chaque appel rejoue : est-ce
+                # une pratique ou un appel d'interface du chat ; et la racine du
+                # fil, la même pour toutes les sessions d'un même échange, quel
+                # que soit le kata — c'est elle qui regroupe.
+                interface="true" if _est_interface(appels) else "false",
+                racine=_racine(appels),
+                amorce=json.dumps(_amorce(appels), ensure_ascii=False),
                 source=source,
                 completude="C" if session in en_cours else "B",
                 en_cours="true" if session in en_cours else "false",

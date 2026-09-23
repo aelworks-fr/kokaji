@@ -6,6 +6,7 @@ Le journal de test est purement structurel : aucun nom de domaine (§0).
 from __future__ import annotations
 
 import json
+import re
 import sys
 import tempfile
 import unittest
@@ -166,6 +167,68 @@ class Rafraichir(Bac):
         """Perdre une annotation est un accident ; perdre la capture, une panne."""
         garde = rafraichir_fiche("pas de frontmatter du tout", "---\na: 1\n---\n\ncorps\n")
         self.assertIn("a: 1", garde)
+
+
+class Fils(Bac):
+    """Ce que la capture lit dans le premier tour humain — que chaque appel rejoue.
+
+    Un appel d'interface du chat (titre, étiquettes, questions suivantes) n'est
+    pas une pratique : il est marqué. Et deux sessions qui partagent le même
+    premier tour sont le même fil, quel que soit le kata : même racine.
+    """
+
+    def _fiches(self) -> dict[str, str]:
+        fiches = {}
+        for dossier in self.harness.corpus.glob("CAS-*"):
+            texte = (dossier / "fiche.md").read_text(encoding="utf-8")
+            fiches[texte.split("session `")[1].split("`")[0]] = texte
+        return fiches
+
+    @staticmethod
+    def _champ(fiche: str, cle: str) -> str | None:
+        m = re.search(rf"(?m)^{cle}: ?(.*)$", fiche)
+        return m.group(1).strip() if m else None
+
+    def test_un_appel_d_interface_est_marque_une_pratique_non(self):
+        a = _appel("s-1", 1, "un titre")
+        a["messages"][1]["content"] = "### Task:\nGenerate a concise title summarizing the chat history."
+        b = _appel("s-2", 1, "une réponse")
+        b["messages"][1]["content"] = "J'ai un sujet arrivant autour du pilotage."
+        self.ecrire([a, b])
+        verser(self.harness, self.journal)
+        fiches = self._fiches()
+        self.assertEqual(self._champ(fiches["s-1"], "interface"), "true")
+        self.assertEqual(self._champ(fiches["s-2"], "interface"), "false")
+
+    def test_meme_premier_tour_meme_racine(self):
+        a, b, c = _appel("s-1", 1, "r1"), _appel("s-2", 2, "r2"), _appel("s-3", 1, "r3")
+        for appel in (a, b):
+            appel["messages"][1]["content"] = "J'ai un  sujet arrivant\nautour du pilotage."
+        c["messages"][1]["content"] = "Autre chose."
+        self.ecrire([a, b, c])
+        verser(self.harness, self.journal)
+        fiches = self._fiches()
+        racine = self._champ(fiches["s-1"], "racine")
+        self.assertEqual(racine, self._champ(fiches["s-2"], "racine"))
+        self.assertNotEqual(racine, self._champ(fiches["s-3"], "racine"))
+        self.assertEqual(len(racine.strip('"')), 12)
+        self.assertEqual(
+            self._champ(fiches["s-1"], "amorce"), '"J\'ai un sujet arrivant autour du pilotage."'
+        )
+
+    def test_la_marque_se_pose_au_rafraichissement(self):
+        """Les ha déjà là reçoivent la marque au passage suivant : c'est la capture qui la possède."""
+        a = _appel("s-1", 1, "r1")
+        a["messages"][1]["content"] = "### Task:\nGenerate 1-3 broad tags."
+        self.ecrire([a])
+        verser(self.harness, self.journal)
+        fiche = next(self.harness.corpus.glob("CAS-*")) / "fiche.md"
+        # Une fiche d'avant la marque : on l'efface, comme si elle n'avait jamais existé.
+        texte = re.sub(r"(?m)^(interface|racine|amorce): .*\n", "", fiche.read_text(encoding="utf-8"))
+        fiche.write_text(texte, encoding="utf-8")
+        self.assertNotIn("interface:", fiche.read_text(encoding="utf-8"))
+        verser(self.harness, self.journal, rafraichir=True)
+        self.assertIn("interface: true", fiche.read_text(encoding="utf-8"))
 
 
 class Raison(unittest.TestCase):

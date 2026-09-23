@@ -346,6 +346,12 @@ def _ligne_conversation(dossier, entete: dict, releves: list[dict], noms: dict[s
         "en_cours": bool(entete.get("en_cours")),
         "reabstrait": bool(entete.get("etat_reabstrait")),
         "fil": str(entete.get("fil") or ""),
+        # Posés par la capture (corpus/__init__.py) : un appel d'interface du
+        # chat plutôt qu'une pratique ; la racine du fil, qui regroupe les
+        # sessions d'un même échange à travers les kata ; et son amorce.
+        "interface": bool(entete.get("interface")),
+        "racine": str(entete.get("racine") or ""),
+        "amorce": str(entete.get("amorce") or ""),
     }
 
 

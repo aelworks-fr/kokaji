@@ -166,6 +166,44 @@ class Conversations(Bac):
         )
 
 
+class Fils(Bac):
+    """La liste expose ce que la capture a lu dans le premier tour : interface, racine, amorce."""
+
+    def test_la_liste_expose_interface_racine_et_amorce(self):
+        dossier = self.harness.corpus / "CAS-0001-a"
+        dossier.mkdir(parents=True)
+        (dossier / "fiche.md").write_text(
+            "---\nharness: h\nkata: k1\nversion_kata: \"0.1.0\"\nversion_coupe: \"abcdef\"\n"
+            "cible: c1\nmoteur: m\ndate: \"2026-01-01T10:00:00+00:00\"\npraticien:\n"
+            "visibilite: privee\nfil:\ninterface: true\nracine: \"0123456789ab\"\n"
+            "amorce: \"### Task: Generate a concise title\"\nsource: reel\nstatut: brut\n"
+            "en_cours: false\ncompletude: A\nscores:\n  tours: 1\n  blocs_etat: 0\n---\n\n# x\n",
+            encoding="utf-8",
+        )
+        (dossier / "transcript.md").write_text(
+            "## Tour 1\n**Porteur** — x\n**Kata** — y\n", encoding="utf-8"
+        )
+        [c] = conversations(self.harness, self.harness.corpus)
+        self.assertTrue(c["interface"])
+        self.assertEqual(c["racine"], "0123456789ab")
+        self.assertTrue(c["amorce"].startswith("### Task"))
+
+    def test_sans_marque_les_champs_sont_vides_jamais_devines(self):
+        dossier = self.harness.corpus / "CAS-0002-b"
+        dossier.mkdir(parents=True)
+        (dossier / "fiche.md").write_text(
+            "---\nharness: h\nkata: k1\nversion_kata: \"0.1.0\"\nversion_coupe: \"abcdef\"\n"
+            "cible: c1\nmoteur: m\ndate: \"2026-01-01T10:00:00+00:00\"\npraticien:\n"
+            "visibilite: privee\nfil:\nsource: reel\nstatut: brut\nen_cours: false\n"
+            "completude: A\nscores:\n  tours: 1\n  blocs_etat: 0\n---\n\n# x\n",
+            encoding="utf-8",
+        )
+        [c] = conversations(self.harness, self.harness.corpus)
+        self.assertFalse(c["interface"])
+        self.assertEqual(c["racine"], "")
+        self.assertEqual(c["amorce"], "")
+
+
 class Chaine(Bac):
     def test_la_topologie_vient_du_manifest(self):
         """R8.1 — le QG ne connaît aucune chaîne en dur."""

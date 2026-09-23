@@ -893,5 +893,18 @@ class Conversations(unittest.TestCase):
         self.assertIn("c.conversations ?? c.sujets", PAGE)
 
 
+class Fils(unittest.TestCase):
+    """Un fil regroupe les sessions d'un même échange ; les appels d'interface sont cachés."""
+
+    def test_les_fils_regroupent_par_racine(self):
+        self.assertIn("function fils(", PAGE)
+        self.assertIn("c.racine || c.id", PAGE)
+        self.assertIn('data-fil=', PAGE)
+
+    def test_les_appels_d_interface_sont_caches_sauf_demande(self):
+        self.assertIn('id="conversations-interface"', PAGE)
+        self.assertIn("avecInterface || !c.interface", PAGE)
+
+
 if __name__ == "__main__":
     unittest.main()
