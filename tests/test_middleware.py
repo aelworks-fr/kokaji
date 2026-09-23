@@ -15,7 +15,13 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from kokaji.hds import charger
-from kokaji.middleware import carre_attendu, carre_du_ha, etats_du_ha, veiller
+from kokaji.middleware import (
+    _source_du_kata,
+    carre_attendu,
+    carre_du_ha,
+    etats_du_ha,
+    veiller,
+)
 
 MANIFEST = """
 harness:
@@ -137,6 +143,29 @@ class Etat(Bac):
     def test_un_statut_hors_taxonomie_est_consigne(self):
         releves = self.releves(bloc({"c1": "presque"}))
         self.assertIn("hors taxonomie", releves[0]["fautes"][0]["message"])
+
+
+class SourceTexte(Bac):
+    """La source d'un kata importé est un texte, pas un densho — RFC-011.
+
+    La lire comme du YAML levait (un `>` de citation, un `---` de séparation),
+    et faisait planter la capture comme la ré-abstraction, précisément sur le
+    harness importé qu'elles doivent servir. Une source qui n'est pas un densho
+    vaut désormais {}, sans exception.
+    """
+
+    def test_une_source_markdown_ne_leve_pas(self):
+        self.kata.source.write_text(
+            "# Un agent importé\n"
+            "> Conforme au Template Commun — v3\n\n"
+            "---\n\nCorps du prompt, servi tel quel.\n",
+            encoding="utf-8",
+        )
+        self.assertEqual(_source_du_kata(self.kata), {})
+
+    def test_une_source_densho_est_toujours_lue(self):
+        self.assertIsInstance(_source_du_kata(self.kata), dict)
+        self.assertEqual(_source_du_kata(self.kata)["role"], "r")
 
 
 class CarreContinu(Bac):

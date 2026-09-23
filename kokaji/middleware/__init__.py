@@ -418,5 +418,12 @@ def _natures_du_kata(source: dict) -> tuple[str, ...]:
 
 
 def _source_du_kata(kata: Kata) -> dict:
-    donnees = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
+    # La source d'un kata importé est un texte, pas un densho : la lire comme du
+    # YAML peut lever (un `>` de citation, un `---` de séparation). Un tel kata
+    # tient ses champs de son contrat, jamais de sa source — une source qui
+    # n'est pas un densho vaut {}.
+    try:
+        donnees = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError:
+        return {}
     return donnees if isinstance(donnees, dict) else {}

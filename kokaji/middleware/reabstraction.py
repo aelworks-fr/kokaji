@@ -106,7 +106,16 @@ def reabstraire(
 
     transcript = depot.transcript(ref) or ""
     registre = charger_registre(harness.trempe.registre)
-    source = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
+    # La source d'un kata importé est un texte, pas un densho : la lire comme du
+    # YAML lève. Or c'est justement le kata importé — sans bloc d'état — que la
+    # ré-abstraction sert. Les champs d'un tel kata viennent de son contrat, via
+    # le registre, pas de sa source ; une source illisible en YAML vaut donc {}.
+    try:
+        source = yaml.safe_load(kata.source.read_text(encoding="utf-8")) or {}
+        if not isinstance(source, dict):
+            source = {}
+    except yaml.YAMLError:
+        source = {}
     champs = champs_du_kata(harness, kata, source, registre)
 
     reponse = passerelle.completer(
