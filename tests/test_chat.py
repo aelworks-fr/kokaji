@@ -213,7 +213,7 @@ class RelaisIdentite(unittest.TestCase):
     def signe(self) -> dict:
         return {"X-OpenWebUI-User-Jwt": forger_jeton({"email": "un@exemple.test", "exp": 2**31})}
 
-    def test_l_email_et_le_fil_sont_repasses_a_la_passerelle(self):
+    def _capter(self, headers: dict) -> dict:
         import httpx
 
         capte: dict = {}
@@ -230,6 +230,7 @@ class RelaisIdentite(unittest.TestCase):
 
         async def faux_send(soi, requete, **kw):
             capte["headers"] = {k.lower(): v for k, v in requete.headers.items()}
+            capte["statut"] = 200
             return FausseReponse()
 
         origine = httpx.AsyncClient.send
@@ -238,50 +239,24 @@ class RelaisIdentite(unittest.TestCase):
             reponse = self.client.post(
                 "/v1/chat/completions",
                 json={"model": "h/k1", "messages": []},
-                headers={
-                    **self.signe(),
-                    "x-openwebui-user-email": "p@ex.fr",
-                    "x-openwebui-chat-id": "fil-9",
-                },
+                headers=headers,
             )
         finally:
             httpx.AsyncClient.send = origine
+        capte["reponse"] = reponse
+        return capte
 
-        self.assertEqual(reponse.status_code, 200)
-        self.assertEqual(capte["headers"].get("x-openwebui-user-email"), "p@ex.fr")
+    def test_l_email_vient_du_jeton_signe_et_le_fil_est_repasse(self):
+        """La personne voyage dans le JWT signé, pas en clair — on l'en tire."""
+        capte = self._capter({**self.signe(), "x-openwebui-chat-id": "fil-9"})
+        self.assertEqual(capte["reponse"].status_code, 200)
+        self.assertEqual(capte["headers"].get("x-openwebui-user-email"), "un@exemple.test")
         self.assertEqual(capte["headers"].get("x-openwebui-chat-id"), "fil-9")
 
-    def test_sans_ces_entetes_le_relais_n_en_invente_pas(self):
-        import httpx
-
-        capte: dict = {}
-
-        class FausseReponse:
-            status_code = 200
-            headers = {"content-type": "application/json"}
-
-            async def aread(self):
-                return b'{"ok": true}'
-
-            async def aclose(self):
-                pass
-
-        async def faux_send(soi, requete, **kw):
-            capte["headers"] = {k.lower(): v for k, v in requete.headers.items()}
-            return FausseReponse()
-
-        origine = httpx.AsyncClient.send
-        httpx.AsyncClient.send = faux_send
-        try:
-            self.client.post(
-                "/v1/chat/completions",
-                json={"model": "h/k1", "messages": []},
-                headers=self.signe(),
-            )
-        finally:
-            httpx.AsyncClient.send = origine
-
-        self.assertNotIn("x-openwebui-user-email", capte["headers"])
+    def test_l_authorization_du_client_n_est_pas_repassee(self):
+        """La passerelle reçoit sa propre clé, jamais le jeton du client."""
+        capte = self._capter({**self.signe(), "authorization": "Bearer secret-du-client"})
+        self.assertEqual(capte["headers"].get("authorization"), "Bearer K")
 
 
 if __name__ == "__main__":

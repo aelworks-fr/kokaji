@@ -134,7 +134,10 @@ class Passerelle:
 
 
 def routeur_chat(
-    harness: Harness, passerelle: Passerelle | None = None, archive=None
+    harness: Harness,
+    passerelle: Passerelle | None = None,
+    archive=None,
+    secret_chat: str = "",
 ) -> APIRouter:
     """La surface compatible OpenAI d'**un** harness.
 
@@ -198,18 +201,31 @@ def routeur_chat(
         entetes = {"content-type": "application/json"}
         if passerelle.cle:
             entetes["authorization"] = f"Bearer {passerelle.cle}"
-        # Repasser l'identité que le chat annonce — le fil et la personne. Open
-        # WebUI les met en en-têtes ; ce relais reconstruisait les siens de zéro
-        # et les jetait, si bien que le hook de la passerelle ne voyait jamais
-        # qui pratiquait, et tout ha du chat naissait orphelin de porte
-        # (RFC-004 §5). On ne repasse que ces deux en-têtes d'identité — jamais
-        # l'`authorization` du client ni ses cookies, que la passerelle n'a pas
-        # à connaître. Open WebUI pose lui-même ces valeurs depuis la session
-        # authentifiée : un client ne peut pas se les inventer.
-        for entete in ("x-openwebui-user-email", "x-openwebui-chat-id"):
-            valeur = requete.headers.get(entete)
-            if valeur:
-                entetes[entete] = valeur
+        # Repasser à la passerelle l'identité que le chat annonce. Ce relais
+        # reconstruisait ses en-têtes de zéro et jetait tout le reste, si bien
+        # que le hook de la passerelle ne voyait jamais qui pratiquait, et tout
+        # ha du chat naissait orphelin de porte (RFC-004 §5). On ne repasse que
+        # l'identité — jamais l'`authorization` du client ni ses cookies.
+        #
+        # Le fil voyage en clair. La **personne**, elle, voyage dans le JWT
+        # signé (le même que le service vérifie pour la liste des modèles) et
+        # non en clair : on en tire l'email vérifié et on le passe sous le nom
+        # que le hook attend. Un jeton absent ou invalide ne bloque pas le
+        # relais — l'attribution est un mieux, pas une porte : le ha reste alors
+        # orphelin, comme avant. On ne signe rien nous-mêmes : Open WebUI a déjà
+        # signé, un client ne peut pas se forger une identité.
+        fil = requete.headers.get("x-openwebui-chat-id")
+        if fil:
+            entetes["x-openwebui-chat-id"] = fil
+        email = (requete.headers.get("x-openwebui-user-email") or "").strip()
+        jeton = (requete.headers.get("x-openwebui-user-jwt") or "").strip()
+        if not email and jeton and secret_chat:
+            try:
+                email = str(verifier_jeton(jeton, secret_chat).get("email") or "").strip()
+            except JetonInvalide:
+                email = ""
+        if email:
+            entetes["x-openwebui-user-email"] = email
 
         client = httpx.AsyncClient(timeout=None)
         amont = client.build_request(

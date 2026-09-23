@@ -152,6 +152,9 @@ def creer_harness(
             archive=(lambda: comptes.archive_le(harness.id) is not None)
             if comptes is not None
             else None,
+            # Le secret du chat sert au relais à tirer l'email vérifié du JWT
+            # signé, pour attribuer le praticien du ha (RFC-004 §5).
+            secret_chat=identification.secret_chat,
         )
     )
 
