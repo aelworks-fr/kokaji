@@ -20,7 +20,7 @@ import yaml
 
 __all__ = [
     "OBSERVE", "PROVENANCES", "RAPPORTE", "ProvenanceInalterable",
-    "provenance_de", "verifier_inalterable",
+    "dans_la_tranche", "provenance_de", "verifier_inalterable",
 ]
 
 OBSERVE = "observe"
@@ -36,6 +36,19 @@ def provenance_de(entete: dict | None) -> str:
     """L'encre d'un ha depuis son en-tête — `observe` s'il n'en dit rien."""
     valeur = str((entete or {}).get("provenance") or "").strip()
     return valeur if valeur in PROVENANCES else OBSERVE
+
+
+def dans_la_tranche(entete: dict | None, tranche: str) -> bool:
+    """Ce ha est-il de la tranche demandée ? (RFC-020 D20.5)
+
+    Les agrégats du banc — l'usage, la non-régression, le resserrage, le
+    juge — lisent une tranche à la fois, `observe` par défaut : aucun chiffre
+    ne mélange en silence ce qui a été joué ici et ce qui a été rapporté. La
+    tranche `rapporte` s'appelle explicitement ; il n'y a pas de « toutes ».
+    """
+    if tranche not in PROVENANCES:
+        raise ValueError(f"tranche hors liste : {tranche!r} (attendu : {', '.join(PROVENANCES)})")
+    return provenance_de(entete) == tranche
 
 
 def _declaree(texte: str | None) -> str | None:

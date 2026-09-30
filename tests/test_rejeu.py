@@ -132,6 +132,17 @@ class Peremption(Bac):
         self.assertEqual(trouves[0].version_ha, "ancienne")
         self.assertEqual(trouves[0].version_actuelle, "actuelle")
 
+    def test_un_ha_rapporte_n_entre_pas_dans_la_non_regression_par_defaut(self):
+        """RFC-020 D20.5 — une tranche à la fois ; la sienne s'appelle explicitement."""
+        dossier = self.ha(version="ancienne")
+        fiche = dossier / "fiche.md"
+        fiche.write_text(
+            fiche.read_text(encoding="utf-8").replace("kata: k1", "kata: k1\nprovenance: rapporte", 1),
+            encoding="utf-8",
+        )
+        self.assertEqual(perimes(self.harness, {("k1", "c1"): "actuelle"}), [])
+        self.assertEqual(len(perimes(self.harness, {("k1", "c1"): "actuelle"}, provenance="rapporte")), 1)
+
     def test_les_variables_annotees_sont_portees(self):
         """R5.6 — rejouer les ha exerçant les variables touchées."""
         self.ha(variables="relance-sur-vague, bornage-de-la-relance")

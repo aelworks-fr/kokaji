@@ -24,6 +24,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ...corpus.depot import depot_pour, ref_de
+from ...corpus.provenance import OBSERVE, dans_la_tranche
 from ...forge.coupe import champ_nu
 from ...hds import Harness, Kata
 
@@ -74,17 +75,22 @@ def _etat_final(dossier: Path) -> dict | None:
     return dernier
 
 
-def _kata_du_ha(dossier) -> str:
-    return str(depot_pour().entete(ref_de(dossier)).get("kata") or "")
+def _du_kata(dossier, kata: str, provenance: str) -> bool:
+    """Ce ha est-il de ce kata, et de la tranche lue (RFC-020 D20.5) ?"""
+    entete = depot_pour().entete(ref_de(dossier))
+    return str(entete.get("kata") or "") == kata and dans_la_tranche(entete, provenance)
 
 
-def observer(harness: Harness, kata: Kata, corpus: Path | None = None) -> list[Observation]:
-    """Ce que chaque champ promis a réellement atteint, à travers le corpus."""
+def observer(
+    harness: Harness, kata: Kata, corpus: Path | None = None, provenance: str = OBSERVE
+) -> list[Observation]:
+    """Ce que chaque champ promis a réellement atteint, à travers le corpus —
+    une tranche à la fois : une garantie ne se resserre pas sur du rapporté."""
     racine = Path(corpus) if corpus is not None else harness.corpus
     finaux = [
         etat
         for dossier in depot_pour(harness).tous(racine)
-        if _kata_du_ha(dossier) == kata.id and (etat := _etat_final(dossier)) is not None
+        if _du_kata(dossier, kata.id, provenance) and (etat := _etat_final(dossier)) is not None
     ]
 
     observations = []

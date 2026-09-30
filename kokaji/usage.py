@@ -29,6 +29,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .corpus.depot import depot_pour, ref_de
+from .corpus.provenance import OBSERVE, RAPPORTE, dans_la_tranche
 from .hds import Harness
 
 __all__ = ["Depense", "Releve", "mesurer"]
@@ -105,6 +106,11 @@ class Releve:
     # silence rendrait juste un total que personne ne saurait relire. On dit
     # de combien il est faux, et de quel côté.
     doubles: Depense = field(default_factory=Depense)
+    # RFC-020 D20.5 — la tranche lue, et combien de ha de l'autre encre sont
+    # restés dehors. Dits, jamais fondus : le doute ne se dilue pas dans une
+    # moyenne.
+    provenance: str = OBSERVE
+    hors_tranche: int = 0
 
 
 def _carre_du_dossier(dossier) -> str:
@@ -116,7 +122,7 @@ def _carre_du_dossier(dossier) -> str:
     return premiere.split("—")[-1].strip() if "—" in premiere else ""
 
 
-def mesurer(harness: Harness, corpus: Path | None = None) -> Releve:
+def mesurer(harness: Harness, corpus: Path | None = None, provenance: str = OBSERVE) -> Releve:
     """Additionne ce que le corpus a coûté, sans rien recalculer.
 
     Les compteurs viennent des fiches, c'est-à-dire de l'observation elle-même.
@@ -141,6 +147,7 @@ def mesurer(harness: Harness, corpus: Path | None = None) -> Releve:
         par_kata={},
         par_cible={},
         par_moteur={},
+        provenance=provenance,
     )
 
     depot = depot_pour(harness)
@@ -150,6 +157,9 @@ def mesurer(harness: Harness, corpus: Path | None = None) -> Releve:
         if texte is None or not texte.startswith("---"):
             continue
         entete = depot.entete(ref)
+        if not dans_la_tranche(entete, provenance):
+            releve.hors_tranche += 1
+            continue
         scores = entete.get("scores") or {}
         if not scores:
             releve.sans_scores += 1
@@ -192,6 +202,12 @@ def rendre(releve: Releve) -> str:
         lignes.append(
             f"  ⚠ {releve.doubles.ha} ha sont aussi dans un autre corpus : "
             f"{releve.doubles.jetons} jetons comptés deux fois, ci-dessus compris"
+        )
+    if releve.hors_tranche:
+        autre = RAPPORTE if releve.provenance == OBSERVE else OBSERVE
+        lignes.append(
+            f"  ○ {releve.hors_tranche} ha `{autre}` hors de ce relevé — tranche `{releve.provenance}` seule"
+            f" (`--provenance {autre}` pour l'autre)"
         )
 
     for titre, table in (

@@ -27,6 +27,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from ...corpus.depot import depot_pour, ref_de
+from ...corpus.provenance import OBSERVE, dans_la_tranche
 from ...hds import Harness, Kata
 from . import Tour, evaluer
 from .client import Passerelle, PasserelleInjoignable
@@ -112,16 +113,25 @@ def tours_du_ha(dossier: Path) -> tuple[list[str], tuple[Tour, ...]]:
     return porteurs, tours
 
 
-def perimes(harness: Harness, coupes: dict[tuple[str, str], str], corpus: Path | None = None) -> list[Perime]:
+def perimes(
+    harness: Harness,
+    coupes: dict[tuple[str, str], str],
+    corpus: Path | None = None,
+    provenance: str = OBSERVE,
+) -> list[Perime]:
     """Les ha dont la coupe n'est plus celle que la forge produit.
 
     `coupes` : la version actuelle par (kata, cible), telle que la forge la rend.
+    Une tranche à la fois (RFC-020 D20.5) : un ha rapporté n'a pas de version
+    de coupe et n'entre pas dans la non-régression par défaut.
     """
     racine = Path(corpus) if corpus is not None else harness.corpus
     trouves = []
     for ref in depot_pour(harness).tous(racine):
         dossier = ref.chemin
         entete = _entete(ref)
+        if not dans_la_tranche(entete, provenance):
+            continue
         kata, cible = str(entete.get("kata") or ""), str(entete.get("cible") or "")
         actuelle = coupes.get((kata, cible))
         version = str(entete.get("version_coupe") or "")

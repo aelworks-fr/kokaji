@@ -191,6 +191,44 @@ class Doubles(Bac):
         self.assertNotIn("deux fois", rendre(releve))
 
 
+class Tranches(Bac):
+    """RFC-020 D20.5, sabotage 5 — aucun agrégat par défaut n'inclut un ha rapporté."""
+
+    def rapporte(self, nom: str, scores: dict):
+        dossier = self.harness.corpus / nom
+        dossier.mkdir(parents=True)
+        lignes = "\n".join(f"  {c}: {v}" for c, v in scores.items())
+        (dossier / "fiche.md").write_text(
+            f"---\nharness: h\nkata: k1\ncible: ''\nmoteur: inconnu\nprovenance: rapporte\n"
+            f"scores:\n{lignes}\n---\n\n# {nom}\n", encoding="utf-8"
+        )
+
+    def test_un_ha_rapporte_est_hors_du_releve_par_defaut_et_dit(self):
+        self.ha("CAS-0001-a", "k1", "c1", {"tours": 2, "blocs_etat": 1, "jetons_entree": 400, "jetons_sortie": 100})
+        self.rapporte("CAS-0002-rapporte", {"tours": 9, "blocs_etat": 0, "jetons_entree": 0, "jetons_sortie": 0})
+        releve = mesurer(self.harness)
+        self.assertEqual(releve.tout.ha, 1)
+        self.assertEqual(releve.tout.tours, 2)
+        self.assertEqual(releve.provenance, "observe")
+        self.assertEqual(releve.hors_tranche, 1)
+        self.assertIn("1 ha `rapporte` hors de ce relevé", rendre(releve))
+
+    def test_la_tranche_rapportee_s_appelle_explicitement_et_ne_melange_rien(self):
+        self.ha("CAS-0001-a", "k1", "c1", {"tours": 2, "blocs_etat": 1, "jetons_entree": 400, "jetons_sortie": 100})
+        self.rapporte("CAS-0002-rapporte", {"tours": 9, "blocs_etat": 0, "jetons_entree": 0, "jetons_sortie": 0})
+        releve = mesurer(self.harness, provenance="rapporte")
+        self.assertEqual(releve.tout.ha, 1)
+        self.assertEqual(releve.tout.tours, 9)
+        self.assertEqual(releve.hors_tranche, 1)
+        self.assertIn("1 ha `observe` hors de ce relevé", rendre(releve))
+        with self.assertRaises(ValueError):
+            mesurer(self.harness, provenance="toutes")
+
+    def test_sans_rapporte_rien_n_est_dit(self):
+        self.ha("CAS-0001-a", "k1", "c1", {"tours": 2, "blocs_etat": 1, "jetons_entree": 400, "jetons_sortie": 100})
+        self.assertNotIn("hors de ce relevé", rendre(mesurer(self.harness)))
+
+
 class Rendu(Bac):
     def test_le_prix_d_une_observation_absente_se_dit(self):
         """« — » plutôt que zéro : il n'y a pas eu d'observation à payer."""

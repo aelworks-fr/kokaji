@@ -403,7 +403,9 @@ def creer_harness(
         }
 
     @app.get("/qg/usage", summary="Ce que la pratique a coûté, et ce qu'elle a rendu")
-    def qg_usage(corpus: str | None = None, qui_role: tuple = Depends(membre)) -> dict:
+    def qg_usage(
+        corpus: str | None = None, provenance: str = "observe", qui_role: tuple = Depends(membre)
+    ) -> dict:
         """Le relevé du harness et de ses kata — RFC-002 §6.3 et SPECS §5.6.
 
         Il se lit **dans le module design**, à côté de ce que chaque kata
@@ -418,7 +420,12 @@ def creer_harness(
 
         vise = _corpus(corpus)
         declare = harness.corpus_par_nom(vise)
-        releve = mesurer(harness, declare.chemin if declare else None)
+        try:
+            # Une tranche à la fois (RFC-020 D20.5) : `observe` par défaut,
+            # `rapporte` sur demande — jamais les deux fondues.
+            releve = mesurer(harness, declare.chemin if declare else None, provenance=provenance)
+        except ValueError as err:
+            raise HTTPException(status_code=400, detail=str(err)) from err
 
         def dire(d) -> dict:
             return {
@@ -437,6 +444,8 @@ def creer_harness(
             # Incluse dans `tout`, jamais retranchée en silence : un total
             # corrigé sans le dire ne se relit dans aucune fiche.
             "doubles": dire(releve.doubles),
+            "provenance": releve.provenance,
+            "hors_tranche": releve.hors_tranche,
         }
 
     @app.get("/qg/sujets", summary="Les sujets que les blocs d'état déclarent")

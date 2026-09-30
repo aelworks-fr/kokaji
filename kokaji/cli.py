@@ -312,7 +312,7 @@ def _usage(args) -> int:
         print(f"✗ {err}", file=sys.stderr)
         return 1
 
-    releve = mesurer(harness, _corpus_choisi(harness, args.corpus))
+    releve = mesurer(harness, _corpus_choisi(harness, args.corpus), provenance=args.provenance)
     if not releve.tout.ha:
         print("aucun ha mesuré — rien n'a encore été pratiqué")
         return 0
@@ -596,7 +596,7 @@ def _regression(args) -> int:
         print(f"✗ {harness.id} : {err}", file=sys.stderr)
         return 1
 
-    candidats = perimes(harness, actuelles, _corpus_choisi(harness, args.corpus_nom))
+    candidats = perimes(harness, actuelles, _corpus_choisi(harness, args.corpus_nom), provenance=args.provenance)
     if args.variable:
         vises = set(args.variable)
         candidats = [c for c in candidats if vises & set(c.design_exerce)]
@@ -696,7 +696,7 @@ def _resserrer(args) -> int:
     trouve = False
 
     for kata in harness.kata:
-        observations = observer(harness, kata, corpus)
+        observations = observer(harness, kata, corpus, provenance=args.provenance)
         if not observations or all(o.observes == 0 for o in observations):
             continue
 
@@ -1291,6 +1291,7 @@ def _importer(args) -> int:
 
 def _juger(args) -> int:
     """RFC-008 §7 — la grille du harness, appliquée aux transcripts du corpus."""
+    from .corpus.provenance import dans_la_tranche
     from .trempe.banc.jugement import JugeRefuse, deja_juge, juger_grille
 
     try:
@@ -1312,6 +1313,8 @@ def _juger(args) -> int:
             continue
         if depot.transcript(dossier) is None:
             continue
+        if not dans_la_tranche(depot.entete(dossier), args.provenance):
+            continue  # une tranche à la fois (RFC-020 D20.5)
         version = ""
         if not args.rejuger:
             entete = depot.entete(dossier)
@@ -1616,6 +1619,7 @@ def main(argv: list[str] | None = None) -> int:
     regr = sous.add_parser("regression", help="rejouer les ha périmés par un changement de source")
     regr.add_argument("harness", type=Path, help="dossier du harness")
     regr.add_argument("--corpus", dest="corpus_nom", help="le corpus à rejouer")
+    regr.add_argument("--provenance", default="observe", choices=("observe", "rapporte"), help="la tranche lue : observe (défaut) ou rapporte — jamais les deux fondues (RFC-020 D20.5)")
     regr.add_argument("--modele", help="modèle virtuel ; défaut : celui du ha, cible comprise")
     regr.add_argument(
         "--variable", action="append", default=[],
@@ -1643,6 +1647,7 @@ def main(argv: list[str] | None = None) -> int:
         "resserrer", help="proposer le `produit` que la pratique tient (RFC-002 §6.4)"
     )
     resser.add_argument("harness", type=Path, help="dossier du harness")
+    resser.add_argument("--provenance", default="observe", choices=("observe", "rapporte"), help="la tranche lue : observe (défaut) ou rapporte — jamais les deux fondues (RFC-020 D20.5)")
     resser.add_argument("--corpus", dest="corpus_nom", help="le corpus observé")
     resser.add_argument(
         "--minimum", type=int, default=3,
@@ -1670,6 +1675,7 @@ def main(argv: list[str] | None = None) -> int:
     usage = sous.add_parser("usage", help="ce que la pratique a coûté, et ce qu'elle a rendu")
     usage.add_argument("harness", type=Path, help="dossier du harness")
     usage.add_argument("--corpus", help="le corpus visé ; défaut : le premier déclaré")
+    usage.add_argument("--provenance", default="observe", choices=("observe", "rapporte"), help="la tranche lue : observe (défaut) ou rapporte — jamais les deux fondues (RFC-020 D20.5)")
 
     passerelle = sous.add_parser(
         "passerelle", help="confronte l'autorisation de la clé à ce que la forge déclare"
@@ -1884,6 +1890,7 @@ def main(argv: list[str] | None = None) -> int:
     jugement.add_argument("--moteur", required=True,
                           help="le juge — jamais le moteur qui a conversé")
     jugement.add_argument("--corpus", dest="corpus_nom", help="le corpus jugé")
+    jugement.add_argument("--provenance", default="observe", choices=("observe", "rapporte"), help="la tranche lue : observe (défaut) ou rapporte — jamais les deux fondues (RFC-020 D20.5)")
     jugement.add_argument("--ha", action="append", default=[],
                           help="ne juger que ce ha ; répétable")
     jugement.add_argument("--cle", default="", help="clé appelante de la passerelle")

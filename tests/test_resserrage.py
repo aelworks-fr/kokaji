@@ -104,6 +104,19 @@ class Bac(unittest.TestCase):
 
 
 class Observer(Bac):
+    def test_un_ha_rapporte_ne_resserre_aucune_garantie_par_defaut(self):
+        """RFC-020 D20.5 — on ne garantit pas sur ce qu'on n'a pas observé."""
+        self.ha("CAS-0001-x", {"c1": "fait_etabli"})
+        fiche = self.harness.corpus / "CAS-0001-x" / "fiche.md"
+        fiche.write_text(
+            fiche.read_text(encoding="utf-8").replace("kata: k1", "kata: k1\nprovenance: rapporte", 1),
+            encoding="utf-8",
+        )
+        obs = observer(self.harness, self.kata, self.harness.corpus)
+        self.assertEqual(next(o for o in obs if o.champ == "k1.c1").statuts, ())
+        obs = observer(self.harness, self.kata, self.harness.corpus, provenance="rapporte")
+        self.assertEqual(next(o for o in obs if o.champ == "k1.c1").statuts, ("fait_etabli",))
+
     def test_seul_le_dernier_bloc_d_un_ha_compte(self):
         """C'est l'état final qui dit ce que le kata a livré."""
         self.ha("CAS-0001-x", {"c1": "en_pause"}, {"c1": "fait_etabli"})
