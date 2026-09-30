@@ -58,6 +58,8 @@ un ha de l'un à l'autre, dans les deux sens.
 |---|---|
 | `harness`, `kata`, `version_kata`, `version_coupe`, `cible`, `moteur`, `date` | l'identité de ha, reprise du journal du Dojo |
 | `source` | `reel` \| `scenario` \| `simule` — d'où vient la matière |
+| `provenance` | `observe` \| `rapporte` — d'où vient le déroulé : joué au dojo, ou ailleurs (RFC-020). **Indélébile.** |
+| `declaration` | ce qu'une personne affirme d'un ha rapporté : kata, kin, moteur et date d'origine, source du texte, découpage corrigé |
 | `statut` | `brut` \| `anonymise` \| `annote` — où en est le cycle de vie |
 | `completude` | `A` \| `B` \| `C` — voir ci-dessous |
 | `design_exerce` | les variables de design mises à l'épreuve — **noms du registre du harness** |
@@ -117,6 +119,36 @@ L'import prend un export, ou **le dossier des harness d'une instance en
 régime fichiers** avec son `--journal` — c'est la migration. `--vers` transpose
 les chemins vers un autre dossier de harness. Un appel ne s'importe jamais deux
 fois ; un ha réimporté reprend sa place.
+
+## Rapporter une conversation jouée ailleurs (RFC-020)
+
+```bash
+kokaji rapporter <harness> --kata <id> --texte <fichier|-> --essai     # montre le découpage, n'écrit rien
+kokaji rapporter <harness> --kata <id> --texte <fichier> [--tours corrige.json]
+                 [--kin …] [--moteur …] [--date …] [--source-texte …] [--praticien <compte>]
+```
+
+Une conversation utile au harness s'est jouée hors du dojo — un autre outil,
+avant même que le kata existe. On la **colle** ; Kokaji propose un découpage en
+tours (les étiquettes des outils de chat, sinon les paragraphes en alternance)
+qu'on corrige avant d'enregistrer ; on **déclare** le kata de rattachement, et
+ce qu'on sait du reste. Le ha entre **directement** au corpus, `brut`, sans
+quarantaine ni admission — juger une expérience digne d'exister n'est pas un
+concept de Kokaji.
+
+Ce qui est non négociable, c'est l'encre : `provenance: rapporte`, posée à la
+naissance, que **les deux dépôts refusent de réécrire** — anonymiser, annoter,
+régler la visibilité, exporter puis réimporter, rien ne fait passer un ha
+rapporté pour observé. Toute vue qui montre le ha montre son encre.
+
+La frontière : n'est importable que ce qui peut être **re-perçu** après coup.
+Un kata dont les effets dépassent le canal `modele` (RFC-016) ne reçoit aucune
+conversation rapportée — « j'ai déployé, ça marche » n'est pas une trace, et le
+monde d'alors ne s'échantillonne plus. L'import refuse en citant la RFC-020 §2.
+
+Le ha rapporté ne porte ni coupe injectée, ni bloc d'état, ni version de coupe :
+ce qu'on ne sait pas se dit `inconnu` ou reste vide, jamais deviné. Le texte
+collé reste en matériau (`texte-colle.md`), à côté du découpage.
 
 ## Écarter un ha
 

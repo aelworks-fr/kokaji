@@ -8,6 +8,8 @@
 
 Des harness existent hors de Kokaji : écrits à la main, joués en copier-coller, sans template, sans manifest, sans instrumentation. Ils ont vocation à être joués « avec un modèle quelconque derrière » — exactement ce que le Dojo sait faire — et méritent d'être évalués avec les instruments de la trempe. L'import est une **capacité générique** : tout harness exogène, quel qu'en soit l'auteur ou le domaine, devient expérimentable dans Kokaji.
 
+> *En miroir* — cette RFC importe la **forme** : le kata né ailleurs. La [RFC-020](rfc-020-import-de-conversation.md) importe la **pratique** : le déroulé joué ailleurs, rapporté à un kata. Un harness importé N0 peut recevoir des pratiques rapportées ; c'est même son premier corpus plausible.
+
 ## 2. Régime de séparation (décision scellée : « les deux, séparés »)
 
 - Ce RFC spécifie une mécanique **générique** ; il ne mentionne, n'embarque ni ne présuppose aucun harness particulier.

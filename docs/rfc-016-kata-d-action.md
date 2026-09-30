@@ -64,6 +64,10 @@ ontologie seconde. La liste des raccourcis s'étend par RFC, jamais par usage.
 2. **Pas de monde auto-rapporté.** Le vérificateur d'un effet sur le monde
    échantillonne le monde **indépendamment** de la déclaration du
    pratiquant : le rapport n'est jamais sa propre preuve.
+   *Conséquence nommée par la [RFC-020](rfc-020-import-de-conversation.md) §2 :
+   un déroulé joué ailleurs n'est importable que si tout ce qui s'y est passé
+   peut être re-perçu après coup — les effets `modele` seuls. Un effet monde
+   allégué dans un texte collé est du monde auto-rapporté : refusé à l'import.*
 3. **Pas de surprise avalée.** Un écart que l'étape ne résout pas **remonte**
    — au checkpoint humain — jamais absorbé en silence (voir §4, cycles).
 

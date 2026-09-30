@@ -173,7 +173,9 @@ Un ha = un dossier `CAS-XXXX-titre/` : `fiche.md` (frontmatter YAML) + `transcri
 2. **anonymisé** — le kin est vérifié/neutralisé (automatique si le sujet est fictif déclaré, sinon passage humain).
 3. **annoté** — promotion humaine : `design_exerce` (variables du registre du harness), verdict, constats, enseignements.
 
-Frontmatter : `harness`, `kata`, `version_kata`, `version_coupe`, `cible`, `moteur`, `date`, `praticien`, `visibilite: privee|verse`, `source: reel|scenario|simule`, `statut: brut|anonymise|annote`, `completude: A|B|C`, `design_exerce: []`, `verdict`, `scores`. La taxonomie `design_exerce` appartient au harness (registre), pas à Kokaji.
+Frontmatter : `harness`, `kata`, `version_kata`, `version_coupe`, `cible`, `moteur`, `date`, `praticien`, `visibilite: privee|verse`, `source: reel|scenario|simule`, `provenance: observe|rapporte`, `statut: brut|anonymise|annote`, `completude: A|B|C`, `design_exerce: []`, `verdict`, `scores`. La taxonomie `design_exerce` appartient au harness (registre), pas à Kokaji.
+
+**Provenance** ([RFC-020](docs/rfc-020-import-de-conversation.md)) : un ha est `observe` — joué au dojo, capturé depuis le journal — ou `rapporte` — joué ailleurs, collé et déclaré par une personne, rattaché à un kata à effets `modele` seuls. Les deux entrent au corpus au même statut `brut` : la provenance est un axe de lecture, jamais une porte. Elle se pose une fois et ne se réécrit jamais ; un ha rapporté porte en plus sa `declaration` (kata, kin, moteur et date d'origine, source du texte, découpage corrigé), à l'encre déclarée.
 
 **Kin de banc et personas** ([RFC-003](docs/rfc-003-diagnostic-de-nature.md) §5.3) : leur frontmatter porte en plus `typologie:` — la nature *réelle* du sujet, telle que l'auteur du kin la déclare — et, pour les pièges, `enonce_comme:` — la nature que son énoncé suggère. Les deux sont du vocabulaire de harness : Kokaji les transporte et les compare, il ne les interprète pas. C'est ce couple qui rend la justesse du diagnostic mesurable, et les kin où les deux diffèrent sont ceux où la qualité d'un harness se voit.
 

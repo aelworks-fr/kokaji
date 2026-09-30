@@ -11,8 +11,8 @@ les pièges déjà rencontrés, et la façon de travailler ici.
 1. `CLAUDE.md` — les règles.
 2. `docs/SPECS.md` — tout part de là ; le vocabulaire est en §1.2.
 3. `STRUCTURE.md` — où vit chaque pièce.
-4. Les RFC, `docs/rfc-001…019`, **dans l'ordre** ; chacune finit par un tableau
-   d'application qui dit ce qui est fait. La prochaine porte le numéro **020**.
+4. Les RFC, `docs/rfc-001…020`, **dans l'ordre** ; chacune finit par un tableau
+   d'application qui dit ce qui est fait. La prochaine porte le numéro **021**.
 5. `docs/carnet.md` — les vigilances : ce qu'on a appris en se trompant.
 6. La doc de la pièce touchée : `docs/corpus.md`, `docs/middleware.md`,
    `docs/qg.md`, `docs/forge.md`, `docs/banc.md`, `docs/hds-v0.md`.

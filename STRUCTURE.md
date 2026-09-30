@@ -18,6 +18,8 @@ kokaji/              La forge — paquet Python, CLI `kokaji`
     base.py          Le dépôt de ha dans le Postgres de l'instance (RFC-014)
     journal.py       Le journal des appels : fichiers et base, lus ensemble
     instance.py      L'export et l'import de l'instance entière — rien de captif
+    provenance.py    L'encre observé / rapporté, posée une fois, indélébile (RFC-020)
+    rapporte.py      Importer une conversation jouée ailleurs — la pratique rapportée
   middleware/        Capture, état, carré continu, surface HTTP  (§7, §12)
   routage.py           Le routage conditionnel de la chaîne          (RFC-016)
   execution.py         L'exécution d'une coupe-outil : façade + inerte  (RFC-016)
@@ -40,7 +42,7 @@ dojo/                Le kit d'une instance — Docker Compose           (§3)
   harness/ journal/ comptes/   L'instance elle-même — hors git
 atelier/             Le harness de démonstration, domaine fictif      (§9)
 trempe/              La trempe du produit : check.sh, exemptions, gabarit
-docs/                SPECS, RFC 001→019, HDS v0, et la doc de chaque commande
+docs/                SPECS, RFC 001→020, HDS v0, et la doc de chaque commande
   design/handoff-v2/ L'audit ergonomique et le prototype v2 — la référence visuelle (RFC-013)
   carnet.md          Le carnet de vigilances — ce qui peut mal tourner, et ce qu'on lui oppose
 .github/workflows/   La CI : trempe du produit, tests, Atelier, style
