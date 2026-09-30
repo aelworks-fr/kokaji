@@ -997,6 +997,63 @@ def _rapporter(args) -> int:
     return 0
 
 
+def _tremper(args) -> int:
+    """RFC-020 D20.3 — la trempe a posteriori d'une pratique rapportée."""
+    from .trempe.banc.jugement import JugeRefuse
+    from .trempe.banc.posteriori import TrempeRefusee, rendre, tremper
+
+    try:
+        harness = charger(args.harness)
+    except ManifestInvalide as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    passerelle = Passerelle(cle=args.cle) if args.cle else Passerelle()
+    racine = _corpus_choisi(harness, args.corpus_nom) or harness.corpus
+    depot = depot_pour(harness)
+    code, faits = 0, 0
+    for dossier in depot.tous(racine):
+        if args.ha and not dossier.nom.startswith(tuple(args.ha)):
+            continue
+        if not args.ha and depot.entete(dossier).get("provenance") != "rapporte":
+            continue
+        try:
+            trempe = tremper(harness, dossier, passerelle, juge=args.juge or "")
+        except (TrempeRefusee, JugeRefuse) as err:
+            print(f"✗ {dossier.nom} — {err}", file=sys.stderr)
+            code = 1
+            continue
+        faits += 1
+        print(rendre(trempe))
+    if not faits and not code:
+        print("aucune pratique rapportée à tremper dans ce corpus")
+    return code
+
+
+def _semer(args) -> int:
+    """RFC-020 D20.4 — semer un cas de test depuis une pratique rapportée."""
+    from .trempe.banc.semence import SemenceRefusee, semer_cas
+
+    try:
+        harness = charger(args.harness)
+    except ManifestInvalide as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    racine = _corpus_choisi(harness, args.corpus_nom) or harness.corpus
+    depot = depot_pour(harness)
+    dossier = next((d for d in depot.tous(racine) if d.nom.startswith(args.ha)), None)
+    if dossier is None:
+        print(f"✗ {args.ha} : aucun ha à ce nom dans ce corpus", file=sys.stderr)
+        return 1
+    try:
+        cas = semer_cas(harness, dossier, identifiant=args.id, par=args.par or "")
+    except SemenceRefusee as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    print(f"+ {cas.chemin}  kin `{cas.id}` semé depuis {cas.seme_par} — {cas.tours} tour(s) du porteur ;"
+          " posture et pièges à écrire")
+    return 0
+
+
 def _concevoir(args) -> int:
     """Le fond du module « Design du harness » : proposer, lire un verdict, sceller.
 
@@ -1761,6 +1818,24 @@ def main(argv: list[str] | None = None) -> int:
     rapporter_.add_argument("--corpus", dest="corpus_nom", help="le corpus visé")
     rapporter_.add_argument("--praticien", help="le compte de la personne qui rapporte")
 
+    tremper_ = sous.add_parser(
+        "tremper", help="la trempe a posteriori des pratiques rapportées (RFC-020 D20.3)"
+    )
+    tremper_.add_argument("harness", type=Path, help="dossier du harness")
+    tremper_.add_argument("--ha", action="append", default=[], help="ne tremper que ce ha ; répétable")
+    tremper_.add_argument("--juge", help="le juge — jamais le moteur d'origine ; sans lui, l'étage déterministe seul")
+    tremper_.add_argument("--corpus", dest="corpus_nom", help="le corpus visé")
+    tremper_.add_argument("--cle", default="", help="clé appelante de la passerelle")
+
+    semer_ = sous.add_parser(
+        "semer", help="semer un cas de test (un kin) depuis une pratique rapportée (RFC-020 D20.4)"
+    )
+    semer_.add_argument("harness", type=Path, help="dossier du harness")
+    semer_.add_argument("--ha", required=True, help="le ha rapporté d'origine")
+    semer_.add_argument("--id", help="l'identifiant du kin ; sinon tiré du kin déclaré")
+    semer_.add_argument("--par", help="qui sème")
+    semer_.add_argument("--corpus", dest="corpus_nom", help="le corpus visé")
+
     concevoir = sous.add_parser(
         "concevoir", help="proposer un changement de définition, le juger, le sceller"
     )
@@ -1939,6 +2014,10 @@ def main(argv: list[str] | None = None) -> int:
         return _corpus(args)
     if args.commande == "rapporter":
         return _rapporter(args)
+    if args.commande == "tremper":
+        return _tremper(args)
+    if args.commande == "semer":
+        return _semer(args)
     return 2
 
 
