@@ -49,6 +49,7 @@ interface: {interface}
 racine: "{racine}"
 amorce: {amorce}
 source: {source}
+provenance: observe
 statut: brut
 en_cours: {en_cours}
 completude: {completude}
@@ -76,6 +77,7 @@ Versé depuis le journal du Dojo, session `{session}`.
 ## Réserves sur ce ha
 
 - Session jouée par le banc ou conversée en vrai — voir `source`.
+- Observée au dojo, capturée depuis le journal — voir `provenance` (RFC-020).
 - {reserve_temperature}
 """
 
@@ -187,6 +189,9 @@ CHAMPS_DE_LA_CAPTURE = frozenset({
     # Rafraîchis à chaque passage — donc posés d'eux-mêmes sur les ha déjà là.
     "interface", "racine", "amorce",
 })
+# `provenance` n'est dans aucun des deux ensembles, à dessein : la capture la
+# pose sur un ha qui n'en a pas (tous observés, avant la RFC-020) et ne la
+# touche plus ensuite — le dépôt refuserait de toute façon (`provenance.py`).
 # Ceux-là ne s'écrasent que s'ils ont quelque chose à dire : une passe qui ne
 # connaît pas le praticien ne doit pas effacer celui qu'une autre a su nommer.
 CHAMPS_SI_CONNUS = frozenset({"fil", "praticien"})

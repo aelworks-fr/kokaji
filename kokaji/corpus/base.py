@@ -25,6 +25,7 @@ from pathlib import Path
 import yaml
 
 from .depot import RefHa
+from .provenance import verifier_inalterable
 
 __all__ = ["SCHEMA", "BaseInjoignable", "DepotBase", "JournalBase"]
 
@@ -50,6 +51,7 @@ CREATE TABLE IF NOT EXISTS ha (
     praticien     text NOT NULL DEFAULT '',
     visibilite    text NOT NULL DEFAULT '',
     source        text NOT NULL DEFAULT '',
+    provenance    text NOT NULL DEFAULT '',-- observe | rapporte (RFC-020)
     statut        text NOT NULL DEFAULT '',
     completude    text NOT NULL DEFAULT '',
     verdict       text NOT NULL DEFAULT '',
@@ -63,6 +65,9 @@ CREATE TABLE IF NOT EXISTS ha (
     cree_le       timestamptz NOT NULL DEFAULT now(),
     PRIMARY KEY (corpus, nom)
 );
+-- Une base posée avant la RFC-020 n'a pas la colonne : on l'ajoute sans rien
+-- migrer d'autre — un ha muet se lit `observe`, et la colonne vide le dit aussi.
+ALTER TABLE ha ADD COLUMN IF NOT EXISTS provenance text NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS ha_harness_kata ON ha (harness, kata);
 CREATE INDEX IF NOT EXISTS ha_session ON ha (session);
 
@@ -116,7 +121,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS ecart_corpus_session ON ecart (corpus, session
 
 COLONNES_DE_LA_FICHE = (
     "kata", "version_kata", "version_coupe", "cible", "moteur", "date", "session",
-    "praticien", "visibilite", "source", "statut", "completude", "verdict", "titre",
+    "praticien", "visibilite", "source", "provenance", "statut", "completude", "verdict", "titre",
 )
 
 
@@ -339,6 +344,7 @@ class DepotBase(_Base):
 
     def ecrire_fiche(self, ref: RefHa, texte: str) -> None:
         """La fiche entière, et ses colonnes tirées du frontmatter — pour requêter."""
+        verifier_inalterable(self.fiche(ref), texte)  # RFC-020 D20.2, comme les fichiers
         self.creer(ref.corpus, ref.nom)
         entete = _entete_de(texte)
         colonnes = {c: _texte(entete.get(c)) for c in COLONNES_DE_LA_FICHE}

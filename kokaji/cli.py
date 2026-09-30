@@ -936,6 +936,67 @@ def _corpus(args) -> int:
     return 0
 
 
+def _rapporter(args) -> int:
+    """RFC-020 — importer une conversation jouée ailleurs, à l'encre `rapporte`.
+
+    Sans `--tours`, le texte est découpé par l'heuristique et le découpage se
+    montre ; `--essai` s'arrête là, sans rien écrire. `--tours` prend le
+    découpage corrigé (JSON, `[{"role": "humain"|"kata", "texte": …}]`) : c'est
+    alors la personne qui affirme « voilà les tours » (D20.1)."""
+    import json
+
+    from .corpus.rapporte import Declaration, HorsFrontiere, decouper, rapporter
+
+    try:
+        harness = charger(args.harness)
+    except ManifestInvalide as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+
+    texte = sys.stdin.read() if str(args.texte) == "-" else Path(args.texte).read_text(encoding="utf-8")
+    if args.tours is not None:
+        try:
+            tours = json.loads(Path(args.tours).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as err:
+            print(f"✗ découpage illisible : {err}", file=sys.stderr)
+            return 1
+        corrige = True
+    else:
+        tours, corrige = decouper(texte), False
+
+    for rang, tour in enumerate(tours, start=1):
+        apercu = " ".join(str(tour.get("texte") or "").split())
+        apercu = apercu if len(apercu) <= 88 else apercu[:87] + "…"
+        role = str(tour.get("role") or "?")
+        print(f"{rang:>3}  {role:<7} {apercu}")
+    if args.essai:
+        print(f"\n{len(tours)} tour(s) — découpage proposé, rien n'est écrit (`--essai`)."
+              " Corrige-le en JSON et repasse-le avec `--tours`.")
+        return 0
+
+    declaration = Declaration(
+        kata=args.kata, kin=args.kin or "", moteur_origine=args.moteur or "",
+        date_origine=args.date or "", source_texte=args.source_texte or "",
+        version_kata_supposee=args.version_kata or "", decoupage_corrige=corrige,
+        source=args.source,
+    )
+    try:
+        ha = rapporter(
+            harness, tours, declaration, corpus=_corpus_choisi(harness, args.corpus_nom),
+            praticien=args.praticien or "", texte_colle=texte,
+        )
+    except HorsFrontiere as err:
+        print(f"✗ refusé : {err}", file=sys.stderr)
+        return 1
+    except ValueError as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 1
+    print(f"\n+ {ha.identifiant}  {ha.kata} · rapporté · {ha.tours} tour(s) — brut, à l'encre `rapporte`")
+    if not ha.praticien:
+        print("  sans praticien : personne ne le lit au QG tant qu'il n'est pas rattaché (`kokaji rattacher`)")
+    return 0
+
+
 def _concevoir(args) -> int:
     """Le fond du module « Design du harness » : proposer, lire un verdict, sceller.
 
@@ -1683,6 +1744,23 @@ def main(argv: list[str] | None = None) -> int:
     corpus.add_argument("--temperature", type=float, default=0.0, help="celle de la session jouée")
     corpus.add_argument("--corpus", dest="corpus_nom", help="le corpus visé")
 
+    rapporter_ = sous.add_parser(
+        "rapporter", help="importer une conversation jouée ailleurs — la pratique rapportée (RFC-020)"
+    )
+    rapporter_.add_argument("harness", type=Path, help="dossier du harness")
+    rapporter_.add_argument("--kata", required=True, help="le kata de rattachement (déclaré)")
+    rapporter_.add_argument("--texte", type=Path, required=True, help="le texte collé (fichier, ou `-` pour l'entrée)")
+    rapporter_.add_argument("--tours", type=Path, help="le découpage corrigé, en JSON — sinon l'heuristique")
+    rapporter_.add_argument("--essai", action="store_true", help="montrer le découpage sans rien écrire")
+    rapporter_.add_argument("--kin", help="le sujet, s'il est connu")
+    rapporter_.add_argument("--moteur", help="le moteur d'origine, s'il est connu")
+    rapporter_.add_argument("--date", help="la date d'origine, si elle est connue")
+    rapporter_.add_argument("--source-texte", dest="source_texte", help="d'où vient le texte, en clair")
+    rapporter_.add_argument("--version-kata", dest="version_kata", help="la version du kata supposée")
+    rapporter_.add_argument("--source", default="reel", choices=("reel", "scenario", "simule"))
+    rapporter_.add_argument("--corpus", dest="corpus_nom", help="le corpus visé")
+    rapporter_.add_argument("--praticien", help="le compte de la personne qui rapporte")
+
     concevoir = sous.add_parser(
         "concevoir", help="proposer un changement de définition, le juger, le sceller"
     )
@@ -1859,6 +1937,8 @@ def main(argv: list[str] | None = None) -> int:
         return _banc(args)
     if args.commande == "corpus":
         return _corpus(args)
+    if args.commande == "rapporter":
+        return _rapporter(args)
     return 2
 
 

@@ -169,6 +169,41 @@ class ContratDuDepot:
         self.depot.ecrire_fiche(ref, FICHE.replace("statut: brut", "statut: annote"))
         self.assertEqual(self.depot.entete(ref)["statut"], "annote")
 
+    def test_l_encre_de_provenance_est_indelebile(self):
+        """RFC-020 D20.2, sabotage 6 — le dépôt est le seul endroit par où toute
+        fiche passe : c'est là qu'on doit le voir refuser."""
+        from kokaji.corpus.provenance import ProvenanceInalterable
+
+        ref = self.depot.creer(self.corpus, "CAS-0001-x")
+        rapportee = FICHE.replace("statut: brut", "provenance: rapporte\nstatut: brut")
+        self.depot.ecrire_fiche(ref, rapportee)
+        # Passer en observé : refusé.
+        with self.assertRaises(ProvenanceInalterable):
+            self.depot.ecrire_fiche(ref, rapportee.replace("provenance: rapporte", "provenance: observe"))
+        # La taire — ce qui la ferait lire `observe` par défaut : refusé.
+        with self.assertRaises(ProvenanceInalterable):
+            self.depot.ecrire_fiche(ref, FICHE)
+        # Une valeur hors liste : refusée.
+        with self.assertRaises(ProvenanceInalterable):
+            self.depot.ecrire_fiche(ref, rapportee.replace("provenance: rapporte", "provenance: autre"))
+        # Le reste de la fiche, lui, s'écrit — annoter n'efface pas l'encre.
+        self.depot.ecrire_fiche(ref, rapportee.replace("statut: brut", "statut: annote"))
+        self.assertEqual(self.depot.entete(ref)["provenance"], "rapporte")
+        self.assertEqual(self.depot.entete(ref)["statut"], "annote")
+
+    def test_une_fiche_muette_recoit_l_encre_qu_on_lui_pose_puis_la_garde(self):
+        """Les ha d'avant la RFC-020 n'ont pas de provenance : le premier passage
+        de la veille la pose (`observe`), et plus rien ne la change ensuite."""
+        from kokaji.corpus.provenance import ProvenanceInalterable
+
+        ref = self.depot.creer(self.corpus, "CAS-0001-x")
+        self.depot.ecrire_fiche(ref, FICHE)
+        observee = FICHE.replace("statut: brut", "provenance: observe\nstatut: brut")
+        self.depot.ecrire_fiche(ref, observee)
+        self.assertEqual(self.depot.entete(ref)["provenance"], "observe")
+        with self.assertRaises(ProvenanceInalterable):
+            self.depot.ecrire_fiche(ref, observee.replace("provenance: observe", "provenance: rapporte"))
+
     def test_une_fiche_sans_entete_ou_mal_formee_donne_un_entete_vide(self):
         ref = self.depot.creer(self.corpus, "CAS-0001-x")
         self.depot.ecrire_fiche(ref, "# Sans frontmatter\n")
@@ -305,6 +340,15 @@ class TestDepotBase(ContratDuDepot, unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         cls.depot.fermer()
+
+    def test_la_provenance_est_une_colonne_pour_requeter(self):
+        """RFC-020 D20.5 — la tranche `rapporte` se requête, elle ne se parcourt pas."""
+        ref = self.depot.creer(self.corpus, "CAS-0001-x")
+        self.depot.ecrire_fiche(ref, FICHE.replace("statut: brut", "provenance: rapporte\nstatut: brut"))
+        ligne = self.depot._lire_une(
+            "SELECT provenance FROM ha WHERE corpus = %s AND nom = %s", self.depot._cle(self.corpus), ref.nom
+        )
+        self.assertEqual(ligne[0], "rapporte")
 
     def test_les_colonnes_sont_tirees_de_la_fiche_pour_requeter(self):
         ref = self.depot.creer(self.corpus, "CAS-0001-x")

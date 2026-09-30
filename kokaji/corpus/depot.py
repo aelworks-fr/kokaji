@@ -29,6 +29,8 @@ from typing import Protocol, runtime_checkable
 
 import yaml
 
+from .provenance import verifier_inalterable
+
 __all__ = [
     "DepotDeHa", "DepotFichiers", "RefHa", "depot_pour", "identifiant_de", "ref_de", "transferer",
 ]
@@ -192,6 +194,10 @@ class DepotFichiers:
         return donnees if isinstance(donnees, dict) else {}
 
     def ecrire_fiche(self, ref: RefHa, texte: str) -> None:
+        # L'encre de provenance ne se réécrit pas — quel que soit le geste qui
+        # écrit la fiche (RFC-020 D20.2). La garde est ici, au seul endroit par
+        # où toute fiche passe, pour qu'aucun geste ne puisse l'oublier.
+        verifier_inalterable(self.fiche(ref), texte)
         self._ecrire(ref, "fiche.md", texte)
 
     def transcript(self, ref: RefHa) -> str | None:
