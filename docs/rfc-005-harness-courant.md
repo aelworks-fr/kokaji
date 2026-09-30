@@ -54,6 +54,14 @@ Open WebUI le permet nativement : il demande la liste **par utilisateur** (`rout
 
 Open WebUI sait envoyer l'identité de deux façons : des en-têtes `X-OpenWebUI-User-*` en clair, ou **un JWT HS256 signé** dès qu'un secret partagé est posé. Les en-têtes nus sont déclaratifs : qui atteint le point d'entrée se dit qui il veut. La façade **exige la forme signée** et refuse une requête non signée — un service qui prétend à la conformité ne peut pas croire son appelant sur parole.
 
+> **Amendement RFC-019 (30 septembre 2026).** L'identité signée ne sert pas
+> qu'à servir la liste des modèles : le relais en tire l'email vérifié et le
+> transporte à la passerelle, avec le fil de conversation, pour que le journal
+> sache qui a pratiqué. Il ne transporte **jamais** les secrets du client —
+> ni son `Authorization`, ni ses cookies, ni le jeton lui-même — et un jeton
+> absent ou invalide n'échoue pas le relais : le ha naît alors orphelin. Un
+> en-tête en clair, même présent, est ignoré (D19.1, D19.2).
+
 ### 3.4 Le relais refuse ce qui sort du harness courant
 
 Un appel à un kata qui n'appartient pas au harness courant de l'appelant est refusé. La liste est déjà filtrée ; ce refus vaut pour ce que la liste n'a pas produit — un nom de modèle forgé à la main, un fil rouvert après un changement de harness. Sans lui, le filtrage est un confort d'affichage ; avec lui, c'est une frontière.

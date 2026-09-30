@@ -335,6 +335,25 @@ class Praticien(Bac):
         )
         self.assertEqual(self._praticien(), "u-42")
 
+    def test_un_compte_cree_apres_coup_attribue_au_passage_suivant(self):
+        """RFC-019 D19.4, sabotage n°4 : le journal garde l'email, la capture le résout quand elle peut."""
+        self.ecrire([self._appel_de(email="p@ex.fr")])
+        verser(self.harness, self.journal, praticien_par_email=lambda e: "")
+        self.assertEqual(self._praticien(), "")
+        verser(
+            self.harness, self.journal, rafraichir=True,
+            praticien_par_email=lambda e: "u-42" if e == "p@ex.fr" else "",
+        )
+        self.assertEqual(self._praticien(), "u-42")
+
+    def test_un_passage_qui_ne_sait_pas_ne_desattribue_pas(self):
+        """RFC-019 D19.4, sabotage n°5 : un praticien posé survit à une veille sans magasin."""
+        self.ecrire([self._appel_de(email="p@ex.fr")])
+        verser(self.harness, self.journal, praticien_par_email=lambda e: "u-42")
+        self.assertEqual(self._praticien(), "u-42")
+        verser(self.harness, self.journal, rafraichir=True)
+        self.assertEqual(self._praticien(), "u-42")
+
 
 class Raison(unittest.TestCase):
     """Le fichier des écartés est la seule trace qui restera de la décision."""

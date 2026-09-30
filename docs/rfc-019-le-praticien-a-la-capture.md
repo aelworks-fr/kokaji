@@ -91,7 +91,7 @@ Un seul lot, parce que les trois maillons ne valent qu'ensemble — et parce que
 
 | Lot | État |
 |---|---|
-| unique — le praticien à la capture | à faire |
+| unique — le praticien à la capture | appliqué (30 septembre 2026) — commits b081e4a et c5cc343 repris de la branche de garde, durcis : le relais ne lit plus que le jeton signé (D19.1), et n'y ajoute rien de 570cf94 ; `verser(praticien_par_email=…)`, `kokaji middleware --comptes`, `--comptes /comptes` sur la veille de l'instance ; les sept sabotages couverts par les tests (en-tête en clair forgé ignoré, jeton et Authorization du client non repassés, email inconnu → orphelin, compte créé après coup → attribué au passage suivant, praticien posé survit, magasin absent → capture sans praticien, propriétaire ≠ praticien → invisible) ; RFC-004 §5, RFC-005 §3.3 et carnet #12 amendés |
 
 ---
 *Note d'établi : le 23 septembre, ce trou a été bouché en une matinée et prouvé sur quatre conversations — puis remonté le soir même, non parce que c'était faux, mais parce que c'était emballé avec ce qui l'était. Le geste juste ne coûte rien à refaire ; ce qu'il fallait, c'était le nommer seul.*

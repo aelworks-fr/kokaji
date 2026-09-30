@@ -63,6 +63,14 @@ Contenu contractuel : **ma liste de harness** avec mon rôle badgé (propriétai
 - Les **sujets** appartiennent à leur praticien : le QG montre *mes* sujets. Le partage de sujet est hors périmètre v1.
 - Le cycle de vie RFC-001 (`brut → anonymisé → annoté`) est orthogonal à la visibilité (`privé | versé`) — deux axes, pas un statut de plus sur le même axe.
 
+> **Amendement RFC-019 (30 septembre 2026).** Le praticien d'un ha capturé
+> depuis le chat est la personne que le chat a annoncée dans son **jeton signé**
+> (RFC-005 §3.3), et elle seule : aucun en-tête en clair ne vaut. Le journal
+> garde son email ; la capture le résout en compte par le magasin, sans jamais
+> en créer — un email inconnu laisse le ha orphelin de porte, et un compte
+> créé après coup l'attribue au passage suivant. Un praticien posé n'est jamais
+> effacé par une veille qui ne saurait pas le nommer (D19.1, D19.3, D19.4).
+
 ## 6. Impacts infrastructure
 
 - **Middleware** : authentifie (session token) ; attribue chaque session à son praticien.

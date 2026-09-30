@@ -126,3 +126,24 @@ source ; « Contrats f♯ » édite le contrat ; l'un n'attend pas l'autre (RFC-
 **Ce qui trahirait la vigilance** : une facette qui déclare un kata « sans
 contrat » parce que sa source est un texte, et non parce qu'il ne produit rien ;
 un nœud du QG éteint pour un kata importé qui déclare pourtant un `produit`.
+
+## #12 — Une identité se lit signée, jamais en clair
+
+Le chat annonce la personne qui pratique dans un jeton signé (RFC-005 §3.3).
+La tentation, quand l'identité manque au journal, est de la prendre où elle
+semble être : un en-tête en clair, un mapping par clé appelante. Les deux
+mentent à leur façon — l'en-tête, parce que quiconque atteint le point d'entrée
+peut l'écrire ; la clé, parce qu'une clé publique sert tout le monde. Sur la
+première instance, 154 conversations sur 154 sont nées orphelines de porte,
+invisibles même de qui les avait vécues, faute d'avoir transporté ce que le
+chat signait déjà.
+
+**Ce qu'on oppose** : le relais ne croit que la signature, et transporte
+l'email vérifié — jamais les secrets du client ; le journal garde l'email, la
+capture le résout en compte, et n'en crée aucun ; un praticien posé n'est
+jamais effacé par une veille qui ne saurait pas le nommer (RFC-019).
+
+**Ce qui trahirait la vigilance** : un `x-openwebui-user-email` ou un
+`Remote-*` lu sans vérification ; un compte créé parce qu'un email inconnu
+s'est présenté ; une conversation attribuée à la clé plutôt qu'à la personne ;
+un passage de veille qui remet un praticien à vide.

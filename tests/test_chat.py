@@ -19,6 +19,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -220,7 +221,7 @@ class RelaisIdentite(unittest.TestCase):
 
         class FausseReponse:
             status_code = 200
-            headers = {"content-type": "application/json"}
+            headers: ClassVar[dict] = {"content-type": "application/json"}
 
             async def aread(self):
                 return b'{"ok": true}'
@@ -257,6 +258,21 @@ class RelaisIdentite(unittest.TestCase):
         """La passerelle reçoit sa propre clé, jamais le jeton du client."""
         capte = self._capter({**self.signe(), "authorization": "Bearer secret-du-client"})
         self.assertEqual(capte["headers"].get("authorization"), "Bearer K")
+
+    def test_un_en_tete_en_clair_forge_est_ignore(self):
+        """RFC-019 D19.1, sabotage n°1 : seule l'identité signée vaut.
+
+        Un `x-openwebui-user-email` en clair qui arrive au relais — Open WebUI
+        n'en envoie pas, mais quiconque atteint le point d'entrée pourrait —
+        ne remplace jamais ce que dit le jeton.
+        """
+        capte = self._capter({**self.signe(), "x-openwebui-user-email": "autre@exemple.test"})
+        self.assertEqual(capte["headers"].get("x-openwebui-user-email"), "un@exemple.test")
+
+    def test_le_jeton_du_chat_n_est_pas_repasse(self):
+        """RFC-019 D19.2 : la passerelle n'a pas à connaître le jeton signé du chat."""
+        capte = self._capter(self.signe())
+        self.assertNotIn("x-openwebui-user-jwt", capte["headers"])
 
 
 if __name__ == "__main__":

@@ -217,9 +217,13 @@ def routeur_chat(
         fil = requete.headers.get("x-openwebui-chat-id")
         if fil:
             entetes["x-openwebui-chat-id"] = fil
-        email = (requete.headers.get("x-openwebui-user-email") or "").strip()
+        # RFC-019 D19.1 : l'identité se lit **signée seulement**. Un en-tête en
+        # clair (`x-openwebui-user-email`, `Remote-*`) qui arriverait ici est
+        # ignoré, même s'il ment : une identité lue sans vérification est
+        # déclarative, et quiconque atteint le point d'entrée peut l'écrire.
+        email = ""
         jeton = (requete.headers.get("x-openwebui-user-jwt") or "").strip()
-        if not email and jeton and secret_chat:
+        if jeton and secret_chat:
             try:
                 email = str(verifier_jeton(jeton, secret_chat).get("email") or "").strip()
             except JetonInvalide:
