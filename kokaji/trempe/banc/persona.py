@@ -33,6 +33,11 @@ class Persona:
     # que le kata a émis. Vides, ils sortent simplement le kin de la mesure.
     typologie: str = ""
     enonce_comme: str = ""
+    # RFC-020 D20.4 — un kin semé depuis une pratique rapportée dit d'où il
+    # vient : l'identifiant du ha, et le déroulé-type du porteur, tour par tour.
+    # Transportés, jamais interprétés : le banc joue le persona, pas le déroulé.
+    seme_par: str = ""
+    deroule: tuple[str, ...] = ()
 
     @property
     def piege(self) -> bool:
@@ -79,6 +84,8 @@ def charger(chemin: Path) -> Persona:
         tours_max=int(donnees.get("tours_max") or 12),
         typologie=str(donnees.get("typologie") or "").strip(),
         enonce_comme=str(donnees.get("enonce_comme") or "").strip(),
+        seme_par=str(donnees.get("seme_par") or "").strip(),
+        deroule=tuple(str(t) for t in donnees.get("deroule") or ()),
     )
 
 
