@@ -919,5 +919,44 @@ class Ecarts(unittest.TestCase):
         self.assertIn("Le journal garde tout", PAGE)
 
 
+
+
+class PratiqueRapportee(unittest.TestCase):
+    """RFC-020, lot E — coller, corriger le découpage, déclarer ; l'encre visible partout."""
+
+    def test_le_geste_existe_et_est_branche(self):
+        for i in ("rapporter-ouvrir", "voile-rapporter", "rap-texte", "rap-decouper", "rap-tours",
+                  "rap-kata", "rap-kin", "rap-moteur", "rap-date", "rap-source", "rap-enregistrer"):
+            self.assertIn(f'id="{i}"', PAGE, i)
+        self.assertIn('$("rapporter-ouvrir").onclick = ouvrirRapport', RENDU)
+        self.assertIn('"/qg/rapporte/decoupage"', RENDU)
+        self.assertIn('"/qg/rapporte"', RENDU)
+
+    def test_le_decoupage_se_corrige_avant_d_etre_enregistre(self):
+        """D20.1 — le rôle et le texte de chaque tour, fusionner, supprimer ; et la correction se déclare."""
+        for marque in ("data-rap-role", "data-rap-texte", "data-rap-fusion", "data-rap-suppr"):
+            self.assertIn(marque, RENDU, marque)
+        self.assertIn("decoupage_corrige: rapCorrige", RENDU)
+
+    def test_l_encre_se_voit_sur_la_session_le_fil_et_le_transcript(self):
+        """D20.2 — toute vue qui montre le ha montre son encre."""
+        self.assertIn("marqueProvenance(c)", RENDU)
+        self.assertIn('c.provenance === "rapporte"', RENDU)
+        self.assertIn("f.rapporte", RENDU)
+        self.assertIn("piedRapporte(c)", RENDU)
+
+    def test_la_conformite_s_affiche_a_cote_de_la_declaration(self):
+        """D20.3 — deux encres, jamais fusionnées."""
+        self.assertIn("marqueConformite(c)", RENDU)
+        self.assertIn("déclaré par la personne", RENDU)
+        self.assertIn("Conformité au kata déclaré", RENDU)
+
+    def test_tremper_et_semer_sont_branches(self):
+        self.assertIn('"/qg/conversation/tremper"', RENDU)
+        self.assertIn('"/qg/conversation/semer"', RENDU)
+        self.assertIn("data-tremper", RENDU)
+        self.assertIn("data-semer", RENDU)
+
+
 if __name__ == "__main__":
     unittest.main()

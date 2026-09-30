@@ -831,6 +831,50 @@
   </div>
 </dialog>
 
+<!-- Rapporter une conversation jouée ailleurs (RFC-020 D20.1). On colle, le
+     service propose un découpage en tours, la personne le corrige, déclare le
+     kata et ce qu'elle sait ; le ha entre au corpus, brut, à l'encre
+     « rapporté » — indélébile. Rien ne part avant « enregistrer ». -->
+<dialog class="voile" id="voile-rapporter" aria-labelledby="rap-titre">
+  <div class="dialogue" style="max-width:820px">
+    <h2 id="rap-titre" style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);
+               font-size:24px;margin:0 0 8px">Rapporter une conversation</h2>
+    <p class="text-muted" style="font-size:12.5px;margin:0 0 14px">Une conversation jouée hors du dojo —
+      un autre outil, avant même que le kata existe. Elle entre au corpus telle quelle, marquée
+      <strong>rapportée</strong> : cette encre ne s'efface jamais. Le rattachement au kata est votre
+      déclaration ; la trempe a posteriori pourra la contester, à côté, jamais à sa place.</p>
+    <div id="rap-etape-texte">
+      <label class="mot" for="rap-texte">Le texte de la conversation, collé tel quel</label>
+      <textarea class="champ-large mono" id="rap-texte" rows="10" style="margin:6px 0 10px"
+        placeholder="User: …&#10;Assistant: …&#10;&#10;ou simplement les tours, séparés par des lignes vides"></textarea>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn-fantome" id="rap-annuler">Annuler</button>
+        <button class="btn-plein" id="rap-decouper">Découper en tours</button>
+      </div>
+    </div>
+    <div id="rap-etape-tours" hidden>
+      <p class="text-muted" style="font-size:12.5px;margin:0 0 8px">Le découpage proposé — corrigez le
+        rôle ou le texte d'un tour, fusionnez, supprimez. C'est vous qui affirmez « voilà les tours ».</p>
+      <div id="rap-tours" style="max-height:300px;overflow-y:auto;margin-bottom:12px"></div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px 14px">
+        <label class="mot">Kata de rattachement <span class="text-muted">(obligatoire)</span>
+          <select class="pill-select" id="rap-kata" style="width:100%;margin-top:4px"></select></label>
+        <label class="mot">Sujet (kin)<input class="champ-large" id="rap-kin" style="margin-top:4px"></label>
+        <label class="mot">Moteur d'origine<input class="champ-large" id="rap-moteur" placeholder="inconnu" style="margin-top:4px"></label>
+        <label class="mot">Date d'origine<input class="champ-large" id="rap-date" placeholder="2026-08-12" style="margin-top:4px"></label>
+        <label class="mot" style="grid-column:1 / -1">D'où vient ce texte
+          <input class="champ-large" id="rap-source" placeholder="un chat généraliste, un courriel, …" style="margin-top:4px"></label>
+      </div>
+      <p class="diff-val" id="rap-dit" style="margin-top:10px"></p>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+        <button class="btn-fantome" id="rap-retour">← Reprendre le texte</button>
+        <button class="btn-fantome" id="rap-annuler-2">Annuler</button>
+        <button class="btn-plein" id="rap-enregistrer">Enregistrer au corpus</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
 <dialog class="voile" id="voile-naissance" aria-labelledby="ne-titre">
   <div class="dialogue">
     <h2 id="ne-titre" style="font-family:var(--font-heading);font-weight:var(--font-heading-weight);
@@ -970,6 +1014,8 @@
       <span class="rangee-espace"></span>
       <input id="conversations-filtre" type="search" class="pill-select" style="min-width:220px"
              placeholder="filtrer : kata, sujet, date, identifiant" aria-label="Filtrer les conversations">
+      <button class="btn-fantome" id="rapporter-ouvrir"
+        title="Coller une conversation jouée ailleurs : elle entre au corpus à l'encre « rapporté » (RFC-020)">rapporter une conversation</button>
     </div>
     <p class="text-muted" style="font-size:12.5px;margin:6px 0 12px">Une ligne par fil de
       conversation, le plus récent en tête : un même échange, poursuivi à travers plusieurs kata
@@ -1144,6 +1190,7 @@ function fils(liste) {
       amorce: (sessions.find(s => s.amorce) || {}).amorce || "",
       sujet: (sessions.find(s => s.sujet) || {}).sujet || "",
       interface: sessions.every(s => s.interface),
+      rapporte: sessions.every(s => s.provenance === "rapporte"),
     };
   }).sort((a, b) => (a.fin < b.fin ? 1 : a.fin > b.fin ? -1 : 0));
 }
@@ -1163,6 +1210,8 @@ function rendreSession(c) {
   const quand = String(c.date || "").slice(0, 16).replace("T", " ");
   const marques = [
     c.interface ? `<span class="tag tag-outline" title="Appel d'interface du chat : titre, étiquettes, questions suivantes">interface</span>` : "",
+    marqueProvenance(c),
+    marqueConformite(c),
     c.en_cours ? `<span class="tag tag-outline">en cours</span>` : "",
     c.reabstrait ? `<span class="tag tag-outline" title="État relu depuis le transcript, non émis en session">relu</span>` : "",
     c.blocs
@@ -1210,6 +1259,7 @@ function rendreConversations() {
       </div>
       <div class="rangee-espace"></div>
       ${f.interface ? `<span class="tag tag-outline">interface</span>` : ""}
+      ${f.rapporte ? `<span class="tag tag-outline" title="Pratique rapportée : jouée hors du dojo, collée et déclarée (RFC-020)">rapporté</span>` : ""}
       <button class="btn-fantome" data-fil="${e(f.racine)}">${ouvert ? "replier" : "déplier"}</button>
       <button class="btn-fantome" data-ecarter-fil="${e(f.racine)}"
         title="Retirer toutes les sessions de ce fil du corpus. Le journal garde tout.">écarter le fil</button>
@@ -1225,6 +1275,8 @@ function rendreConversations() {
     b.onclick = () => ouvrirConversation(b.dataset.conversation));
   liste.querySelectorAll("button[data-ecarter]").forEach(b =>
     b.onclick = () => ecarterConversations([b.dataset.ecarter], "cette session"));
+  liste.querySelectorAll("button[data-tremper]").forEach(b => b.onclick = () => tremperConversation(b.dataset.tremper));
+  liste.querySelectorAll("button[data-semer]").forEach(b => b.onclick = () => semerConversation(b.dataset.semer));
   liste.querySelectorAll("button[data-ecarter-fil]").forEach(b => b.onclick = () => {
     const f = fils(conversationsVisibles()).find(x => x.racine === b.dataset.ecarterFil);
     if (f) ecarterConversations(f.sessions.map(s => s.id),
@@ -1247,7 +1299,134 @@ function rendreToursConversation(id) {
       <span class="role ${t.role === "kata" ? "kata" : "humain"}">${e(t.role)}</span>
       <span class="dit">${e(t.texte)}</span></div>`).join("")}
     <div class="pied-transcript">Blocs d'état émis : ${c.blocs}${
-      c.reabstrait ? " — ré-abstraits, non émis en session" : ""} · kata ${e(c.version_kata || "?")} · ${e(c.moteur || "")}</div></div>`;
+      c.reabstrait ? " — ré-abstraits, non émis en session" : ""} · kata ${e(c.version_kata || "?")} · ${e(c.moteur || "")}</div>
+    ${c.provenance === "rapporte" ? piedRapporte(c) : ""}</div>`;
+}
+
+// L'encre de provenance (RFC-020 D20.2) : toute vue qui montre le ha la montre.
+function marqueProvenance(c) {
+  if (c.provenance !== "rapporte") return "";
+  const d = c.declaration || {};
+  const titre = ["Pratique rapportée : jouée hors du dojo, collée et déclarée (RFC-020)",
+    d.source_texte ? `source : ${d.source_texte}` : "", d.moteur_origine ? `moteur d'origine : ${d.moteur_origine}` : ""]
+    .filter(Boolean).join(" · ");
+  return `<span class="tag tag-outline" title="${e(titre)}">rapporté</span>`;
+}
+
+// Le verdict de la trempe a posteriori — à côté de la déclaration, jamais à sa place.
+function marqueConformite(c) {
+  const k = c.conformite;
+  if (!k || !k.verdict) return "";
+  const mot = { conforme: "conforme au kata", conteste: "conformité contestée", indecidable: "conformité indécidable" }[k.verdict] || k.verdict;
+  return `<span class="tag tag-outline" title="${e(`Juge ${k.juge || "?"} : ${k.detail || ""}`)}">${e(mot)}</span>`;
+}
+
+function piedRapporte(c) {
+  const d = c.declaration || {}, k = c.conformite;
+  const declare = [`déclaré par la personne : kata « ${e(c.kata_nom || c.kata)} »`,
+    d.kin ? `sujet « ${e(d.kin)} »` : "", d.source_texte ? `source « ${e(d.source_texte)} »` : "",
+    `moteur d'origine ${e(d.moteur_origine || "inconnu")}`, d.date_origine ? `le ${e(d.date_origine)}` : "",
+    d.decoupage_corrige ? "découpage corrigé" : "découpage non corrigé"].filter(Boolean).join(" · ");
+  const juge = k && k.verdict
+    ? `le juge ${e(k.juge || "?")} (${e(String(k.le || "").slice(0, 10))}) : <strong>${e(k.verdict)}</strong> — ${e(k.detail || "")}`
+    : "pas encore trempée a posteriori";
+  return `<div class="pied-transcript" style="margin-top:6px">
+    <div><strong>Rapporté.</strong> ${declare}</div>
+    <div style="margin-top:2px">Conformité au kata déclaré — ${juge}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
+      <button class="btn-fantome" data-tremper="${e(c.id)}"
+        title="Les checks du harness sur le transcript ; les invariants du bloc d'état, éteints ; et le juge, s'il est nommé">tremper a posteriori</button>
+      <button class="btn-fantome" data-semer="${e(c.id)}"
+        title="Écrire un kin pré-rempli depuis ce déroulé, avec seme_par vers ce ha">semer un cas</button>
+    </div></div>`;
+}
+
+async function tremperConversation(id) {
+  const juge = prompt("Le modèle juge — vide pour l'étage déterministe seul (jamais le moteur d'origine) :", "") ;
+  if (juge === null) return;
+  try {
+    const r = await envoyer("POST", "/qg/conversation/tremper", { id, corpus: corpusChoisi, juge: juge.trim() });
+    const constats = r.constats.length ? r.constats.map(c => `✗ ${c.regle} (tour ${c.tour}) — ${c.message}`).join("\n") : "= aucun check du harness ne mord";
+    const conf = r.conformite ? `\n${r.conformite.verdict} — ${r.conformite.detail}` : "";
+    alert(`Trempe a posteriori de ${r.ha}\n${constats}\n○ éteints : ${r.eteints.join(", ")}${conf}`);
+  } catch (err) { alert(`Non trempée : ${err.message}`); }
+  delete conversationTours[id];
+  await chargerConversations();
+  conversationOuverte = null; ouvrirConversation(id);
+}
+
+async function semerConversation(id) {
+  try {
+    const r = await envoyer("POST", "/qg/conversation/semer", { id, corpus: corpusChoisi });
+    alert(`Kin « ${r.id} » semé dans personas/${r.fichier}, depuis ${r.seme_par} — la posture et les pièges sont à écrire.`);
+  } catch (err) { alert(`Non semé : ${err.message}`); }
+}
+
+// --- Rapporter une conversation (RFC-020 D20.1) ----------------------------
+let rapTours = [], rapCorrige = false;
+
+function ouvrirRapport() {
+  $("rap-texte").value = ""; rapTours = []; rapCorrige = false;
+  $("rap-dit").textContent = "";
+  $("rap-etape-texte").hidden = false; $("rap-etape-tours").hidden = true;
+  if (!$("voile-rapporter").open) $("voile-rapporter").showModal();
+}
+
+async function decouperRapport() {
+  const texte = $("rap-texte").value;
+  if (!texte.trim()) { $("rap-dit").textContent = "rien à découper : le texte est vide."; return; }
+  try { rapTours = (await envoyer("POST", "/qg/rapporte/decoupage", { texte })).tours; }
+  catch (err) { alert(`Découpage refusé : ${err.message}`); return; }
+  rapCorrige = false;
+  let katas = [];
+  try { katas = (await lire("/chaine")).noeuds.filter(n => n.type === "kata"); } catch { katas = []; }
+  $("rap-kata").innerHTML = `<option value="">— choisir —</option>` +
+    katas.map(k => `<option value="${e(k.id)}">${e(k.nom || k.id)}</option>`).join("");
+  $("rap-etape-texte").hidden = true; $("rap-etape-tours").hidden = false;
+  rendreToursRapport();
+}
+
+function rendreToursRapport() {
+  const zone = $("rap-tours");
+  if (!rapTours.length) { zone.innerHTML = `<p class="rien">Aucun tour — reprenez le texte.</p>`; return; }
+  zone.innerHTML = rapTours.map((t, i) => `<div class="tour" style="align-items:flex-start;gap:8px">
+      <select class="pill-select" data-rap-role="${i}" aria-label="Rôle du tour ${i + 1}">
+        <option value="humain" ${t.role === "humain" ? "selected" : ""}>humain</option>
+        <option value="kata" ${t.role === "kata" ? "selected" : ""}>kata</option></select>
+      <textarea class="champ-large mono" data-rap-texte="${i}" rows="${Math.min(6, Math.max(2, t.texte.split("\n").length))}"
+        style="flex:1" aria-label="Texte du tour ${i + 1}">${e(t.texte)}</textarea>
+      <div style="display:flex;flex-direction:column;gap:4px">
+        ${i > 0 ? `<button class="btn-fantome" data-rap-fusion="${i}" title="Fusionner avec le tour précédent">↑ fusionner</button>` : ""}
+        <button class="btn-fantome" data-rap-suppr="${i}" title="Supprimer ce tour">supprimer</button>
+      </div></div>`).join("");
+  zone.querySelectorAll("select[data-rap-role]").forEach(s => s.onchange = () => {
+    rapTours[+s.dataset.rapRole].role = s.value; rapCorrige = true; });
+  zone.querySelectorAll("textarea[data-rap-texte]").forEach(a => a.oninput = () => {
+    rapTours[+a.dataset.rapTexte].texte = a.value; rapCorrige = true; });
+  zone.querySelectorAll("button[data-rap-fusion]").forEach(b => b.onclick = () => {
+    const i = +b.dataset.rapFusion;
+    rapTours[i - 1].texte += "\n\n" + rapTours[i].texte; rapTours.splice(i, 1); rapCorrige = true; rendreToursRapport();
+  });
+  zone.querySelectorAll("button[data-rap-suppr]").forEach(b => b.onclick = () => {
+    rapTours.splice(+b.dataset.rapSuppr, 1); rapCorrige = true; rendreToursRapport();
+  });
+}
+
+async function enregistrerRapport() {
+  const kata = $("rap-kata").value;
+  if (!kata) { $("rap-dit").textContent = "le kata de rattachement est obligatoire."; return; }
+  const corps = {
+    kata, tours: rapTours, texte: $("rap-texte").value, corpus: corpusChoisi,
+    kin: $("rap-kin").value.trim(), moteur_origine: $("rap-moteur").value.trim(),
+    date_origine: $("rap-date").value.trim(), source_texte: $("rap-source").value.trim(),
+    decoupage_corrige: rapCorrige,
+  };
+  let fait;
+  try { fait = await envoyer("POST", "/qg/rapporte", corps); }
+  catch (err) { $("rap-dit").textContent = err.message; return; }
+  $("voile-rapporter").close();
+  await chargerConversations();
+  ouvrirConversation(fait.id);
 }
 
 async function ouvrirConversation(id) {
@@ -3494,6 +3673,11 @@ async function creerHarness() {
     $("sujets").onchange = () => { charger($("sujets").value); history.replaceState(null, "", routeDe("qg", { sujet: $("sujets").value })); };
     $("conversations-filtre").oninput = rendreConversations;
     $("conversations-interface").onchange = rendreConversations;
+    $("rapporter-ouvrir").onclick = ouvrirRapport;
+    $("rap-decouper").onclick = decouperRapport;
+    $("rap-retour").onclick = () => { $("rap-etape-texte").hidden = false; $("rap-etape-tours").hidden = true; };
+    $("rap-enregistrer").onclick = enregistrerRapport;
+    ["rap-annuler", "rap-annuler-2"].forEach(i => $(i).onclick = () => $("voile-rapporter").close());
     await chargerSujets();
     await chargerConversations();
   } catch { panne(); }

@@ -17,6 +17,7 @@ from pathlib import Path
 
 from ..corpus.depot import depot_pour
 from ..corpus.journal import journal_pour
+from ..corpus.provenance import provenance_de
 from ..forge.coupe import champ_nu
 from ..hds import Harness
 
@@ -352,6 +353,12 @@ def _ligne_conversation(dossier, entete: dict, releves: list[dict], noms: dict[s
         "interface": bool(entete.get("interface")),
         "racine": str(entete.get("racine") or ""),
         "amorce": str(entete.get("amorce") or ""),
+        # RFC-020 D20.2 — toute vue qui montre le ha montre son encre ; et,
+        # pour une pratique rapportée, ce qui a été déclaré et ce que la trempe
+        # a posteriori en a dit, l'un à côté de l'autre, jamais fondus.
+        "provenance": provenance_de(entete),
+        "declaration": dict(entete.get("declaration") or {}),
+        "conformite": dict(entete.get("conformite") or {}) or None,
     }
 
 

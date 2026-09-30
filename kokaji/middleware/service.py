@@ -45,6 +45,7 @@ from ..conception import (
     versions_prevues,
 )
 from ..corpus.depot import DepotDeHa, RefHa, depot_pour
+from ..corpus.provenance import provenance_de
 from ..corpus.visibilite import acces, lisible_par, regler_visibilite
 from ..forge import ForgeImpossible, TrempeEchouee, forger_harness
 from ..hds import Harness, ManifestInvalide, charger_valides
@@ -226,6 +227,7 @@ def creer_harness(
                     "praticien": fiche.get("praticien") or "",
                     "visibilite": acces(dossier).visibilite,
                     "carre": _carre_lu(depot, dossier),
+                    "provenance": provenance_de(fiche),  # RFC-020 D20.2
                 }
             )
         return ha
@@ -496,6 +498,117 @@ def creer_harness(
             return ecarter_ha(harness, chemin_corpus(harness, vise), id, par=qui.id if qui else "")
         except PermissionError as err:
             raise HTTPException(status_code=403, detail=str(err)) from err
+
+
+    # --- La pratique rapportée (RFC-020) ---------------------------------------
+
+    @app.post("/qg/rapporte/decoupage", summary="Découper un texte collé en tours — une proposition, rien n'est écrit")
+    def qg_decoupage(texte: str = Body(embed=True), qui_role: tuple = Depends(membre)) -> dict:
+        """D20.1 — l'heuristique propose, la personne corrige avant d'enregistrer."""
+        from ..corpus.rapporte import decouper
+
+        if not (texte or "").strip():
+            raise HTTPException(status_code=400, detail="rien à découper : le texte est vide")
+        return {"tours": decouper(texte)}
+
+    @app.post("/qg/rapporte", summary="Rapporter une conversation jouée ailleurs — elle entre au corpus, à l'encre `rapporte`")
+    def qg_rapporter(
+        kata: str = Body(embed=True),
+        tours: list[dict] = Body(embed=True),  # noqa: B008 — un Body par paramètre, jamais partagé
+        texte: str = Body(default="", embed=True),
+        kin: str = Body(default="", embed=True),
+        moteur_origine: str = Body(default="", embed=True),
+        date_origine: str = Body(default="", embed=True),
+        source_texte: str = Body(default="", embed=True),
+        version_kata: str = Body(default="", embed=True),
+        decoupage_corrige: bool = Body(default=False, embed=True),
+        corpus: str | None = Body(default=None, embed=True),
+        qui_role: tuple = Depends(membre),
+    ) -> dict:
+        """D20.2 — directement au corpus, `brut`, sans admission. Le praticien est
+        la personne qui rapporte ; un kata qui agit sur le monde est refusé en
+        citant la frontière (§2) : 422, rien n'écrit."""
+        from ..corpus.rapporte import Declaration, HorsFrontiere, rapporter
+
+        qui, _ = qui_role
+        if qui is None:
+            raise HTTPException(status_code=401, detail="rapporter demande un compte : le ha naît attribué")
+        vise = _corpus(corpus)
+        declaration = Declaration(
+            kata=kata, kin=kin, moteur_origine=moteur_origine, date_origine=date_origine,
+            source_texte=source_texte, version_kata_supposee=version_kata,
+            decoupage_corrige=decoupage_corrige,
+        )
+        try:
+            fait = rapporter(
+                harness, tours, declaration, corpus=chemin_corpus(harness, vise),
+                praticien=qui.id, texte_colle=texte or None,
+            )
+        except HorsFrontiere as err:
+            raise HTTPException(status_code=422, detail=str(err)) from err
+        except ValueError as err:
+            raise HTTPException(status_code=400, detail=str(err)) from err
+        return {"id": fait.ref.nom, "identifiant": fait.identifiant, "kata": fait.kata, "tours": fait.tours}
+
+    def _ha_lisible(vise: str, id: str, qui_role: tuple):
+        """Le ha, s'il existe et se lit — sinon 404, sans distinction (RFC-004 §5)."""
+        if conversation(harness, vise, id, filtre(*qui_role)) is None:
+            raise HTTPException(status_code=404, detail=f"conversation inconnue : {id!r}")
+        racine = chemin_corpus(harness, vise) or harness.corpus
+        return next(d for d in depot.tous(racine) if d.nom == id)
+
+    @app.post("/qg/conversation/tremper", summary="La trempe a posteriori d'une pratique rapportée")
+    def qg_tremper(
+        id: str = Body(embed=True),
+        corpus: str | None = Body(default=None, embed=True),
+        juge: str = Body(default="", embed=True),
+        qui_role: tuple = Depends(membre),
+    ) -> dict:
+        """D20.3 — des critères neutres, dont les résultats s'attachent au ha sans
+        commander son existence. Sans juge, l'étage déterministe seul."""
+        from dataclasses import asdict
+
+        from ..trempe.banc.client import Passerelle as PasserelleDuBanc
+        from ..trempe.banc.jugement import JugeRefuse
+        from ..trempe.banc.posteriori import TrempeRefusee, tremper
+
+        vise = _corpus(corpus)
+        dossier = _ha_lisible(vise, id, qui_role)
+        banc = (
+            PasserelleDuBanc(base=passerelle.base, cle=passerelle.cle)
+            if passerelle is not None else PasserelleDuBanc()
+        )
+        try:
+            trempe = tremper(harness, dossier, banc, juge=juge or "")
+        except (TrempeRefusee, JugeRefuse) as err:
+            raise HTTPException(status_code=422, detail=str(err)) from err
+        return {
+            "ha": trempe.ha, "kata": trempe.kata, "le": trempe.le,
+            "constats": [asdict(c) for c in trempe.constats],
+            "eteints": list(trempe.eteints),
+            "conformite": asdict(trempe.conformite) if trempe.conformite else None,
+            "scores": list(trempe.scores),
+        }
+
+    @app.post("/qg/conversation/semer", summary="Semer un cas de test depuis une pratique rapportée")
+    def qg_semer(
+        id: str = Body(embed=True),
+        corpus: str | None = Body(default=None, embed=True),
+        identifiant: str | None = Body(default=None, embed=True),
+        qui_role: tuple = Depends(membre),
+    ) -> dict:
+        """D20.4 — un persona pré-rempli, avec `seme_par:` ; la posture et les
+        pièges restent à écrire. Semer n'écrase pas : 409."""
+        from ..trempe.banc.semence import SemenceRefusee, semer_cas
+
+        qui, _ = qui_role
+        vise = _corpus(corpus)
+        dossier = _ha_lisible(vise, id, qui_role)
+        try:
+            cas = semer_cas(harness, dossier, identifiant=identifiant, par=qui.id if qui else "")
+        except SemenceRefusee as err:
+            raise HTTPException(status_code=409 if "existe déjà" in str(err) else 422, detail=str(err)) from err
+        return {"id": cas.id, "fichier": cas.chemin.name, "seme_par": cas.seme_par, "tours": cas.tours}
 
     @app.get("/qg/donnees", summary="La vue d'un sujet — chaîne, état, possibles")
     def qg_donnees(
