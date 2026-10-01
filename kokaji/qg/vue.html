@@ -847,6 +847,24 @@
       <label class="mot" for="rap-texte">Le texte de la conversation, collé tel quel</label>
       <textarea class="champ-large mono" id="rap-texte" rows="10" style="margin:6px 0 10px"
         placeholder="User: …&#10;Assistant: …&#10;&#10;ou simplement les tours, séparés par des lignes vides"></textarea>
+      <details id="rap-format" style="margin:0 0 12px">
+        <summary class="text-muted" style="font-size:12.5px;cursor:pointer">Quel format ? Aucun d'imposé — deux formes sont reconnues</summary>
+        <div class="text-muted" style="font-size:12.5px;margin-top:8px">
+          <p style="margin:0 0 6px"><strong>Avec des étiquettes</strong>, comme la copie d'un outil de chat : chaque tour commence
+            par <code>User</code>, <code>Vous</code>, <code>Assistant</code>, <code>ChatGPT</code>, <code>Claude</code>…,
+            seule sur sa ligne ou suivie du texte, avec <code>:</code>, un tiret ou <code>&gt;</code> ;
+            <code>**</code>, <code>###</code> et <code>&gt;</code> devant sont tolérés. Les lignes qui suivent restent dans le tour.</p>
+<pre class="hds" style="margin:0 0 8px;white-space:pre-wrap">User: j'ai un problème à cadrer
+avec une deuxième ligne
+
+Assistant: dis-m'en plus
+
+**ChatGPT a dit :**
+voici ce que je comprends</pre>
+          <p style="margin:0"><strong>Sans étiquette</strong>, les paragraphes séparés par une ligne vide alternent, humain puis
+            kata. C'est une supposition : vous corrigez le découpage à l'étape suivante, avant que rien ne soit écrit.</p>
+        </div>
+      </details>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button class="btn-fantome" id="rap-annuler">Annuler</button>
         <button class="btn-plein" id="rap-decouper">Découper en tours</button>

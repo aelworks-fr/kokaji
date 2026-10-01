@@ -931,6 +931,9 @@ class PratiqueRapportee(unittest.TestCase):
         self.assertIn('$("rapporter-ouvrir").onclick = ouvrirRapport', RENDU)
         self.assertIn('"/qg/rapporte/decoupage"', RENDU)
         self.assertIn('"/qg/rapporte"', RENDU)
+        # Le format, expliqué sous la zone de collage — replié, pour ne pas peser.
+        self.assertIn('id="rap-format"', PAGE)
+        self.assertIn("Sans étiquette", PAGE)
 
     def test_le_decoupage_se_corrige_avant_d_etre_enregistre(self):
         """D20.1 — le rôle et le texte de chaque tour, fusionner, supprimer ; et la correction se déclare."""
