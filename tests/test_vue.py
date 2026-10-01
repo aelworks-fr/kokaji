@@ -950,6 +950,8 @@ class PratiqueRapportee(unittest.TestCase):
         self.assertIn("marqueConformite(c)", RENDU)
         self.assertIn("déclaré par la personne", RENDU)
         self.assertIn("Conformité au kata déclaré", RENDU)
+        self.assertIn("Trempe a posteriori — ", RENDU)
+        self.assertIn("c.trempes", RENDU)
 
     def test_tremper_et_semer_sont_branches(self):
         self.assertIn('"/qg/conversation/tremper"', RENDU)

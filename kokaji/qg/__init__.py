@@ -409,6 +409,18 @@ def conversation(harness: Harness, corpus, identifiant: str, lisible=None) -> di
         "tours": _tours_du_transcript(transcript) if transcript else [],
         "version_kata": str(entete.get("version_kata") or ""),
         "moteur": str(entete.get("moteur") or ""),
+        # RFC-020 D20.3 — les passages de trempe a posteriori, datés, du plus
+        # ancien au plus récent : ce qui a mordu, ce qui est éteint, le juge.
+        "trempes": [
+            {
+                "le": str(j.get("le") or ""),
+                "constats": [f"{c.get('regle')} (tour {c.get('tour')})" for c in j.get("constats") or []],
+                "eteints": len(j.get("eteints") or {}),
+                "juge": str(j.get("juge") or ""),
+                "conformite": (j.get("conformite") or {}).get("verdict") if j.get("conformite") else None,
+            }
+            for j in depot.jugements(dossier) if j.get("type") == "trempe-posteriori"
+        ],
     }
 
 

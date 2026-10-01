@@ -145,6 +145,11 @@ class TremperEtSemer(Bac):
         self.assertEqual([c["regle"] for c in r.json()["constats"]], ["pas-de-jargon"])
         self.assertIn("etat-bien-forme", r.json()["eteints"])
         self.assertIsNone(r.json()["conformite"])
+        # Le passage s'attache au ha, et la vue de la conversation le montre, daté.
+        vue = self.client.get(f"/qg/conversation?id={id_ha}", headers=self.cle(self.co)).json()
+        self.assertEqual(len(vue["trempes"]), 1)
+        self.assertEqual(vue["trempes"][0]["constats"], ["pas-de-jargon (tour 1)"])
+        self.assertGreater(vue["trempes"][0]["eteints"], 0)
 
     def test_semer_ecrit_un_kin_avec_seme_par_et_n_ecrase_pas(self):
         id_ha = self.rapporter(self.co, kin="Refonte du portail").json()["id"]

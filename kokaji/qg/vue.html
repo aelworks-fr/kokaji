@@ -1329,9 +1329,18 @@ function piedRapporte(c) {
     d.decoupage_corrige ? "découpage corrigé" : "découpage non corrigé"].filter(Boolean).join(" · ");
   const juge = k && k.verdict
     ? `le juge ${e(k.juge || "?")} (${e(String(k.le || "").slice(0, 10))}) : <strong>${e(k.verdict)}</strong> — ${e(k.detail || "")}`
+    : "pas encore demandée à un juge";
+  // Les passages de trempe, datés : chacun s'ajoute, aucun n'efface l'autre.
+  const passages = c.trempes || [];
+  const dernier = passages[passages.length - 1];
+  const trempe = dernier
+    ? `${passages.length} passage${passages.length > 1 ? "s" : ""}, le dernier le ${e(String(dernier.le).slice(0, 16).replace("T", " "))} : ${
+        dernier.constats.length ? `${dernier.constats.length} constat(s) — ${dernier.constats.map(e).join(", ")}` : "aucun check du harness ne mord"
+      } · ${dernier.eteints} invariant(s) du bloc d'état éteints`
     : "pas encore trempée a posteriori";
   return `<div class="pied-transcript" style="margin-top:6px">
     <div><strong>Rapporté.</strong> ${declare}</div>
+    <div style="margin-top:2px">Trempe a posteriori — ${trempe}</div>
     <div style="margin-top:2px">Conformité au kata déclaré — ${juge}</div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">
       <button class="btn-fantome" data-tremper="${e(c.id)}"
@@ -1389,13 +1398,16 @@ async function decouperRapport() {
 function rendreToursRapport() {
   const zone = $("rap-tours");
   if (!rapTours.length) { zone.innerHTML = `<p class="rien">Aucun tour — reprenez le texte.</p>`; return; }
-  zone.innerHTML = rapTours.map((t, i) => `<div class="tour" style="align-items:flex-start;gap:8px">
-      <select class="pill-select" data-rap-role="${i}" aria-label="Rôle du tour ${i + 1}">
+  // Le sélecteur garde sa largeur et la zone de texte prend le reste — sans
+  // quoi, sous 480 px, le sélecteur s'étire (il est flex sur les petits
+  // écrans) et le texte se retrouve écrasé à trente pixels.
+  zone.innerHTML = rapTours.map((t, i) => `<div class="tour" style="align-items:flex-start;gap:8px;flex-wrap:wrap">
+      <select class="pill-select" data-rap-role="${i}" aria-label="Rôle du tour ${i + 1}" style="flex:0 0 auto;width:auto">
         <option value="humain" ${t.role === "humain" ? "selected" : ""}>humain</option>
         <option value="kata" ${t.role === "kata" ? "selected" : ""}>kata</option></select>
       <textarea class="champ-large mono" data-rap-texte="${i}" rows="${Math.min(6, Math.max(2, t.texte.split("\n").length))}"
-        style="flex:1" aria-label="Texte du tour ${i + 1}">${e(t.texte)}</textarea>
-      <div style="display:flex;flex-direction:column;gap:4px">
+        style="flex:1 1 180px;min-width:0" aria-label="Texte du tour ${i + 1}">${e(t.texte)}</textarea>
+      <div style="display:flex;flex-direction:row;flex-wrap:wrap;gap:4px">
         ${i > 0 ? `<button class="btn-fantome" data-rap-fusion="${i}" title="Fusionner avec le tour précédent">↑ fusionner</button>` : ""}
         <button class="btn-fantome" data-rap-suppr="${i}" title="Supprimer ce tour">supprimer</button>
       </div></div>`).join("");
