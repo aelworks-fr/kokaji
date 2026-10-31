@@ -277,7 +277,7 @@ def _composer(l: _Lecture) -> Harness | None:
 
 # Les seuls schémas qu'un lien de la page peut porter : un `javascript:` ou un
 # `data:` cliquable exécuterait ce que le manifest y aurait écrit (RFC-021 D21.1).
-_SCHEMAS_DE_CARTE = ("http://", "https://")
+_SCHEMAS_DE_CARTE = ("http", "https")
 
 
 def _carte(l: _Lecture, entete: dict) -> str:
@@ -289,8 +289,9 @@ def _carte(l: _Lecture, entete: dict) -> str:
         l.faute("harness.carte", "attendu : une adresse http(s) non vide")
         return ""
     carte = brut.strip()
-    if not carte.lower().startswith(_SCHEMAS_DE_CARTE) or not carte.split("://", 1)[1]:
-        l.faute("harness.carte", "attendu : une adresse qui commence par http:// ou https://")
+    schema, _, adresse = carte.partition(":")
+    if schema.lower() not in _SCHEMAS_DE_CARTE or not adresse.startswith("//") or not adresse[2:]:
+        l.faute("harness.carte", "attendu : une adresse web, de schéma http ou https")
         return ""
     return carte
 

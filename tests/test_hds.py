@@ -653,7 +653,7 @@ class LaCarte(Bac):
     def test_un_autre_schema_est_refuse(self):
         """Sabotage 4 — un lien cliquable qui exécuterait le manifest."""
         for valeur in ("'javascript:alert(1)'", "'data:text/html,x'", "ftp://hote/x",
-                       "file:///etc/passwd", "omoikane/?carte=x", "'https://'"):
+                       "file:///etc/passwd", "omoikane/?carte=x", "'HTTPS://'"):
             with self.subTest(valeur=valeur):
                 fautes = self.fautes(self.avec_carte(valeur))
                 self.assertTrue(any("harness.carte" in f for f in fautes), fautes)

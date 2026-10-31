@@ -109,6 +109,37 @@ class LesTroisTerritoires(unittest.TestCase):
         self.assertIn('identifiants techniques', PAGE)
 
 
+class LaCarteDuHarness(unittest.TestCase):
+    """RFC-021 D21.5 — le lien vers la carte Omoikane du harness courant."""
+
+    ASIDE = PAGE[PAGE.index('<aside class="flanc"'):PAGE.index("</aside>")]
+
+    def test_le_lien_suit_les_sous_vues_du_harness_et_nait_cache(self):
+        self.assertLess(self.ASIDE.index('id="onglet-qg"'), self.ASIDE.index('id="onglet-carte"'))
+        self.assertLess(self.ASIDE.index('id="onglet-carte"'), self.ASIDE.index('id="btn-creer-harness"'))
+        balise = re.search(r'<a class="onglet onglet-sous" id="onglet-carte"([^>]*)>', self.ASIDE)
+        self.assertIsNotNone(balise)
+        self.assertIn("hidden", balise.group(1))
+
+    def test_la_carte_s_ouvre_ailleurs_sans_rien_transmettre(self):
+        balise = re.search(r'id="onglet-carte"([^>]*)>', self.ASIDE).group(1)
+        self.assertIn('target="_blank"', balise)
+        self.assertIn('rel="noopener noreferrer"', balise)
+
+    def test_un_seul_harness_montre_aussi_sa_carte(self):
+        """Critère 2 — la carte est lue avant le retour qui cache le sélecteur."""
+        corps = PAGE[PAGE.index("async function chargerHarness()"):]
+        self.assertLess(corps.index("montrerCarte(offre);"),
+                        corps.index("if (!offre.harness || offre.harness.length < 2) return;"))
+
+    def test_seule_une_adresse_web_devient_un_lien(self):
+        corps = PAGE[PAGE.index("function montrerCarte(offre)"):]
+        corps = corps[:corps.index("\n}\n")]
+        self.assertIn("h.id === offre.courant", corps)
+        self.assertIn("/^https?:\\/\\//i.test(carte)", corps)
+        self.assertIn("lien.hidden = true", corps)
+
+
 class LeRoutage(unittest.TestCase):
     """K-07, K-17 — chaque vue a une adresse et un titre."""
 

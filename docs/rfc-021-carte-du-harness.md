@@ -1,6 +1,6 @@
 # RFC-021 — La carte du harness (le lien vers Omoikane)
 
-**Statut :** scellée (décisions validées une à une par le propriétaire du produit, 31 octobre 2026) — **en cours d'application** (§9-10)
+**Statut :** scellée (décisions validées une à une par le propriétaire du produit, 31 octobre 2026) — **en cours d'application** (lots 0, A et B appliqués le 31 octobre 2026 ; §9-10)
 **Dépend de :** RFC-005 (le harness courant — appliqué) ; RFC-009 D9.4 (souveraineté) ; RFC-012 (un harness, un dépôt) ; RFC-006 (export et import de harness) ; HDS v0
 **En regard de :** Omoikane-kun, l'outil de cartes de connaissance de l'écosystème — son ADR 18 (« un lien désigne une carte », `?carte=<id>`) est le prérequis de celle-ci.
 
@@ -263,6 +263,6 @@ Trois lots côté produit, un côté instance. Chaque lot porte ses sabotages.
 | Lot | État |
 |---|---|
 | 0 — les documents | appliqué (31 octobre 2026) — RFC dans le produit ; SPECS §2 et `docs/hds-v0.md` amendés |
-| A — le manifest et l'offre | à faire |
-| B — la page | à faire |
-| C — l'instance | à faire — attend la première demande |
+| A — le manifest et l'offre | appliqué (31 octobre 2026) — `harness.carte` lue par `_carte` : facultative, texte non vide, schéma `http` ou `https` suivi d'une adresse ; sabotages 4 et 5 vus refuser (`javascript:`, `data:`, `ftp:`, `file:`, sans schéma, schéma nu ; vide, espaces, nombre, liste, dictionnaire, `null`) ; `carte` dans l'offre de `GET /harness`, `null` sans carte ; `naitre` retire la carte de la copie |
+| B — la page | appliqué (31 octobre 2026) — « Carte ↗ » dans le flanc après QG, `target="_blank"` et `rel="noopener noreferrer"`, caché sans carte ; `montrerCarte` lit l'offre avant le retour qui cache le sélecteur (critère 2) et ne fait un lien que d'une adresse http(s) ; vu dans un navigateur à 1280 et 360 px sur une copie de l'Atelier dotée d'une carte : le lien se montre et porte l'adresse |
+| C — l'instance | à faire — attend la première demande. Sabotage 6 déjà vu en route : une adresse en dur dans un test du produit a fait rougir la trempe |
