@@ -632,3 +632,35 @@ chaine:""",
         with self.assertRaises(ManifestInvalide) as capture:
             charger(self.racine)
         self.assertTrue(any("réservée à un kata orphelin" in str(f) for f in capture.exception.fautes))
+
+
+class LaCarte(Bac):
+    """RFC-021 D21.1 — l'adresse de la carte : facultative, web, et rien d'autre."""
+
+    def avec_carte(self, ligne: str) -> str:
+        return MINIMAL.replace("  domaine: un domaine quelconque\n",
+                               f"  domaine: un domaine quelconque\n  carte: {ligne}\n")
+
+    def test_sans_carte_le_harness_est_complet(self):
+        self.assertEqual(self.charger_ok(MINIMAL).carte, "")
+
+    def test_une_adresse_web_se_lit_telle_quelle(self):
+        h = self.charger_ok(self.avec_carte("'  https://omoikane/?carte=id-1  '"))
+        self.assertEqual(h.carte, "https://omoikane/?carte=id-1")
+        self.assertEqual(self.charger_ok(self.avec_carte("http://localhost:4173/?carte=x")).carte,
+                         "http://localhost:4173/?carte=x")
+
+    def test_un_autre_schema_est_refuse(self):
+        """Sabotage 4 — un lien cliquable qui exécuterait le manifest."""
+        for valeur in ("'javascript:alert(1)'", "'data:text/html,x'", "ftp://hote/x",
+                       "file:///etc/passwd", "omoikane/?carte=x", "'https://'"):
+            with self.subTest(valeur=valeur):
+                fautes = self.fautes(self.avec_carte(valeur))
+                self.assertTrue(any("harness.carte" in f for f in fautes), fautes)
+
+    def test_une_carte_vide_ou_qui_n_est_pas_un_texte_est_refusee(self):
+        """Sabotage 5 — la forme."""
+        for valeur in ("''", "'   '", "12", "[a]", "{a: b}", "null"):
+            with self.subTest(valeur=valeur):
+                fautes = self.fautes(self.avec_carte(valeur))
+                self.assertTrue(any("harness.carte" in f for f in fautes), fautes)

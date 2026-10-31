@@ -250,6 +250,8 @@ def _composer(l: _Lecture) -> Harness | None:
             l.faute("etat.champs", "un contrat est déclaré : les champs s'en "
                     "dérivent, cette clé se retire (RFC-008 §4)")
 
+    carte = _carte(l, entete)
+
     if l.fautes:
         return None
     return Harness(
@@ -269,7 +271,28 @@ def _composer(l: _Lecture) -> Harness | None:
         corpus_nommes=corpus,
         exogene=exogene,
         provenance=provenance,
+        carte=carte,
     )
+
+
+# Les seuls schémas qu'un lien de la page peut porter : un `javascript:` ou un
+# `data:` cliquable exécuterait ce que le manifest y aurait écrit (RFC-021 D21.1).
+_SCHEMAS_DE_CARTE = ("http://", "https://")
+
+
+def _carte(l: _Lecture, entete: dict) -> str:
+    """L'adresse de la carte du harness — facultative, web, et rien d'autre."""
+    if "carte" not in entete:
+        return ""
+    brut = entete.get("carte")
+    if not isinstance(brut, str) or not brut.strip():
+        l.faute("harness.carte", "attendu : une adresse http(s) non vide")
+        return ""
+    carte = brut.strip()
+    if not carte.lower().startswith(_SCHEMAS_DE_CARTE) or not carte.split("://", 1)[1]:
+        l.faute("harness.carte", "attendu : une adresse qui commence par http:// ou https://")
+        return ""
+    return carte
 
 
 def _provenance(l: _Lecture, entete: dict, exogene: bool) -> tuple[tuple[str, str], ...]:

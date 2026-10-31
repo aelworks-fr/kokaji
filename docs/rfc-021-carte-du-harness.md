@@ -93,6 +93,10 @@ harness:
   porte aucun droit, il n'ouvre la carte que là où elle est lisible (ADR 18
   d'Omoikane). L'instance qui reçoit le lien peut le retirer ou le changer
   comme n'importe quelle clé du manifest.
+- **Une copie naît sans carte.** Faire naître un harness en copiant un autre
+  (RFC-006) ne reprend pas `carte` : la carte modélisait la source, et la
+  copie divergera dès son premier scellement. Lui donner la carte de la
+  source mènerait vers le savoir d'un autre harness.
 
 L'autre emplacement envisagé était un réglage propre à l'instance, posé
 depuis le QG. Il a été écarté : la carte modélise **la méthode**, et la
@@ -244,9 +248,10 @@ Trois lots côté produit, un côté instance. Chaque lot porte ses sabotages.
 - **Lot 0 — les documents.** Cette RFC dans `docs/` ; SPECS §2 et
   `docs/hds-v0.md` amendés.
 - **Lot A — le manifest et l'offre** (`kokaji/hds/modele.py`,
-  `kokaji/hds/manifest.py`, `kokaji/middleware/exploitation.py`). La clé
-  `harness.carte`, lue et validée (sabotages 4 et 5) ; `carte` dans l'offre
-  (critère 3).
+  `kokaji/hds/manifest.py`, `kokaji/middleware/exploitation.py`,
+  `kokaji/naissance.py`). La clé `harness.carte`, lue et validée
+  (sabotages 4 et 5) ; `carte` dans l'offre (critère 3) ; la copie qui naît
+  sans carte.
 - **Lot B — la page** (`kokaji/qg/vue.html`). Le lien « Carte » du flanc,
   qui suit le harness courant (critères 1 et 2).
 - **Lot C — l'instance.** À la première demande d'un designer : créer la
