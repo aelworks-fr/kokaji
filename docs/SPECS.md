@@ -70,6 +70,7 @@ harness:
   version: ""                 # versionnage propre au harness
   langue: fr
   domaine: ""                 # le processus couvert, en une phrase — documentaire, jamais interprété par Kokaji
+  carte: ""                   # RFC-021 — facultatif : l'adresse http(s) de la carte Omoikane qui modélise le harness ; documentaire, jamais suivie par Kokaji
 
 kata:                         # les formes, dans l'ordre logique du domaine
   - id: ""                    # slug propre au harness

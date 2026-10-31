@@ -39,6 +39,7 @@ Sept sections, toutes obligatoires sauf `etat`.
 | `nom`, `version` | texte libre ; la version appartient au harness, pas à Kokaji |
 | `langue` | code de langue ; `fr` par défaut |
 | `domaine` | le processus couvert, en une phrase. **Documentaire** : transporté tel quel, jamais interprété. |
+| `carte` | *facultatif* — l'adresse de la carte Omoikane qui modélise le harness ([RFC-021](rfc-021-carte-du-harness.md)). Un texte qui commence par `http://` ou `https://` ; tout autre schéma est refusé. **Documentaire** : Kokaji la montre dans le flanc du harness courant, il ne la suit jamais. |
 
 ### `kata` — les formes
 

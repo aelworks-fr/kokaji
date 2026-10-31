@@ -582,6 +582,11 @@
     <span class="point-onglet"></span>Design</a>
   <a class="onglet onglet-sous" id="onglet-qg" href="#/qg" aria-current="page">
     <span class="point-onglet"></span>QG</a>
+  <!-- La carte Omoikane du harness courant (RFC-021 D21.5) : une page d'un autre
+       outil, donc un nouvel onglet, et rien quand le harness n'en déclare pas. -->
+  <a class="onglet onglet-sous" id="onglet-carte" href="#" target="_blank" rel="noopener noreferrer"
+     title="La carte qui modélise ce harness, dans Omoikane" hidden>
+    <span class="point-onglet"></span>Carte ↗</a>
   <button class="flanc-action" id="btn-creer-harness" hidden>＋ Créer un harness</button>
 
   <!-- Territoire MOI -->
@@ -3495,6 +3500,7 @@ async function chargerHarness() {
     $("onglet-qg").href = `#/h/${encodeURIComponent(offre.courant)}/qg`;
     $("onglet-design").href = `#/h/${encodeURIComponent(offre.courant)}/design/${axe}`;
   }
+  montrerCarte(offre);
   if (!offre.harness || offre.harness.length < 2) return;
 
   const select = $("harness-courant");
@@ -3528,6 +3534,19 @@ async function chargerHarness() {
     // ramène au rechargement.
     if (r.ok) { location.hash = fragmentPourHarness(select.value); location.reload(); }
   };
+}
+
+// La carte suit le harness courant, pas le nombre de harness : une instance
+// qui n'en sert qu'un cache le sélecteur, pas la carte (RFC-021 D21.5). Le
+// service n'offre que des adresses http(s) ; on le revérifie ici, parce qu'un
+// lien cliquable est le dernier endroit où un `javascript:` peut s'exécuter.
+function montrerCarte(offre) {
+  const lien = $("onglet-carte");
+  const courant = (offre.harness || []).find(h => h.id === offre.courant);
+  const carte = courant && courant.carte;
+  if (!carte || !/^https?:\/\//i.test(carte)) { lien.hidden = true; return; }
+  lien.href = carte;
+  lien.hidden = false;
 }
 
 // Faire naître un harness. Les sources offertes sont celles qu'on a le droit de
