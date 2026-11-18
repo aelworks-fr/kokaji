@@ -271,7 +271,7 @@ La publication de `/mcp` sur une instance est un geste de l'instance (§4.5), ho
 
 | Lot | État |
 |---|---|
-| A — les jetons d'agent | proposé |
+| A — les jetons d'agent | appliqué (18 novembre 2026) — table `jetons_agent` aux deux moteurs (empreinte SHA-256, jamais le jeton), `emettre_jeton`, `jetons_de`, `revoquer_jeton`, `par_jeton_agent` ; `GET`/`POST`/`DELETE /moi/jetons` ; `kokaji jeton creer\|lister\|revoquer` ; hors de la surface de l'agent, un jeton `kkj_` est refusé avant tout autre en-tête (D21.2) ; sabotages 3 et 5 en tests (`tests/test_jetons_agent.py`), vus refuser en retirant la garde et le contrôle de révocation |
 | B — les gestes extraits | proposé |
 | C — la surface MCP en lecture | proposé |
 | D — la surface MCP en écriture | proposé |

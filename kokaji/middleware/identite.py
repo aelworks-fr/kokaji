@@ -37,6 +37,7 @@ from ..comptes import (
     inscrire,
 )
 from ..comptes.chat import Chat, ChatInjoignable
+from ..comptes.depot import ECHEANCE_AGENT_DEFAUT, PREFIXE_AGENT
 from ..qg import racine_html
 from .chat import JetonInvalide, verifier_jeton
 
@@ -121,6 +122,13 @@ class Identification:
         """`None` en mode mono-utilisateur, jamais en mode partagé."""
         if self.comptes is None:
             return None
+        if self.jeton(requete).startswith(PREFIXE_AGENT):
+            # RFC-021 D21.2 — un jeton d'agent ne vaut que sur la surface de
+            # l'agent. Ici, il ne désigne personne, et on le dit plutôt que de
+            # laisser un en-tête voisin parler à sa place.
+            raise HTTPException(
+                status_code=401, detail="un jeton d'agent ne vaut que sur la surface de l'agent"
+            )
         du_chat = self._du_chat(requete)
         if du_chat is not None:
             return du_chat
@@ -175,6 +183,20 @@ class Identification:
         décide, et le refus s'écrit au même endroit que les autres.
         """
         return self.exiger_de_service(requete, "administrer")
+
+
+def _jeton_lisible(jeton) -> dict:
+    """Ce qu'on montre d'un jeton d'agent : de quoi le reconnaître, rien de quoi
+    s'en servir."""
+    return {
+        "id": jeton.id,
+        "nom": jeton.nom,
+        "portee": jeton.portee,
+        "cree_le": jeton.cree_le,
+        "expire_le": jeton.expire_le,
+        "dernier_usage_le": jeton.dernier_usage_le,
+        "revoque_le": jeton.revoque_le,
+    }
 
 
 def routeur_pages() -> APIRouter:
@@ -258,6 +280,39 @@ def routeur_comptes(
                     {"harness": h, "role": r} for h, r in comptes.harness_de(qui.id)
                 ],
             }
+
+        # --- les jetons d'agent (RFC-021 D21.1, §4.4) ----------------------
+        #
+        # Ils s'émettent d'une session humaine, jamais d'un jeton d'agent :
+        # `qui` refuse un jeton d'agent hors de sa surface, si bien qu'un agent
+        # ne peut pas s'étendre lui-même (sabotage 5).
+
+        @routeur.get("/moi/jetons", summary="Mes jetons d'agent — jamais leur empreinte")
+        def mes_jetons(requete: Request) -> dict:
+            qui = identification.qui(requete)
+            return {"jetons": [_jeton_lisible(j) for j in comptes.jetons_de(qui.id)]}
+
+        @routeur.post("/moi/jetons", summary="Confier un jeton à son agent — montré une fois")
+        def emettre_jeton(
+            requete: Request,
+            nom: str = Body(embed=True),
+            portee: str = Body(embed=True),
+            echeance_jours: int = Body(default=ECHEANCE_AGENT_DEFAUT, embed=True),
+        ) -> dict:
+            qui = identification.qui(requete)
+            try:
+                jeton, emis = comptes.emettre_jeton(qui.id, nom, portee, echeance_jours)
+            except AclInvalide as err:
+                raise HTTPException(status_code=400, detail=str(err)) from err
+            return {"jeton": jeton, **_jeton_lisible(emis)}
+
+        @routeur.delete("/moi/jetons/{jeton_id}", summary="Révoquer un de ses jetons d'agent")
+        def revoquer_jeton(requete: Request, jeton_id: str) -> dict:
+            qui = identification.qui(requete)
+            try:
+                return _jeton_lisible(comptes.revoquer_jeton(qui.id, jeton_id))
+            except IdentiteInconnue as err:
+                raise HTTPException(status_code=404, detail=str(err)) from err
 
     @routeur.get("/invitation/{jeton}/etat", summary="Cette invitation vaut-elle encore ?")
     def invitation_etat(jeton: str) -> dict:

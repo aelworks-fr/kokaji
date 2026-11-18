@@ -19,8 +19,11 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 __all__ = [
+    "CONCEPTION",
     "CONTRIBUTEUR",
     "ETRANGER",
+    "LECTURE",
+    "PORTEES",
     "PRIVEE",
     "PROPRIETAIRE",
     "ROLES",
@@ -28,6 +31,7 @@ __all__ = [
     "VISIBILITES",
     "Acl",
     "AclInvalide",
+    "JetonAgent",
     "Utilisateur",
     "email_plausible",
 ]
@@ -44,6 +48,13 @@ ROLES = (PROPRIETAIRE, CONTRIBUTEUR, ETRANGER)
 PRIVEE = "privee"
 VERSE = "verse"
 VISIBILITES = (PRIVEE, VERSE)
+
+# Ce qu'une personne délègue à son agent (RFC-021 D21.4). La portée s'ajoute
+# au rôle, elle ne le remplace pas : un geste exige les deux. Une portée hors
+# de cette liste ne couvre rien.
+LECTURE = "lecture"
+CONCEPTION = "conception"
+PORTEES = (LECTURE, CONCEPTION)
 
 # Assez pour attraper une faute de frappe, pas assez pour prétendre valider une
 # adresse : seul un envoi le prouve. Le RFC dit « vérifiable », pas « vérifié ».
@@ -174,3 +185,22 @@ class Enregistrement:
     commit_reference: str = ""
     pousser_au_scellement: bool = True
     enregistre_le: str = ""
+
+
+@dataclass(frozen=True)
+class JetonAgent:
+    """RFC-021 D21.1 — ce qu'une personne confie à son agent.
+
+    Ce n'est pas le jeton : celui-ci n'est montré qu'une fois, à l'émission, et
+    le magasin n'en garde que l'empreinte. C'est ce qu'on peut en dire ensuite
+    sans rien en révéler — son nom, sa portée, ses dates.
+    """
+
+    id: str
+    utilisateur_id: str
+    nom: str
+    portee: str
+    cree_le: str
+    expire_le: str
+    dernier_usage_le: str | None = None
+    revoque_le: str | None = None

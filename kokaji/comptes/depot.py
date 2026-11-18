@@ -19,6 +19,7 @@ se vérifie.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import secrets
 import sqlite3
@@ -30,13 +31,27 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 
 from .droits import exiger
-from .modele import ETRANGER, Acl, AclInvalide, Enregistrement, Utilisateur, email_plausible
+from .modele import (
+    ETRANGER,
+    PORTEES,
+    Acl,
+    AclInvalide,
+    Enregistrement,
+    JetonAgent,
+    Utilisateur,
+    email_plausible,
+)
 
 __all__ = ["Comptes", "IdentiteInconnue", "ou_ouvrir", "transvaser"]
 
 DUREE_SESSION = timedelta(hours=12)
 # Une invitation qui traîne est une porte ouverte : elle se périme d'elle-même.
 DUREE_INVITATION = timedelta(days=7)
+# RFC-021 D21.1 — un jeton d'agent a toujours une échéance, et jamais lointaine.
+ECHEANCE_AGENT_DEFAUT = 90
+ECHEANCE_AGENT_MAX = 365
+# Le préfixe dit ce qu'est le jeton, à l'œil comme à un scanner de secrets.
+PREFIXE_AGENT = "kkj_"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS utilisateurs (
@@ -112,6 +127,20 @@ CREATE TABLE IF NOT EXISTS sessions (
     jeton          TEXT PRIMARY KEY,
     utilisateur_id TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
     expire_le      TEXT NOT NULL
+);
+
+-- RFC-021 D21.1 : ce qu'une personne confie à son agent. Le jeton lui-même
+-- n'est jamais écrit : seule son empreinte l'est, et elle ne se montre pas.
+CREATE TABLE IF NOT EXISTS jetons_agent (
+    id               TEXT PRIMARY KEY,
+    utilisateur_id   TEXT NOT NULL REFERENCES utilisateurs(id) ON DELETE CASCADE,
+    nom              TEXT NOT NULL,
+    empreinte        TEXT NOT NULL UNIQUE,
+    portee           TEXT NOT NULL,
+    cree_le          TEXT NOT NULL,
+    expire_le        TEXT NOT NULL,
+    dernier_usage_le TEXT,
+    revoque_le       TEXT
 );
 """
 
@@ -255,6 +284,19 @@ def ou_ouvrir(chemin: Path | str | None) -> Path | str | None:
 
 class IdentiteInconnue(Exception):
     """Identifiants refusés, ou jeton périmé."""
+
+
+def _empreinte(jeton: str) -> str:
+    return hashlib.sha256(jeton.encode("utf-8")).hexdigest()
+
+
+def _jeton_agent(ligne: dict) -> JetonAgent:
+    """Ce qu'on peut dire d'un jeton — jamais son empreinte."""
+    return JetonAgent(
+        id=ligne["id"], utilisateur_id=ligne["utilisateur_id"], nom=ligne["nom"],
+        portee=ligne["portee"], cree_le=ligne["cree_le"], expire_le=ligne["expire_le"],
+        dernier_usage_le=ligne.get("dernier_usage_le"), revoque_le=ligne.get("revoque_le"),
+    )
 
 
 def _instant(texte: str) -> datetime:
@@ -484,6 +526,104 @@ class Comptes:
         self._db.execute("DELETE FROM sessions WHERE jeton = ?", (jeton,))
         self._db.commit()
 
+    # --- les jetons d'agent (RFC-021 D21.1) --------------------------------
+
+    def emettre_jeton(
+        self,
+        utilisateur_id: str,
+        nom: str,
+        portee: str,
+        echeance_jours: int = ECHEANCE_AGENT_DEFAUT,
+    ) -> tuple[str, JetonAgent]:
+        """Rend le jeton **en clair, une seule fois**, et ce qu'on en garde.
+
+        Le magasin n'écrit que l'empreinte : un SHA-256 suffit, parce que le
+        jeton est tiré au hasard sur 32 octets — l'argon2 sert à ralentir qui
+        devine un mot de passe choisi par un humain, et ici il n'y a rien à
+        deviner.
+        """
+        if self.utilisateur(utilisateur_id) is None:
+            raise AclInvalide("compte inconnu")
+        if not nom.strip():
+            raise AclInvalide("un jeton d'agent porte un nom : celui qui le lira doit savoir à quoi il sert")
+        if portee not in PORTEES:
+            raise AclInvalide(f"portée inconnue : {portee!r} (connues : {', '.join(PORTEES)})")
+        if not 1 <= int(echeance_jours) <= ECHEANCE_AGENT_MAX:
+            raise AclInvalide(f"échéance entre 1 et {ECHEANCE_AGENT_MAX} jours, jamais sans")
+
+        jeton = PREFIXE_AGENT + secrets.token_urlsafe(32)
+        maintenant = datetime.now(UTC)
+        emis = JetonAgent(
+            id=str(uuid.uuid4()),
+            utilisateur_id=utilisateur_id,
+            nom=nom.strip(),
+            portee=portee,
+            cree_le=maintenant.isoformat(),
+            expire_le=(maintenant + timedelta(days=int(echeance_jours))).isoformat(),
+        )
+        self._db.execute(
+            "INSERT INTO jetons_agent (id, utilisateur_id, nom, empreinte, portee, cree_le, expire_le) "
+            "VALUES (?,?,?,?,?,?,?)",
+            (emis.id, emis.utilisateur_id, emis.nom, _empreinte(jeton), emis.portee,
+             emis.cree_le, emis.expire_le),
+        )
+        self._db.commit()
+        return jeton, emis
+
+    def jetons_de(self, utilisateur_id: str) -> list[JetonAgent]:
+        """Les siens, révoqués compris : une révocation se lit, elle ne s'efface pas."""
+        lignes = self._db.execute(
+            "SELECT * FROM jetons_agent WHERE utilisateur_id = ? ORDER BY cree_le",
+            (utilisateur_id,),
+        ).fetchall()
+        return [_jeton_agent(ligne) for ligne in lignes]
+
+    def revoquer_jeton(self, utilisateur_id: str, jeton_id: str) -> JetonAgent:
+        """Le sien seulement. Le jeton d'un autre se refuse comme un jeton qui
+        n'existe pas : distinguer les deux dirait qu'il existe."""
+        ligne = self._db.execute(
+            "SELECT * FROM jetons_agent WHERE id = ? AND utilisateur_id = ?",
+            (jeton_id, utilisateur_id),
+        ).fetchone()
+        if ligne is None:
+            raise IdentiteInconnue("aucun jeton à ce nom")
+        if not ligne["revoque_le"]:
+            ligne["revoque_le"] = datetime.now(UTC).isoformat()
+            self._db.execute(
+                "UPDATE jetons_agent SET revoque_le = ? WHERE id = ?",
+                (ligne["revoque_le"], jeton_id),
+            )
+            self._db.commit()
+        return _jeton_agent(ligne)
+
+    def par_jeton_agent(self, jeton: str) -> tuple[Utilisateur, JetonAgent]:
+        """Le compte qu'un jeton d'agent désigne, et ce jeton — ou un refus.
+
+        Le refus est le même que le jeton soit inconnu, expiré ou révoqué : dire
+        lequel aiderait qui essaie des jetons au hasard, et n'aiderait personne
+        d'autre. Le dernier usage se pose à chaque résolution réussie.
+        """
+        refus = IdentiteInconnue("jeton d'agent refusé")
+        jeton = (jeton or "").strip()
+        if not jeton.startswith(PREFIXE_AGENT):
+            raise refus
+        ligne = self._db.execute(
+            "SELECT * FROM jetons_agent WHERE empreinte = ?", (_empreinte(jeton),)
+        ).fetchone()
+        maintenant = datetime.now(UTC)
+        if ligne is None or ligne["revoque_le"] or _instant(ligne["expire_le"]) <= maintenant:
+            raise refus
+        connu = self.utilisateur(ligne["utilisateur_id"])
+        if connu is None:
+            raise refus
+        ligne["dernier_usage_le"] = maintenant.isoformat()
+        self._db.execute(
+            "UPDATE jetons_agent SET dernier_usage_le = ? WHERE id = ?",
+            (ligne["dernier_usage_le"], ligne["id"]),
+        )
+        self._db.commit()
+        return connu, _jeton_agent(ligne)
+
     # --- l'autorat (§2.2) --------------------------------------------------
 
     def enregistrer_harness(self, harness_id: str, proprietaire: str) -> Acl:
@@ -695,7 +835,7 @@ class Comptes:
 
 TABLES = (
     "utilisateurs", "harness_acl", "invitations", "identites_externes",
-    "contributeurs", "harness_depot", "sessions",
+    "contributeurs", "harness_depot", "sessions", "jetons_agent",
 )
 
 
