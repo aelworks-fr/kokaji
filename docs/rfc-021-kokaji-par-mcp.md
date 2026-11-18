@@ -55,6 +55,8 @@ La table vit dans le magasin de comptes, hors git (R12.2), aux deux régimes (fi
 
 **L'OAuth est différé, et sa forme est déjà décidée.** Certains clients MCP n'acceptent pas un jeton collé à la main et exigent le parcours d'autorisation du protocole (OAuth 2.1). Quand il viendra, Kokaji sera son propre serveur d'autorisation : l'écran de consentement est une page Kokaji, derrière l'authentification ordinaire de l'instance (portail ou session) ; ce qu'il émet **est un jeton d'agent** comme ceux-ci, avec la même table, la même portée, la même révocation depuis le Profil. Rien de ce qui suit n'est donc à réécrire ; l'OAuth n'est qu'une autre façon de le remettre. Aucun fournisseur d'identité extérieur n'est requis (D9.4).
 
+**Le premier client est un agent en ligne de commande** (tranché le 18 novembre 2026). Il accepte un en-tête `Authorization` dans sa configuration : le jeton collé suffit, et l'OAuth reste différé tant qu'aucun client visé ne l'exige.
+
 ### D21.2 — Sur `/mcp`, le jeton est la seule identité qui vaille
 
 La surface MCP vit sous un seul préfixe, `/mcp`. Sur ce préfixe, `Identification` ne regarde **que** l'`Authorization: Bearer` d'un jeton d'agent :
