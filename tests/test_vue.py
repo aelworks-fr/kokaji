@@ -31,6 +31,7 @@ RENDU = "\n".join(
 )
 ADMIN = (racine_html().parent / "admin.html").read_text(encoding="utf-8")
 INVITATION = (racine_html().parent / "invitation.html").read_text(encoding="utf-8")
+CSS = (racine_html().parent / "organic-styles.css").read_text(encoding="utf-8")
 
 
 class Coque(unittest.TestCase):
@@ -992,6 +993,109 @@ class PratiqueRapportee(unittest.TestCase):
         self.assertIn('"/qg/conversation/semer"', RENDU)
         self.assertIn("data-tremper", RENDU)
         self.assertIn("data-semer", RENDU)
+
+
+class AccesDesAgents(unittest.TestCase):
+    """RFC-022 lot E — « Accès des agents » au Profil.
+
+    Un jeton d'agent est un accès **de la personne**, pas une propriété d'une
+    œuvre : il vit donc au Profil, à côté de ses harness, et nulle part dans un
+    harness. Rien n'a été dessiné pour cette section — l'amendement du
+    21 novembre 2026 au RFC-004 §4 autorise une **composition** des motifs déjà
+    posés, et c'est ce que le dernier test tient.
+
+    Le reste tient la discipline du jeton telle que la D22.1 la scelle : montré
+    une fois et jamais relu, l'empreinte jamais lue, la révocation possible, et
+    la vérité dite quand il n'y a pas de magasin de comptes.
+    """
+
+    PROFIL: ClassVar[str] = PAGE[
+        PAGE.index('<section id="module-profil"'):PAGE.index('<section id="module-design"')
+    ]
+    RENDU_JETONS: ClassVar[str] = PAGE[
+        PAGE.index("async function rendreJetons()"):PAGE.index("function direLaPortee()")
+    ]
+    CREATION: ClassVar[str] = PAGE[PAGE.index("async function confierUnJeton()"):]
+
+    def test_la_section_vit_au_profil_apres_les_harness(self):
+        """Le Profil répond à « à quoi ai-je accès, et qui accède en mon nom »."""
+        self.assertIn(">Accès des agents</h2>", self.PROFIL)
+        self.assertLess(self.PROFIL.index('id="profil-harness"'),
+                        self.PROFIL.index('id="profil-jetons"'))
+
+    def test_l_onglet_declenche_la_section(self):
+        """Un rendu qui n'appelle pas son chargement affiche une coque vide.
+
+        L'appel se cherche **dans** le rendu du Profil : `confierUnJeton` le
+        rappelle aussi, et le trouver là ne prouverait rien.
+        """
+        corps = PAGE[PAGE.index("async function rendreProfil()"):
+                     PAGE.index("// --- « Accès des agents »")]
+        self.assertIn("rendreJetons();", corps)
+        self.assertIn("async function rendreJetons()", PAGE)
+
+    def test_le_jeton_ne_passe_qu_a_sa_creation(self):
+        """D22.1 : montré une seule fois.
+
+        La liste n'a aucun jeton à montrer — le magasin ne le garde pas. Seul le
+        retour de la création en porte un, et c'est le seul endroit qui l'écrit.
+        """
+        self.assertIsNone(re.search(r"\bd\.jeton\b", self.RENDU_JETONS))
+        self.assertIsNone(re.search(r"\bj\.jeton\b", self.RENDU_JETONS))
+        self.assertIn("${e(d.jeton)}", self.CREATION)
+        self.assertIn("ce jeton ne sera plus affiché", RENDU)
+
+    def test_l_empreinte_n_est_jamais_lue(self):
+        """Le service ne la sert pas ; la page ne doit pas la chercher."""
+        self.assertNotIn(".empreinte", PAGE)
+
+    def test_la_revocation_se_confirme_en_deux_temps(self):
+        """Le motif du retrait d'un nœud (K-22), sur le même bouton."""
+        self.assertIn("révoquer\u2026", PAGE)
+        self.assertIn("confirmer la révocation de", PAGE)
+        self.assertIn("if (jetonArme !== id) { jetonArme = id; rendreJetons(); return; }", PAGE)
+        self.assertIn('envoyer("DELETE", "/moi/jetons/"', PAGE)
+
+    def test_un_jeton_mort_ne_s_offre_plus_a_la_revocation(self):
+        """Révoqué ou périmé, il se dit — il ne propose plus un geste sans effet."""
+        self.assertIn("const mort = Boolean(j.revoque_le) || perime;", self.RENDU_JETONS)
+        self.assertIn('${mort ? "" : `<button class="btn-fantome btn-encre"', self.RENDU_JETONS)
+
+    def test_ce_qui_est_delegue_se_dit_avant_de_confier(self):
+        """D22.4 : une personne délègue moins qu'elle n'a — encore faut-il le lire."""
+        for portee in ("lecture", "conception"):
+            self.assertIn(f'value="{portee}"', self.PROFIL)
+        self.assertIn("Jamais l'administration, jamais ta pratique.", PAGE)
+        self.assertIn("ton rôle sur le harness le permet déjà et sa portée le couvre", RENDU)
+
+    def test_une_echeance_est_toujours_proposee(self):
+        """D22.1 : jamais de jeton sans échéance."""
+        champ = re.search(r'<input class="champ-large" id="jeton-echeance"([^>]*)>', self.PROFIL)
+        self.assertIsNotNone(champ)
+        self.assertIn('value="90"', champ.group(1))
+        self.assertIn('max="365"', champ.group(1))
+
+    def test_sans_magasin_la_section_le_dit_au_lieu_de_disparaitre(self):
+        """Sans magasin il n'y a ni compte ni jeton, et `/mcp` n'est pas monté."""
+        self.assertIn("n'a pas de magasin de comptes", RENDU)
+        self.assertIn("la surface de l'agent n'est pas montée", RENDU)
+        self.assertIn('$("btn-confier-jeton").hidden = true;', self.RENDU_JETONS)
+
+    def test_la_section_ne_dessine_aucune_forme_neuve(self):
+        """L'amendement autorise une composition, pas une invention.
+
+        Toute classe que la section porte était déjà déclarée — dans la feuille
+        Organic ou dans le `<style>` de la page. Si ce test rougit, c'est qu'une
+        forme a été inventée, et il faut la faire dessiner.
+        """
+        style = PAGE.split("<style>")[1].split("</style>")[0]
+        declarees = set(re.findall(r"\.([a-z][a-z0-9-]*)", style + CSS))
+        portees = set()
+        for source in (self.PROFIL, self.RENDU_JETONS, self.CREATION):
+            for attr in re.findall(r'class="([^"$]*)"', source):
+                portees |= {m for m in attr.split() if re.fullmatch(r"[a-z][a-z0-9-]*", m)}
+        self.assertIn("rangee", portees)  # la section porte bien des classes
+        self.assertEqual(portees - declarees, set())
 
 
 if __name__ == "__main__":
