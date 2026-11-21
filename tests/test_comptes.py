@@ -564,7 +564,7 @@ class Migration(unittest.TestCase):
 
 
 class JetonsAgent(unittest.TestCase):
-    """RFC-021 D21.1 sur les deux moteurs — le détail vit dans `test_jetons_agent`."""
+    """RFC-022 D22.1 sur les deux moteurs — le détail vit dans `test_jetons_agent`."""
 
     def setUp(self):
         self.comptes = magasin()

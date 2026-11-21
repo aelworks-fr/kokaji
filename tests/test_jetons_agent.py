@@ -1,4 +1,4 @@
-"""Les jetons d'agent — RFC-021 lot A, D21.1 et D21.2.
+"""Les jetons d'agent — RFC-022 lot A, D22.1 et D22.2.
 
 Ce qui compte ici n'est pas qu'un jeton s'émette : c'est qu'il ne vaille rien
 hors de ce qu'on lui a confié. Les sabotages 3 (jeton révoqué, expiré,
@@ -141,7 +141,7 @@ class Routes(unittest.TestCase):
         self.assertEqual(self.client.get("/moi/jetons", headers=agent).status_code, 401)
 
     def test_un_jeton_d_agent_ne_vaut_rien_hors_de_sa_surface(self):
-        """D21.2 — ni le profil, ni le changement de mot de passe ; et un
+        """D22.2 — ni le profil, ni le changement de mot de passe ; et un
         en-tête de portail glissé à côté ne lui prête pas d'identité."""
         jeton = self._emettre()["jeton"]
         agent = {"Authorization": f"Bearer {jeton}", "Remote-Email": "une@exemple.test"}

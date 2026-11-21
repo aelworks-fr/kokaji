@@ -49,7 +49,7 @@ PRIVEE = "privee"
 VERSE = "verse"
 VISIBILITES = (PRIVEE, VERSE)
 
-# Ce qu'une personne délègue à son agent (RFC-021 D21.4). La portée s'ajoute
+# Ce qu'une personne délègue à son agent (RFC-022 D22.4). La portée s'ajoute
 # au rôle, elle ne le remplace pas : un geste exige les deux. Une portée hors
 # de cette liste ne couvre rien.
 LECTURE = "lecture"
@@ -189,7 +189,7 @@ class Enregistrement:
 
 @dataclass(frozen=True)
 class JetonAgent:
-    """RFC-021 D21.1 — ce qu'une personne confie à son agent.
+    """RFC-022 D22.1 — ce qu'une personne confie à son agent.
 
     Ce n'est pas le jeton : celui-ci n'est montré qu'une fois, à l'émission, et
     le magasin n'en garde que l'empreinte. C'est ce qu'on peut en dire ensuite

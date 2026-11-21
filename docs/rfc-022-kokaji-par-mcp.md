@@ -1,4 +1,4 @@
-# RFC-021 — Kokaji par MCP : un agent forge au nom de son compte
+# RFC-022 — Kokaji par MCP : un agent forge au nom de son compte
 
 > **Statut : proposé** (établi, 19 octobre 2026).
 > Dépend de : RFC-004 (comptes, matrice des droits, R12.4), RFC-005 (le harness courant, l'aiguilleur), RFC-006 (naître : copier, semer), RFC-008 et RFC-011 (adopter, importer un texte), RFC-010 (proposition, épreuve, coupe, scellement), RFC-012 (le dépôt du harness), SPECS §7 R7.4 (la surface MCP annoncée), §12 (sécurité). Objet : ouvrir **l'autorat** de Kokaji — créer un harness, le lire, le concevoir, l'éprouver, le sceller — à un agent qui parle le protocole MCP, **au nom d'un compte existant**, sans rien ouvrir de la pratique ni de l'administration.
@@ -26,23 +26,23 @@ agent (client MCP)
   │  Authorization: Bearer <jeton d'agent>         — un compte, une portée, révocable
   ▼
 POST /mcp   (MCP, transport HTTP « streamable »)   kokaji/mcp/
-  │  identifie le compte par le jeton, et par lui seul (D21.2)
-  │  plafonne la qualité à `compte`, jamais `administration` (D21.3)
+  │  identifie le compte par le jeton, et par lui seul (D22.2)
+  │  plafonne la qualité à `compte`, jamais `administration` (D22.3)
   ▼
-gestes   kokaji/gestes/  — la même fonction que la route HTTP, la même matrice (D21.6)
-  │  le harness est nommé à chaque appel, jamais emprunté au harness courant (D21.5)
+gestes   kokaji/gestes/  — la même fonction que la route HTTP, la même matrice (D22.6)
+  │  le harness est nommé à chaque appel, jamais emprunté au harness courant (D22.5)
   ▼
 définition · dépôt · ACL · journal des scellements    — la pratique n'est pas sur ce chemin
 ```
 
 ## 3. Décisions scellées
 
-### D21.1 — Un agent parle au nom d'un compte, par un jeton d'agent
+### D22.1 — Un agent parle au nom d'un compte, par un jeton d'agent
 
 Un agent n'a pas de compte à lui. Il agit **au nom d'un compte existant**, par un **jeton d'agent** que la personne crée elle-même, depuis sa session, et qu'elle confie à son client MCP.
 
 - Le jeton est tiré au hasard (32 octets), préfixé `kkj_` pour qu'un scanner de secrets le reconnaisse, **montré une seule fois** à la création. Le magasin n'en garde que l'empreinte (SHA-256 : l'entropie du jeton rend l'argon2 inutile ici, à la différence d'un mot de passe choisi par un humain).
-- Il porte un **nom** (« l'agent de mon poste »), une **portée** (D21.4), une **échéance** (90 jours par défaut, jamais sans échéance), sa date de dernier usage, et sa révocation éventuelle.
+- Il porte un **nom** (« l'agent de mon poste »), une **portée** (D22.4), une **échéance** (90 jours par défaut, jamais sans échéance), sa date de dernier usage, et sa révocation éventuelle.
 - Il se crée et se révoque depuis le **Profil** (section « Accès des agents »), et par la commande `kokaji jeton creer|lister|revoquer --compte <email>` pour l'exploitant.
 - **Un jeton ne crée jamais un jeton.** Seule une session humaine en émet ; un agent ne peut pas s'étendre lui-même.
 - Un jeton désigne un compte, il n'en crée aucun — même règle que le portail et le chat (RFC-019 D19.3). Un compte supprimé emporte ses jetons.
@@ -57,7 +57,7 @@ La table vit dans le magasin de comptes, hors git (R12.2), aux deux régimes (fi
 
 **Le premier client est un agent en ligne de commande** (tranché le 18 novembre 2026). Il accepte un en-tête `Authorization` dans sa configuration : le jeton collé suffit, et l'OAuth reste différé tant qu'aucun client visé ne l'exige.
 
-### D21.2 — Sur `/mcp`, le jeton est la seule identité qui vaille
+### D22.2 — Sur `/mcp`, le jeton est la seule identité qui vaille
 
 La surface MCP vit sous un seul préfixe, `/mcp`. Sur ce préfixe, `Identification` ne regarde **que** l'`Authorization: Bearer` d'un jeton d'agent :
 
@@ -71,22 +71,22 @@ Réciproquement, un jeton d'agent **ne vaut rien hors de `/mcp`** : il n'ouvre n
 
 Un jeton absent, inconnu, expiré ou révoqué reçoit un 401 qui ne dit pas lequel des quatre.
 
-### D21.3 — Un jeton ne porte jamais l'administration
+### D22.3 — Un jeton ne porte jamais l'administration
 
 La qualité d'un appelant identifié par jeton est **plafonnée à `compte`** (RFC-006 §2), même si le compte est administrateur de l'exploitation. L'administration (comptes, invitations, activation au chat, vigie d'administration) n'est atteignable que par une session humaine. Elle n'est pas absente de MCP par oubli d'outil : elle y est **inexprimable**, parce que la qualité qui l'autorise ne peut pas y naître.
 
-### D21.4 — Deux portées : lire, concevoir
+### D22.4 — Deux portées : lire, concevoir
 
 Une personne délègue moins qu'elle n'a. La portée s'ajoute à la matrice, elle ne la remplace pas : **un geste n'est permis que si le rôle le permet ET la portée le couvre**.
 
 | Portée | Ce qu'elle couvre |
 |---|---|
 | `lecture` | lire ses harness, leur définition, leurs coupes, l'état de leur dépôt, leurs membres ; éprouver une proposition (rien n'est écrit) |
-| `conception` | tout `lecture`, plus : faire naître un harness, ajouter une étape adoptée, sceller, pousser et tirer le dépôt, et les gestes de possession du D21.7 |
+| `conception` | tout `lecture`, plus : faire naître un harness, ajouter une étape adoptée, sceller, pousser et tirer le dépôt, et les gestes de possession du D22.7 |
 
 Une portée inconnue ne couvre rien (même discipline que `peut` : refuser ce qu'on ne connaît pas).
 
-### D21.5 — Le harness se nomme à chaque appel ; le harness courant n'est jamais touché
+### D22.5 — Le harness se nomme à chaque appel ; le harness courant n'est jamais touché
 
 Chaque outil qui porte sur une œuvre prend un argument `harness` (l'`id`). L'appel est remis à l'application de **ce** harness, avec l'ACL de **ce** harness — l'isolation par la portée de l'aiguilleur (RFC-005 §5) tient, simplement résolue par l'argument au lieu du choix enregistré.
 
@@ -94,13 +94,13 @@ Le harness courant du compte n'est **jamais** lu pour résoudre un appel MCP, ni
 
 Un harness où le compte est étranger se refuse comme un harness qui n'existe pas (RFC-004 §7) : `aucun harness à ce nom`.
 
-### D21.6 — Un geste, une fonction : MCP et HTTP appellent les mêmes gestes
+### D22.6 — Un geste, une fonction : MCP et HTTP appellent les mêmes gestes
 
 Les gestes d'autorat vivent aujourd'hui dans les fermetures des routes (`service.py`, `exploitation.py`). Les recopier dans un serveur MCP ferait deux autorités sur les mêmes droits, qui divergeraient au premier amendement. Ils sont donc **extraits** en fonctions (`kokaji/gestes/`) qui reçoivent un appelant, un harness et des arguments, exigent leur geste à la matrice, et rendent un résultat ou lèvent un refus. La route HTTP et l'outil MCP n'en sont que deux traductions : codes HTTP d'un côté, erreurs d'outil de l'autre.
 
 L'extraction ne change **aucun** comportement de la surface HTTP ; les tests existants le prouvent en restant verts sans retouche.
 
-### D21.7 — Ce qui entre : l'autorat, possession comprise, sauf le transfert
+### D22.7 — Ce qui entre : l'autorat, possession comprise, sauf le transfert
 
 Tout geste d'**œuvre** entre. Les gestes de **possession** (RFC-004 §3) entrent aussi, parce que la personne les a sur ses harness et qu'ils se défont : archiver se désarchive, un contributeur retiré se rajoute, un dépôt désenregistré se réenregistre (RFC-012 D12.2 : rien n'est détruit).
 
@@ -108,13 +108,13 @@ Tout geste d'**œuvre** entre. Les gestes de **possession** (RFC-004 §3) entren
 
 `supprimer` reste non construit (RFC-006 §5) ; MCP ne l'invente pas.
 
-### D21.8 — L'auteur d'un scellement est le compte, et le chemin se dit
+### D22.8 — L'auteur d'un scellement est le compte, et le chemin se dit
 
 Par HTTP, `POST /conception/scellement` reçoit `auteur` dans le corps. Par MCP, **l'auteur n'est pas un argument** : c'est le nom du compte que le jeton désigne. Un agent ne signe pas au nom de quelqu'un d'autre.
 
 Et la trace dit par où le geste est passé : le journal des scellements gagne `via: "mcp"` et le nom du jeton (« scellé par Nicole, via l'agent de son poste »). La responsabilité reste la personne (c'est son jeton) ; l'observabilité garde la différence entre ce qu'elle a fait de sa main et ce qu'elle a fait faire. Les gestes de possession passés par MCP sont journalisés de la même façon.
 
-### D21.9 — Le standard voyage avec la surface
+### D22.9 — Le standard voyage avec la surface
 
 Un agent qui conçoit un harness doit savoir ce qu'est un harness. La surface MCP expose donc, en **ressources** lisibles, le standard tel que le produit le connaît : le HDS (`docs/hds-v0.md`), le vocabulaire d'une proposition (les clés de `Proposition.CLES` et leur forme), et le registre des statuts du harness lu. Ce sont des fichiers du produit, servis tels quels : rien d'une instance, rien d'une pratique.
 
@@ -128,7 +128,7 @@ Aucune émission réseau nouvelle : le serveur MCP **reçoit**, il n'appelle per
 
 ### 4.2 Les outils
 
-Noms en registre technique, en français, comme les routes. Chaque outil dit le geste qu'il exige ; la colonne « route » nomme la fonction HTTP dont il est la traduction (D21.6).
+Noms en registre technique, en français, comme les routes. Chaque outil dit le geste qu'il exige ; la colonne « route » nomme la fonction HTTP dont il est la traduction (D22.6).
 
 **Lire** — portée `lecture`
 
@@ -154,7 +154,7 @@ Noms en registre technique, en français, comme les routes. Chaque outil dit le 
 
 | Outil | Ce qu'il fait | Geste | Route |
 |---|---|---|---|
-| `proposition_sceller(harness, proposition, motif)` | sceller : versionner, commiter, pousser si réglé, forger, publier à la passerelle — l'auteur est le compte (D21.8) | `sceller` | `POST /conception/scellement` |
+| `proposition_sceller(harness, proposition, motif)` | sceller : versionner, commiter, pousser si réglé, forger, publier à la passerelle — l'auteur est le compte (D22.8) | `sceller` | `POST /conception/scellement` |
 | `depot_pousser(harness)` | pousser la branche, en avance rapide | `pousser` | `POST /depot/pousser` |
 | `depot_tirer(harness)` | tirer, en avance rapide, clone propre exigé | `pousser` | `POST /depot/tirer` |
 
@@ -185,7 +185,7 @@ Importer un prompt (RFC-011) et éditer un contrat f♯ (RFC-015) ne sont pas de
 | `POST /moi/jetons` | créer : `nom`, `portee`, `echeance_jours` (≤ 365) ; rend le jeton **une fois** | session humaine |
 | `DELETE /moi/jetons/{id}` | révoquer | session humaine |
 
-Ces routes vivent du côté des comptes (`routeur_comptes`), pas sous `/mcp`. Elles refusent un appelant identifié par jeton d'agent (D21.1).
+Ces routes vivent du côté des comptes (`routeur_comptes`), pas sous `/mcp`. Elles refusent un appelant identifié par jeton d'agent (D22.1).
 
 ### 4.5 Côté instance (rappel, hors de ce dépôt)
 
@@ -200,23 +200,23 @@ Si l'instance ne publie pas `/mcp`, rien ne change pour elle.
 
 | Document | Changement |
 |---|---|
-| SPECS §0 | au périmètre : l'autorat par un agent, au nom d'un compte (RFC-021) |
+| SPECS §0 | au périmètre : l'autorat par un agent, au nom d'un compte (RFC-022) |
 | SPECS §7 R7.4 | reformulée : la surface MCP existe, sur l'autorat ; la lecture de la pratique par MCP reste ultérieure |
 | SPECS §12 | + R12.6 — un jeton d'agent désigne un compte, ne vaut que sur `/mcp`, n'y laisse valoir rien d'autre, ne porte jamais l'administration, ne crée jamais de jeton |
-| RFC-004 §3 | la portée d'un jeton s'ajoute au rôle : un geste exige les deux (D21.4) ; le transfert reste à la main (D21.7) |
+| RFC-004 §3 | la portée d'un jeton s'ajoute au rôle : un geste exige les deux (D22.4) ; le transfert reste à la main (D22.7) |
 | RFC-004 §4 | le Profil gagne « Accès des agents » — la forme attend un design, comme le §4 l'exige |
-| RFC-005 §5 | un appel MCP nomme son harness ; le harness courant n'est ni lu ni écrit (D21.5) |
-| RFC-010 §4.3 | par MCP, l'auteur du scellement est le compte ; la trace gagne `via` (D21.8) |
+| RFC-005 §5 | un appel MCP nomme son harness ; le harness courant n'est ni lu ni écrit (D22.5) |
+| RFC-010 §4.3 | par MCP, l'auteur du scellement est le compte ; la trace gagne `via` (D22.8) |
 | `docs/middleware.md` | la surface MCP, son extra, ses outils |
 | Carnet de vigilances | + « sur un chemin sans portail, aucun en-tête d'identité ne vaut ; un jeton d'agent est plus étroit que la personne, jamais plus large » |
 
 ## 6. Non-objectifs
 
 - **La pratique.** Lire les ha, les transcripts, les états d'un sujet ; rapporter une conversation (RFC-020) ; verser un ha aux co-auteurs ; choisir le harness courant ; appeler un kata. R7.4 reste ultérieure, et quand elle viendra elle demandera sa propre portée — R12.4 rend la décision assez lourde pour qu'on ne la prenne pas en passant.
-- **L'administration**, rendue inexprimable par D21.3.
-- **Le transfert de propriété** (D21.7) et la suppression (non construite).
+- **L'administration**, rendue inexprimable par D22.3.
+- **Le transfert de propriété** (D22.7) et la suppression (non construite).
 - **Le banc.** Il n'a pas encore de surface HTTP et il appelle des moteurs : le confier à un agent avant d'avoir des quotas serait ouvrir une dépense sans plafond (RFC-006 §6).
-- **L'OAuth**, différé mais déjà décidé (D21.1).
+- **L'OAuth**, différé mais déjà décidé (D22.1).
 - Un transport `stdio` local : un agent sur la machine de l'instance passe par `/mcp` comme les autres.
 - Des quotas ou un débit plafonné par jeton : même dette que les créations par compte (RFC-006 §6), payée quand il y aura quelqu'un à plafonner.
 
@@ -226,19 +226,19 @@ Si l'instance ne publie pas `/mcp`, rien ne change pour elle.
 
 **Sabotages** — chacun doit produire un refus net :
 
-1. **En-tête du portail forgé** : un appel à `/mcp` portant l'en-tête d'identité d'un autre compte, sans jeton → 401 ; avec le jeton d'un premier compte → c'est le premier compte qui agit, l'en-tête est ignoré (D21.2).
-2. **Jeton hors de `/mcp`** : le même jeton sur `/conception`, `/qg`, `/v1/chat/completions` → refusé (D21.2).
-3. **Jeton révoqué, expiré, inconnu** → 401, et le même message pour les trois (D21.1, D21.2).
-4. **Administration** : un jeton du compte administrateur appelle tout geste d'administration, ou tente d'atteindre `/admin/*` → refusé (D21.3).
-5. **Un jeton qui s'étend** : créer un jeton en présentant un jeton d'agent → refusé (D21.1).
-6. **Portée** : un jeton `lecture` tente de sceller, de créer, d'archiver → refusé ; il peut éprouver (D21.4).
+1. **En-tête du portail forgé** : un appel à `/mcp` portant l'en-tête d'identité d'un autre compte, sans jeton → 401 ; avec le jeton d'un premier compte → c'est le premier compte qui agit, l'en-tête est ignoré (D22.2).
+2. **Jeton hors de `/mcp`** : le même jeton sur `/conception`, `/qg`, `/v1/chat/completions` → refusé (D22.2).
+3. **Jeton révoqué, expiré, inconnu** → 401, et le même message pour les trois (D22.1, D22.2).
+4. **Administration** : un jeton du compte administrateur appelle tout geste d'administration, ou tente d'atteindre `/admin/*` → refusé (D22.3).
+5. **Un jeton qui s'étend** : créer un jeton en présentant un jeton d'agent → refusé (D22.1).
+6. **Portée** : un jeton `lecture` tente de sceller, de créer, d'archiver → refusé ; il peut éprouver (D22.4).
 7. **Le rôle tient sous la portée** : un jeton `conception` d'un contributeur tente d'archiver, de gérer les membres, d'enregistrer un dépôt → refusé (RFC-004 §3).
-8. **Harness d'autrui** : nommer un harness où le compte est étranger → `aucun harness à ce nom`, indiscernable d'un id qui n'existe pas (D21.5, RFC-004 §7).
-9. **Harness courant** : une suite d'appels sur trois harness différents ; le harness courant du compte est inchangé, et `/v1/models` sert la même liste avant et après (D21.5).
-10. **Signer pour un autre** : un `auteur` glissé dans les arguments de `proposition_sceller` est refusé comme argument inconnu ; la trace porte le nom du compte (D21.8).
+8. **Harness d'autrui** : nommer un harness où le compte est étranger → `aucun harness à ce nom`, indiscernable d'un id qui n'existe pas (D22.5, RFC-004 §7).
+9. **Harness courant** : une suite d'appels sur trois harness différents ; le harness courant du compte est inchangé, et `/v1/models` sert la même liste avant et après (D22.5).
+10. **Signer pour un autre** : un `auteur` glissé dans les arguments de `proposition_sceller` est refusé comme argument inconnu ; la trace porte le nom du compte (D22.8).
 11. **La pratique est absente** : aucun outil ne rend un ha, un transcript, un état de sujet ; le propriétaire d'un harness n'obtient par MCP aucun ha non versé de ses contributeurs (R12.4).
-12. **Transfert** : aucun outil ne transfère (D21.7).
-13. **Une seule autorité** : la surface HTTP passe ses tests sans retouche après l'extraction des gestes (D21.6).
+12. **Transfert** : aucun outil ne transfère (D22.7).
+13. **Une seule autorité** : la surface HTTP passe ses tests sans retouche après l'extraction des gestes (D22.6).
 14. **Souveraineté** : la trempe du produit ne trouve aucune destination réseau nouvelle (R12.5).
 
 ## 8. Plan d'implémentation
@@ -271,7 +271,7 @@ La publication de `/mcp` sur une instance est un geste de l'instance (§4.5), ho
 
 | Lot | État |
 |---|---|
-| A — les jetons d'agent | appliqué (18 novembre 2026) — table `jetons_agent` aux deux moteurs (empreinte SHA-256, jamais le jeton), `emettre_jeton`, `jetons_de`, `revoquer_jeton`, `par_jeton_agent` ; `GET`/`POST`/`DELETE /moi/jetons` ; `kokaji jeton creer\|lister\|revoquer` ; hors de la surface de l'agent, un jeton `kkj_` est refusé avant tout autre en-tête (D21.2) ; sabotages 3 et 5 en tests (`tests/test_jetons_agent.py`), vus refuser en retirant la garde et le contrôle de révocation |
+| A — les jetons d'agent | appliqué (18 novembre 2026) — table `jetons_agent` aux deux moteurs (empreinte SHA-256, jamais le jeton), `emettre_jeton`, `jetons_de`, `revoquer_jeton`, `par_jeton_agent` ; `GET`/`POST`/`DELETE /moi/jetons` ; `kokaji jeton creer\|lister\|revoquer` ; hors de la surface de l'agent, un jeton `kkj_` est refusé avant tout autre en-tête (D22.2) ; sabotages 3 et 5 en tests (`tests/test_jetons_agent.py`), vus refuser en retirant la garde et le contrôle de révocation |
 | B — les gestes extraits | proposé |
 | C — la surface MCP en lecture | proposé |
 | D — la surface MCP en écriture | proposé |

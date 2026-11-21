@@ -47,7 +47,7 @@ __all__ = ["Comptes", "IdentiteInconnue", "ou_ouvrir", "transvaser"]
 DUREE_SESSION = timedelta(hours=12)
 # Une invitation qui traîne est une porte ouverte : elle se périme d'elle-même.
 DUREE_INVITATION = timedelta(days=7)
-# RFC-021 D21.1 — un jeton d'agent a toujours une échéance, et jamais lointaine.
+# RFC-022 D22.1 — un jeton d'agent a toujours une échéance, et jamais lointaine.
 ECHEANCE_AGENT_DEFAUT = 90
 ECHEANCE_AGENT_MAX = 365
 # Le préfixe dit ce qu'est le jeton, à l'œil comme à un scanner de secrets.
@@ -129,7 +129,7 @@ CREATE TABLE IF NOT EXISTS sessions (
     expire_le      TEXT NOT NULL
 );
 
--- RFC-021 D21.1 : ce qu'une personne confie à son agent. Le jeton lui-même
+-- RFC-022 D22.1 : ce qu'une personne confie à son agent. Le jeton lui-même
 -- n'est jamais écrit : seule son empreinte l'est, et elle ne se montre pas.
 CREATE TABLE IF NOT EXISTS jetons_agent (
     id               TEXT PRIMARY KEY,
@@ -526,7 +526,7 @@ class Comptes:
         self._db.execute("DELETE FROM sessions WHERE jeton = ?", (jeton,))
         self._db.commit()
 
-    # --- les jetons d'agent (RFC-021 D21.1) --------------------------------
+    # --- les jetons d'agent (RFC-022 D22.1) --------------------------------
 
     def emettre_jeton(
         self,

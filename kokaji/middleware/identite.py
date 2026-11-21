@@ -123,7 +123,7 @@ class Identification:
         if self.comptes is None:
             return None
         if self.jeton(requete).startswith(PREFIXE_AGENT):
-            # RFC-021 D21.2 — un jeton d'agent ne vaut que sur la surface de
+            # RFC-022 D22.2 — un jeton d'agent ne vaut que sur la surface de
             # l'agent. Ici, il ne désigne personne, et on le dit plutôt que de
             # laisser un en-tête voisin parler à sa place.
             raise HTTPException(
@@ -281,7 +281,7 @@ def routeur_comptes(
                 ],
             }
 
-        # --- les jetons d'agent (RFC-021 D21.1, §4.4) ----------------------
+        # --- les jetons d'agent (RFC-022 D22.1, §4.4) ----------------------
         #
         # Ils s'émettent d'une session humaine, jamais d'un jeton d'agent :
         # `qui` refuse un jeton d'agent hors de sa surface, si bien qu'un agent

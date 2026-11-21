@@ -1178,7 +1178,7 @@ def _inviter(args) -> int:
 
 
 def _jeton(args) -> int:
-    """RFC-021 D21.1 — le geste de l'exploitant sur les jetons d'agent.
+    """RFC-022 D22.1 — le geste de l'exploitant sur les jetons d'agent.
 
     La personne le fait depuis son Profil ; cette commande est pour qui tient
     la machine, et pour éprouver la surface de l'agent avant que la page
@@ -1902,7 +1902,7 @@ def main(argv: list[str] | None = None) -> int:
 
     from .comptes.modele import PORTEES
 
-    jeton = sous.add_parser("jeton", help="les jetons d'agent d'un compte (RFC-021)")
+    jeton = sous.add_parser("jeton", help="les jetons d'agent d'un compte (RFC-022)")
     gestes_jeton = jeton.add_subparsers(dest="geste", required=True)
     for nom_geste, aide in (
         ("creer", "émettre un jeton — affiché une seule fois"),
