@@ -71,8 +71,26 @@ garantit ce que la pratique ne livre pas.
 | `GET /chaine` | la topologie déclarée, pour le QG (§8) |
 | `GET /sante` | le service répond-il |
 
-Lié à la loopback par défaut. La surface **MCP** de R7.4 n'existe pas encore ;
-ces routes en sont la matière.
+Lié à la loopback par défaut. La surface **MCP** de R7.4, sur la pratique,
+n'existe pas encore ; ces routes en sont la matière.
+
+## La surface de l'agent — `POST /mcp` (RFC-022)
+
+Un client MCP agit **au nom d'un compte**, par un jeton d'agent que la
+personne émet elle-même (`POST /moi/jetons`, ou `kokaji jeton creer`). Sur
+`/mcp`, ce jeton est la seule identité qui vaille ; ailleurs, il est refusé.
+Il ne porte jamais l'administration, et sa portée (`lecture`, `conception`)
+s'ajoute au rôle sur le harness. La surface porte l'autorat, pas la pratique.
+
+Brancher un agent en ligne de commande, par exemple :
+
+```
+<agent> mcp add --transport http kokaji https://<hôte de l'instance>/mcp \
+  --header "Authorization: Bearer kkj_…"
+```
+
+L'instance doit publier `/mcp` **sans** son portail devant, et ce préfixe
+seulement (RFC-022 §4.5).
 
 ## Installation
 

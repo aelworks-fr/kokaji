@@ -49,11 +49,17 @@ except ModuleNotFoundError as err:  # pragma: no cover - dépend de l'installati
         "la surface HTTP demande l'extra `service` : pip install -e '.[service]'"
     ) from err
 
-__all__ = ["BISCUIT", "ENTETE_CHAT", "Identification", "routeur_comptes", "routeur_pages"]
+__all__ = [
+    "AGENT", "BISCUIT", "ENTETE_CHAT", "Identification", "routeur_comptes", "routeur_pages",
+]
 
 BISCUIT = "kokaji_session"
 # Le nom par défaut de l'en-tête où le chat pose son jeton signé.
 ENTETE_CHAT = "X-OpenWebUI-User-Jwt"
+# RFC-022 — la clé, dans la portée ASGI, où la surface de l'agent pose le compte
+# au nom duquel elle appelle une route. Ce n'est pas un en-tête : un client ne
+# peut pas l'écrire, seule la surface de l'agent, dans le même processus.
+AGENT = "kokaji.agent"
 
 
 class Identification:
@@ -118,10 +124,31 @@ class Identification:
             return entete[7:].strip()
         return requete.cookies.get(BISCUIT, "")
 
+    def agent(self, requete: Request):
+        """`(compte, jeton)` quand la surface de l'agent appelle, sinon `None`."""
+        return requete.scope.get(AGENT)
+
+    def par_jeton_agent(self, requete: Request):
+        """La surface de l'agent identifie par le jeton, **et par lui seul**
+        (D22.2) : ni l'en-tête du portail, ni le jeton du chat, ni une session.
+        Sur ce chemin, le portail n'est pas devant — lire son en-tête rendrait
+        l'identité déclarative."""
+        if self.comptes is None:
+            raise HTTPException(status_code=404, detail="aucun magasin de comptes")
+        try:
+            return self.comptes.par_jeton_agent(self.jeton(requete))
+        except IdentiteInconnue as err:
+            raise HTTPException(
+                status_code=401, detail=str(err), headers={"WWW-Authenticate": "Bearer"}
+            ) from err
+
     def qui(self, requete: Request) -> Utilisateur | None:
         """`None` en mode mono-utilisateur, jamais en mode partagé."""
         if self.comptes is None:
             return None
+        agent = self.agent(requete)
+        if agent is not None:
+            return agent[0]
         if self.jeton(requete).startswith(PREFIXE_AGENT):
             # RFC-022 D22.2 — un jeton d'agent ne vaut que sur la surface de
             # l'agent. Ici, il ne désigne personne, et on le dit plutôt que de
@@ -162,6 +189,10 @@ class Identification:
         qui = self.qui(requete)
         if self.comptes is None or qui is None:
             return ANONYME
+        if self.agent(requete) is not None:
+            # D22.3 — un agent ne porte jamais l'administration, même au nom
+            # d'un compte qui l'a : elle n'est pas absente, elle est inexprimable.
+            return COMPTE
         return ADMINISTRATION if self.comptes.est_admin(qui.id) else COMPTE
 
     def exiger_de_service(self, requete: Request, geste: str) -> Utilisateur | None:

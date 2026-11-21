@@ -64,8 +64,13 @@ def sceller(
     auteur: str,
     motif: str = "",
     quand: datetime | None = None,
+    via: str = "",
 ) -> Scellement:
-    """Vérifie, puis écrit. Rien n'est touché si le verdict ne tient pas."""
+    """Vérifie, puis écrit. Rien n'est touché si le verdict ne tient pas.
+
+    `via` dit par où le geste est passé quand ce n'est pas de la main de son
+    auteur — un agent, par exemple (RFC-022 D22.8). Vide, rien n'est écrit.
+    """
     racine = Path(racine)
     if not auteur.strip():
         raise ScellementRefuse(
@@ -107,6 +112,7 @@ def sceller(
             auteur=auteur,
             motif=motif,
             quand=quand,
+            via=via,
             versions={str(entete.get("id") or "harness"): str(entete.get("version") or "")},
             changements=(),
         ))
@@ -193,6 +199,7 @@ def sceller(
         auteur=auteur,
         motif=motif,
         quand=quand,
+        via=via,
         versions=versions,
         changements=tuple(str(c) for c in verdict.changements),
     ))
@@ -211,6 +218,7 @@ def _tracer(
     quand: datetime | None,
     versions: dict[str, str],
     changements: tuple[str, ...],
+    via: str = "",
 ) -> Scellement:
     """Écrit la trace au journal des scellements — la seule chose qu'un arrêt écrit.
 
@@ -224,6 +232,7 @@ def _tracer(
         versions=versions,
         changements=changements,
         racine=racine,
+        via=via.strip(),
     )
     with (racine / JOURNAL).open("a", encoding="utf-8") as f:
         f.write(
@@ -234,6 +243,7 @@ def _tracer(
                     "le": trace.quand,
                     "versions": trace.versions,
                     "changements": list(trace.changements),
+                    **({"via": trace.via} if trace.via else {}),
                 },
                 ensure_ascii=False,
             )

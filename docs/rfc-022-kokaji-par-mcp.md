@@ -100,6 +100,12 @@ Les gestes d'autorat vivent aujourd'hui dans les fermetures des routes (`service
 
 L'extraction ne change **aucun** comportement de la surface HTTP ; les tests existants le prouvent en restant verts sans retouche.
 
+> **Amendement du 21 novembre 2026 — la route est le geste ; on l'appelle en processus.**
+>
+> Extraire les gestes avant d'ouvrir la surface coûtait un lot entier sans rien rendre d'utilisable, et il y avait plus court pour tenir la même exigence. Un outil MCP **appelle la route elle-même**, dans le même processus, par un appel ASGI interne : l'application du harness nommé pour un geste d'œuvre, l'application commune pour un geste de service. Le compte voyage dans la **portée ASGI** (`kokaji.agent`), jamais dans un en-tête : un client ne peut pas l'écrire, et l'appel interne ne porte aucun en-tête du client, donc aucun en-tête du portail. `Identification.qui` lit cette portée d'abord ; `qualite` y plafonne à `compte` (D22.3) ; la route de scellement y prend l'auteur et le `via` (D22.8).
+>
+> L'exigence d'une seule autorité tient donc mieux qu'avec l'extraction : il n'y a pas deux traductions d'une fonction, il y a une route et un appel à cette route. La matrice, les refus et leurs mots sont ceux de la page. Le lot B est remplacé par ce choix ; l'extraction reste possible plus tard, si une route devient trop lourde à appeler ainsi.
+
 ### D22.7 — Ce qui entre : l'autorat, possession comprise, sauf le transfert
 
 Tout geste d'**œuvre** entre. Les gestes de **possession** (RFC-004 §3) entrent aussi, parce que la personne les a sur ses harness et qu'ils se défont : archiver se désarchive, un contributeur retiré se rajoute, un dépôt désenregistré se réenregistre (RFC-012 D12.2 : rien n'est détruit).
@@ -123,6 +129,8 @@ Un agent qui conçoit un harness doit savoir ce qu'est un harness. La surface MC
 ### 4.1 Le point d'entrée
 
 `POST /mcp` (et `GET /mcp` pour le flux serveur du transport HTTP « streamable » du protocole), servi par le même processus que le service, **avant** l'aiguilleur et hors de toute application de harness. Le serveur MCP est un extra : `pip install -e '.[mcp]'` ajoute le SDK Python officiel du protocole. Sans l'extra, `/mcp` n'existe pas — il ne répond pas 500.
+
+> **Amendement du 21 novembre 2026 — pas d'extra, le protocole « juste assez ».** Le transport HTTP du protocole admet qu'un serveur réponde en JSON plutôt qu'en flux. `kokaji/middleware/mcp.py` tient donc JSON-RPC sur `POST /mcp` (`initialize`, `ping`, `tools/list`, `tools/call`, les notifications acquittées en 202) et répond 405 à `GET /mcp` : ni session, ni flux serveur, ni dépendance de plus que l'extra `service`. `/mcp` existe dès qu'un magasin de comptes existe ; sans magasin, il n'y a ni compte ni jeton, et la route n'est pas montée.
 
 Aucune émission réseau nouvelle : le serveur MCP **reçoit**, il n'appelle personne (R12.5 intacte).
 
@@ -272,9 +280,9 @@ La publication de `/mcp` sur une instance est un geste de l'instance (§4.5), ho
 | Lot | État |
 |---|---|
 | A — les jetons d'agent | appliqué (18 novembre 2026) — table `jetons_agent` aux deux moteurs (empreinte SHA-256, jamais le jeton), `emettre_jeton`, `jetons_de`, `revoquer_jeton`, `par_jeton_agent` ; `GET`/`POST`/`DELETE /moi/jetons` ; `kokaji jeton creer\|lister\|revoquer` ; hors de la surface de l'agent, un jeton `kkj_` est refusé avant tout autre en-tête (D22.2) ; sabotages 3 et 5 en tests (`tests/test_jetons_agent.py`), vus refuser en retirant la garde et le contrôle de révocation |
-| B — les gestes extraits | proposé |
-| C — la surface MCP en lecture | proposé |
-| D — la surface MCP en écriture | proposé |
+| B — les gestes extraits | remplacé (21 novembre 2026) — l'outil appelle la route en processus, le compte dans la portée ASGI (amendement de D22.6) |
+| C — la surface MCP en lecture | appliqué (21 novembre 2026) — `kokaji/middleware/mcp.py`, monté sur l'application commune quand un magasin existe ; identité par jeton seul, qualité plafonnée, portée, harness nommé ; outils « Lire » ; sabotages 1, 2, 3, 4, 6, 8, 9, 11, 14 en tests (`tests/test_mcp.py`), vus refuser en retirant tour à tour la portée, la garde du harness d'autrui, le plafond, l'identité par jeton seul. Les ressources du §4.3 (D22.9) ne sont pas servies : `docs/` n'est pas dans l'image ; les consignes d'`initialize` portent le vocabulaire d'une proposition |
+| D — la surface MCP en écriture | appliqué en partie (21 novembre 2026) — `harness_creer`, `harness_adopter`, `etape_adoptee_ajouter`, `proposition_sceller` (auteur = compte, `via: mcp : <jeton>` au journal et dans la réponse), `depot_pousser`, `depot_tirer`, `harness_archiver`, `membres_candidats`, `membre_ajouter`, `membre_retirer` ; sabotages 7 et 10 ; nominal de bout en bout en test. Restent : `harness_cloner`, `depot_enregistrer`, `depot_desenregistrer` |
 | E — la page et les documents | proposé |
 
 ---
