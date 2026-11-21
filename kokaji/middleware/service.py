@@ -1035,14 +1035,22 @@ def creer_harness(
         except AccesRefuse as err:
             raise HTTPException(status_code=403, detail=str(err)) from err
 
+        # RFC-022 D22.8 — par la surface de l'agent, l'auteur n'est pas déclaré :
+        # c'est le compte que le jeton désigne, et la trace nomme le jeton.
+        via = ""
+        agent = identification.agent(requete)
+        if agent is not None:
+            auteur, via = agent[0].nom, f"mcp : {agent[1].nom}"
+
         try:
-            trace = sceller(_racine(), _proposition(proposition), auteur=auteur, motif=motif)
+            trace = sceller(_racine(), _proposition(proposition), auteur=auteur, motif=motif, via=via)
         except ScellementRefuse as err:
             # 409 et non 400 : la proposition est bien formée, c'est l'état du
             # harness qui la refuse.
             raise HTTPException(status_code=409, detail=str(err)) from err
         reponse = {
             "auteur": trace.auteur,
+            **({"via": trace.via} if trace.via else {}),
             "motif": trace.motif,
             "le": trace.quand,
             "versions": trace.versions,

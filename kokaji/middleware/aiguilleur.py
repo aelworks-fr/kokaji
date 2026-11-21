@@ -180,4 +180,23 @@ def creer_tous(
             accueillir, chat,
         )
     )
+    # RFC-022 — la surface de l'agent. Sans magasin, il n'y a ni compte au nom
+    # duquel agir ni jeton à présenter : elle n'existe pas, plutôt que de
+    # répondre 500.
+    if comptes is not None:
+        from importlib.metadata import PackageNotFoundError, version
+
+        from .mcp import routeur_mcp
+
+        try:
+            produit = version("kokaji")
+        except PackageNotFoundError:  # pragma: no cover - un paquet non installé
+            produit = ""
+        commun.include_router(
+            routeur_mcp(
+                identification, comptes,
+                commun=lambda: commun, applications=lambda: aiguilleur.applications,
+                version=produit,
+            )
+        )
     return aiguilleur

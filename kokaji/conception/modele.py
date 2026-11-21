@@ -204,3 +204,6 @@ class Scellement:
     # raison pour laquelle il n'y en a pas — jamais un silence.
     commit: str = ""
     commit_motif: str = ""
+    # Par où le geste est passé, quand ce n'est pas de la main de son auteur
+    # (RFC-022 D22.8) : l'auteur reste la personne, `via` nomme son agent.
+    via: str = ""
