@@ -85,6 +85,7 @@ Deux conséquences :
 - **Veille** — itère sur les harness ; un processus, N harness, leurs corpus respectifs.
 - **QG** — `/qg/profil` renvoie déjà une liste de harness bâtie avec un seul élément ; elle se remplit depuis `harness_de()`. Un sélecteur, et une route pour changer de harness courant. **L'URL ne change pas** : le harness courant est un état du compte, pas un segment d'adresse.
 - **Dojo** — le montage passe du dossier d'un harness au dossier des harness ; Open WebUI pointe sur Kokaji ; un secret partagé pour le JWT d'identité.
+- **RFC-022, l'autre façon de résoudre le harness** — un appel MCP **nomme** son harness en argument, et le harness courant du compte n'est **ni lu ni écrit** par cet appel ([RFC-022](rfc-022-kokaji-par-mcp.md) D22.5). L'isolation par la portée de l'aiguilleur tient à l'identique : elle est simplement résolue par l'argument au lieu du choix enregistré. La raison est que le harness courant appartient à la **pratique** — il décide ce que le chat sert à la personne ; un agent qui le changerait pour travailler changerait, à l'insu de la personne, les modèles qu'on lui offre.
 - **RFC-004 §6, amendé** — il prévoyait des clés LiteLLM « par utilisateur et usage » (`chat-<qui>`) comme mécanisme d'attribution du praticien. L'identité signée transmise par le chat rend ce mécanisme inutile pour le chat : le praticien vient de l'identité, pas de la clé. Les clés par usage (`chat-public`, `banc`) restent — elles disent *quel appelant*, ce qui range le ha dans le bon corpus, et cela reste vrai.
 
 ## 6. Non-objectifs de ce RFC

@@ -17,6 +17,8 @@ Un **harness** est un ensemble cohérent de **kata** — des formes codifiées d
 
 **Au périmètre également :** le **harness courant** ([RFC-005](docs/rfc-005-harness-courant.md)) — une personne choisit le harness qu'elle pratique, et la surface des modèles qui lui est offerte s'en déduit. Le RFC-005 entame à son tour le non-objectif « hébergement pour des tiers », et l'entame est nommée : **servir plusieurs harness à plusieurs personnes sur un même Dojo** entre au périmètre ; ce qui fait d'un service un produit vendu — quotas, facturation, catalogue de harness — reste dehors.
 
+**Au périmètre également :** l'**autorat par un agent** ([RFC-022](docs/rfc-022-kokaji-par-mcp.md)) — un agent qui parle le protocole MCP fait naître un harness, le lit, le conçoit, l'éprouve et le scelle, **au nom d'un compte existant**, par un jeton que la personne lui confie. Ce n'est pas un tiers de plus au périmètre : c'est la même personne, par un autre outil, et **plus étroitement** — la portée d'un jeton délègue moins qu'elle n'a, l'administration y est inexprimable, et la pratique reste hors de cette surface.
+
 **Non-objectifs (v1) :** hébergement pour des tiers *au-delà de ce que le RFC-005 fait entrer* (donc : quotas, facturation, catalogue ou installation de harness par un tiers), données réelles de quelque organisation que ce soit, intégration à des outils d'entreprise, organisations et équipes, harness publics ou découvrables, partage de sujets.
 
 ## 1. Modèle conceptuel et vocabulaire
@@ -205,7 +207,7 @@ Service léger (FastAPI) adossé aux logs du Dojo.
 `options` et `decision` sont **facultatifs** : seuls les kata déclarés `emet_options: true` les émettent. Une option est une possibilité nommée et non engagée ; une décision déclare le delta de possibles qu'elle referme et qu'elle ouvre. On mesure l'espace **déclaré**, jamais l'espace réel — même geste épistémique que les statuts de champs.
 - R7.2 — Bloc malformé : loggé, jamais bloquant pour la session.
 - R7.3 — **Capture par défaut** : toute session close devient un ha `brut` complet (cf. §6) — la promotion est humaine, la capture ne l'est jamais.
-- R7.4 — (Ultérieur) Interface MCP lecture seule : `list_ha`, `get_transcript`, `get_state(sujet)`.
+- R7.4 — **La surface MCP existe, sur l'autorat.** `POST /mcp` ouvre à un agent les gestes d'autorat, au nom d'un compte et par un jeton d'agent ([RFC-022](docs/rfc-022-kokaji-par-mcp.md)) — lire une définition, proposer, faire éprouver par la trempe, sceller. La **lecture de la pratique** par MCP (`list_ha`, `get_transcript`, `get_state(sujet)`) reste ultérieure : elle demandera sa propre portée, R12.4 rendant la décision assez lourde pour qu'on ne la prenne pas en passant.
 
 ## 8. Le QG — fil d'ariane d'hypothèses
 
@@ -255,3 +257,7 @@ Le co-autorat ([RFC-004](docs/rfc-004-utilisateurs-co-autorat.md)) ajoute quatre
 La séparation produit / instance ([RFC-009](docs/rfc-009-separation-produit-instance.md) D9.4) en ajoute une cinquième :
 
 - R12.5 — **Souveraineté.** Chaque instance est souveraine : aucune télémétrie, aucun compte central, aucune émission réseau hors des appels aux moteurs qu'elle configure. Toute destination réseau en dur dans le produit, hors ces appels, est un bug ; la trempe du produit la détecte.
+
+L'autorat par un agent ([RFC-022](docs/rfc-022-kokaji-par-mcp.md)) en ajoute une sixième :
+
+- R12.6 — **Un jeton d'agent est plus étroit que la personne, jamais plus large.** Il **désigne** un compte et n'en crée aucun ; il ne vaut que sur `/mcp`, et sur ce chemin il est la **seule** identité qui vaille — ni l'en-tête d'identité du portail, ni le jeton signé du chat, ni une session n'y sont lus ; il ne porte **jamais** l'administration, la qualité d'un appelant par jeton étant plafonnée à `compte` ; il ne **crée jamais** de jeton, seule une session humaine en émet. Son empreinte seule est gardée (SHA-256), il a une échéance, et il se révoque. Une fuite de jeton n'est pas une fuite de session.

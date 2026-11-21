@@ -147,3 +147,35 @@ jamais effacé par une veille qui ne saurait pas le nommer (RFC-019).
 `Remote-*` lu sans vérification ; un compte créé parce qu'un email inconnu
 s'est présenté ; une conversation attribuée à la clé plutôt qu'à la personne ;
 un passage de veille qui remet un praticien à vide.
+
+## #13 — Sur un chemin sans portail, aucun en-tête d'identité ne vaut
+
+*Versée par la [RFC-022](rfc-022-kokaji-par-mcp.md), novembre 2026.*
+
+La vigilance #12 dit qu'une identité se lit signée. Elle laissait debout une
+condition tacite : l'en-tête d'identité du portail est sûr **parce que le
+portail l'écrase**. Un client MCP n'est pas un navigateur — il ne franchit pas
+un portail interactif — donc `/mcp` est publié **sans** le portail devant, et
+la condition tombe. Lire l'en-tête sur ce chemin rendrait l'identité
+déclarative : quiconque atteint `/mcp` pourrait s'annoncer sous n'importe
+quelle adresse.
+
+L'autre moitié du piège est la paresse inverse : donner à l'agent la session de
+la personne, et s'arrêter là. Ce serait lui donner tout ce qu'elle a, y compris
+ce qu'elle n'a jamais voulu déléguer — l'administration, la pratique, le choix
+de ce que le chat lui sert. Un agent agit au nom de quelqu'un ; il n'est pas
+quelqu'un.
+
+**Ce qu'on oppose** : sur `/mcp`, le jeton garde, et rien d'autre — l'en-tête
+du portail, le jeton signé du chat, le biscuit et le jeton de session y sont
+ignorés ; hors de `/mcp`, un jeton d'agent ne vaut rien, et une fuite de jeton
+n'est donc pas une fuite de session ; un jeton est **plus étroit que la
+personne, jamais plus large** — portée, échéance, plafond à `compte`, et jamais
+le pouvoir d'émettre un jeton ; tout ce qu'il fait se signe du nom de la
+personne, avec à côté le nom de l'agent (`via`).
+
+**Ce qui trahirait la vigilance** : un `--entete-identite` lu sur `/mcp` ; un
+jeton d'agent accepté sur la page, le QG ou le relais du chat ; un jeton sans
+échéance, ou qu'aucune révocation n'atteint ; une portée inconnue traitée
+comme permissive ; un geste d'administration atteignable par jeton ; un
+scellement par agent indiscernable, au journal, d'un scellement fait à la main.

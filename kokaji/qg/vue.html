@@ -739,6 +739,43 @@
     <p class="profil-sous">Ce que tu possèdes ou co-forges.</p>
     <div id="profil-harness"></div>
   </div>
+
+  <div>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <h2 style="flex:1 1 auto">Accès des agents</h2>
+      <button class="btn-plein" id="btn-confier-jeton" hidden>Confier un jeton à un agent</button>
+    </div>
+    <p class="profil-sous">Un jeton laisse un agent travailler en ton nom, sur la seule surface
+      <span class="mono">/mcp</span>, et jamais sur l'administration. Il est plus étroit que toi :
+      ce qu'il peut, ton rôle sur le harness le permet déjà et sa portée le couvre.</p>
+
+    <div class="card elev-sm" id="jeton-emettre" hidden style="padding:20px 24px;margin-bottom:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div style="flex:1;min-width:13rem">
+          <label class="mot" for="jeton-nom">Nom de l'agent</label>
+          <input class="champ-large" id="jeton-nom" autocomplete="off" style="margin-top:6px"
+                 placeholder="l'agent de mon poste">
+        </div>
+        <div>
+          <label class="mot" for="jeton-portee">Portée</label>
+          <select class="pill-select" id="jeton-portee" style="margin-top:6px;display:block">
+            <option value="lecture">lire et éprouver</option>
+            <option value="conception" selected>lire, éprouver et concevoir</option>
+          </select>
+        </div>
+        <div>
+          <label class="mot" for="jeton-echeance">Échéance, en jours</label>
+          <input class="champ-large" id="jeton-echeance" type="number" min="1" max="365" value="90"
+                 style="margin-top:6px;width:8rem">
+        </div>
+        <button class="btn-fantome" id="jeton-confier" style="min-height:40px">confier</button>
+      </div>
+      <p class="rien" id="jeton-portee-dit" style="margin:10px 0 0"></p>
+      <div class="journal-scel" id="jeton-montre" hidden style="overflow-wrap:anywhere"></div>
+    </div>
+
+    <div id="profil-jetons"></div>
+  </div>
 </section>
 
 <section id="module-design" hidden class="design">
@@ -2061,6 +2098,112 @@ async function rendreProfil() {
   $("profil-harness").querySelectorAll("button[data-design]").forEach(b => {
     b.onclick = () => aller(routeDe("design"));
   });
+
+  rendreJetons();
+}
+
+
+// --- « Accès des agents » — mes jetons d'agent (RFC-022 D22.1, §4.4) ------
+//
+// Un jeton est un accès **de la personne**, pas une propriété d'une œuvre : il
+// vit donc au Profil, et nulle part dans un harness. La page n'en montre
+// jamais l'empreinte, et le jeton lui-même ne passe **qu'une fois** — à la
+// création, dans le bloc de journal, comme le lien d'une invitation. Révoquer
+// se confirme en deux temps sur le même bouton, comme le retrait d'un nœud
+// (K-22).
+//
+// Aucune forme neuve : h2 et sous-titre du Profil, carte d'émission de
+// l'invitation, rangées à tags, bloc `journal-scel`.
+const PORTEE_DIT = {
+  lecture: "Lire tes harness, leur définition, leurs coupes, l'état de leur dépôt, leurs "
+    + "membres — et éprouver une proposition, sans rien écrire.",
+  conception: "Tout ce que « lire » couvre, plus : faire naître un harness, adopter un texte, "
+    + "sceller, pousser et tirer le dépôt. Jamais l'administration, jamais ta pratique.",
+};
+let jetonArme = null;
+
+async function rendreJetons() {
+  let d;
+  try { d = await lire("/moi/jetons"); }
+  catch {
+    // Sans magasin de comptes, il n'y a ni compte ni jeton, et la surface de
+    // l'agent n'est pas montée. On le dit, plutôt que de faire disparaître la
+    // section sans rien expliquer.
+    $("btn-confier-jeton").hidden = true;
+    $("jeton-emettre").hidden = true;
+    $("profil-jetons").innerHTML = `<p class="rien">Cette installation n'a pas de magasin de comptes :
+      il n'y a ni compte ni jeton, et la surface de l'agent n'est pas montée.</p>`;
+    return;
+  }
+  $("btn-confier-jeton").hidden = false;
+
+  const jour = (iso) => String(iso || "").slice(0, 10);
+  const liste = d.jetons || [];
+  $("profil-jetons").innerHTML = liste.length ? liste.map(j => {
+    const perime = Boolean(j.expire_le) && Date.parse(j.expire_le) < Date.now();
+    const mort = Boolean(j.revoque_le) || perime;
+    const etat = j.revoque_le ? "révoqué le " + jour(j.revoque_le)
+      : perime ? "périmé le " + jour(j.expire_le)
+      : "valable jusqu'au " + jour(j.expire_le);
+    return `<div class="rangee">
+      <div style="flex:1;min-width:0">
+        <div class="rangee-nom">${e(j.nom)}</div>
+        <div class="rangee-meta">confié le ${e(jour(j.cree_le))} · ${e(etat)} · ${
+          j.dernier_usage_le ? "dernier usage le " + e(jour(j.dernier_usage_le)) : "jamais servi"}</div>
+      </div>
+      <span class="tag ${j.portee === "conception" ? "tag-accent" : "tag-neutral"}"
+            title="ce que tu as délégué : un geste exige ton rôle ET cette portée">${e(j.portee)}</span>
+      ${mort ? `<span class="tag" style="background:${jeton("neutral-900")};color:${jeton("bg")}"
+            >${j.revoque_le ? "révoqué" : "périmé"}</span>` : ""}
+      ${mort ? "" : `<button class="btn-fantome btn-encre" data-revoquer="${e(j.id)}" style="min-height:40px"
+            >${jetonArme === j.id ? `confirmer la révocation de « ${e(j.nom)} »` : "révoquer…"}</button>`}
+    </div>`;
+  }).join("")
+    : `<p class="rien">Aucun jeton. Tant qu'il n'y en a pas, aucun agent n'agit en ton nom.</p>`;
+
+  $("profil-jetons").querySelectorAll("button[data-revoquer]").forEach(b => {
+    b.onclick = async () => {
+      const id = b.dataset.revoquer;
+      if (jetonArme !== id) { jetonArme = id; rendreJetons(); return; }
+      jetonArme = null;
+      try { await envoyer("DELETE", "/moi/jetons/" + encodeURIComponent(id)); }
+      catch (err) { b.textContent = err.message; return; }
+      rendreJetons();
+    };
+  });
+}
+
+function direLaPortee() {
+  $("jeton-portee-dit").textContent = PORTEE_DIT[$("jeton-portee").value] || "";
+}
+
+async function confierUnJeton() {
+  const nom = $("jeton-nom").value.trim();
+  const montre = $("jeton-montre");
+  if (!nom) { $("jeton-nom").focus(); return; }
+  let d;
+  try {
+    d = await envoyer("POST", "/moi/jetons", {
+      nom,
+      portee: $("jeton-portee").value,
+      echeance_jours: Number($("jeton-echeance").value) || 90,
+    });
+  } catch (err) {
+    montre.hidden = false; montre.textContent = err.message; return;
+  }
+  // Montré une fois, et pas une fois de plus : le magasin n'en garde que
+  // l'empreinte — personne, pas même l'administration, ne peut le réafficher.
+  montre.hidden = false;
+  montre.innerHTML = `<div class="mot" style="font-family:var(--font-body)">À copier maintenant :
+      ce jeton ne sera plus affiché, et il ne peut pas l'être — le magasin n'en garde que
+      l'empreinte. S'il se perd, on en confie un autre et on révoque celui-ci.</div>
+    <div style="margin-top:8px;font-weight:600">${e(d.jeton)}</div>
+    <div class="mot" style="font-family:var(--font-body);margin-top:10px">À donner à ton agent en
+      ligne de commande, par exemple :</div>
+    <div style="margin-top:4px">&lt;agent&gt; mcp add --transport http kokaji ${e(location.origin)}/mcp \\
+      --header "Authorization: Bearer ${e(d.jeton)}"</div>`;
+  $("jeton-nom").value = "";
+  rendreJetons();
 }
 
 
@@ -3673,6 +3816,13 @@ async function creerHarness() {
   };
   $("btn-inviter").onclick = () => { $("comptes-inviter").hidden = !$("comptes-inviter").hidden; $("inviter-email").focus(); };
   $("inviter-envoyer").onclick = ouvrirUneInvitation;
+  $("btn-confier-jeton").onclick = () => {
+    $("jeton-emettre").hidden = !$("jeton-emettre").hidden;
+    if (!$("jeton-emettre").hidden) $("jeton-nom").focus();
+  };
+  $("jeton-portee").onchange = direLaPortee;
+  $("jeton-confier").onclick = confierUnJeton;
+  direLaPortee();
   $("ne-annuler").onclick = () => { $("voile-naissance").close(); };
   $("ne-id").oninput = naissancePrete;
   $("ne-nom").oninput = naissancePrete;

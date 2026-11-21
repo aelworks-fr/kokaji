@@ -108,6 +108,8 @@ Rend `{ texte, estampille }`, ou un verdict de forge (`ForgeImpossible`) en 422 
 
 `/conception/epreuve` et `/conception/scellement` acceptent `template` dans la proposition. Le verdict liste `template` parmi les changements ; les versions annoncées avant le scellement disent quels kata montent (aucun pour un gabarit seul : c'est le harness qui monte).
 
+> **Amendement du 21 novembre 2026 — par MCP, l'auteur n'est pas un argument.** Par HTTP, `/conception/scellement` reçoit `auteur` dans le corps. Par MCP ([RFC-022](rfc-022-kokaji-par-mcp.md) D22.8), c'est le nom du compte que le jeton désigne : un agent ne signe pas au nom de quelqu'un d'autre, et un `auteur` glissé dans les arguments est refusé comme argument inconnu. L'entrée de journal gagne un `via` qui dit par où le geste est passé — « scellé par <la personne>, via <le nom du jeton> ». La responsabilité reste la personne, c'est son jeton ; l'observabilité garde la différence entre ce qu'elle a fait de sa main et ce qu'elle a fait faire.
+
 ### 4.4 La page — un quatrième axe : « 4 · Coupes »
 
 Dans « Design du harness », à côté de Partitionnement, Contrats et Trempe. Deux colonnes :

@@ -43,6 +43,10 @@ harness_acl { harness_id, proprietaire: utilisateur_id, contributeurs: [utilisat
 
 Le RFC-002 disait « le forgeron du harness » au singulier : lire désormais « tout co-auteur », le versionnage signé assurant la responsabilité. La discipline remplace le goulot.
 
+> **Amendement du 21 novembre 2026 — la portée d'un jeton d'agent s'ajoute au rôle.** Quand l'appelant est un agent agissant au nom d'un compte ([RFC-022](rfc-022-kokaji-par-mcp.md) D22.4), cette matrice ne suffit plus à décider : **un geste n'est permis que si le rôle le permet ET la portée du jeton le couvre**. La portée ne remplace rien et n'élargit rien — une personne délègue moins qu'elle n'a. Un jeton `lecture` lit et éprouve ; un jeton `conception` ajoute faire naître, adopter, sceller, pousser et tirer, et les gestes de possession. Une portée inconnue ne couvre rien.
+>
+> Deux lignes de cette table restent hors de portée de tout jeton : **transférer la propriété** (D22.7 — c'est le seul geste d'autorat que son auteur ne peut pas défaire ; il se fait de sa main, depuis la page) et **supprimer le harness** (non construit, RFC-006 §5). Et l'administration — comptes, invitations, activation au chat, vigie d'administration — n'est pas seulement refusée à un jeton : elle lui est **inexprimable**, la qualité qui l'autorise ne pouvant pas naître sur `/mcp` (D22.3).
+
 ## 4. L'onglet Profil (le design existant fait foi pour la forme)
 
 Contenu contractuel : **ma liste de harness** avec mon rôle badgé (propriétaire / contributeur) ; **mes activités accessibles** — les sujets que je peux observer ou pratiquer, et par quel harness ; mes informations de compte. Le design réalisé est la référence visuelle — versé au repo (`design/profil/`) ; toute divergence entre le design et ce modèle se résout par amendement de l'un ou de l'autre, explicitement.
@@ -53,6 +57,24 @@ Contenu contractuel : **ma liste de harness** avec mon rôle badgé (propriétai
 > 2. **Les activités accessibles entrent au contenu contractuel.** Le design les a nommées, le §5 les rendait déjà nécessaires — les sujets appartiennent à leur praticien, encore faut-il pouvoir lire les siens. Elles manquaient au RFC, pas au produit.
 >
 > Les routes de gestion des membres (`GET/POST /membres`, `DELETE /membres/{id}`, `POST /transfert`) restent en service et éprouvées par les sabotages du §8 : c'est leur surface qui se déplace, pas leur contrat. **Rien n'a été dessiné pour les accueillir** — le module 3 est un emplacement réservé, et inventer sa forme serait la faute que le handoff interdit expressément.
+
+> **Amendement du 21 novembre 2026 — le Profil gagne « Accès des agents ».** Entre au contenu contractuel du Profil : **mes jetons d'agent** — pour chacun son nom, sa portée, son échéance et son dernier usage, jamais son empreinte ; les gestes d'en confier un à un agent (le jeton n'est montré **qu'une fois**, à la création) et de le révoquer. C'est l'endroit juste : un jeton est un accès **de la personne**, pas une propriété d'une œuvre — le Profil répond à « à quoi ai-je accès, et qui accède en mon nom ». Les routes existent et sont réservées à une session humaine (`GET`/`POST`/`DELETE /moi/jetons`, [RFC-022](rfc-022-kokaji-par-mcp.md) §4.4) : un jeton ne crée jamais un jeton.
+>
+> **Sur la forme, la divergence est tranchée ici, explicitement**, comme le paragraphe d'ouverture de ce §4 l'exige. Rien n'a été dessiné pour accueillir cette section : le handoff de septembre 2026 est antérieur à la RFC-022. Plutôt que d'attendre une maquette ou d'inventer une forme — la faute que le handoff interdit — la section est une **composition de motifs déjà posés**, et d'eux seuls :
+>
+> | Ce qu'il faut montrer | Le motif repris |
+> |---|---|
+> | la section | le `h2` + sous-titre des deux autres sections du Profil |
+> | confier un jeton | le bouton primaire et la carte d'émission de « Ouvrir une invitation » |
+> | le jeton, montré une fois | le bloc `journal-scel` du lien d'invitation et de l'entrée de scellement |
+> | un jeton | la rangée à tags des activités et des harness |
+> | la portée | les tags `tag-accent` / `tag-neutral` du rôle |
+> | révoqué, périmé | le tag encre de la vigie — jamais de rouge |
+> | révoquer | la confirmation en deux temps du retrait d'un nœud (K-22) |
+>
+> **La règle qui en découle, et qui tient la décision :** aucune classe que cette section porte ne peut être neuve. Un test le vérifie (`AccesDesAgents.test_la_section_ne_dessine_aucune_forme_neuve`) et a été vu refuser ; s'il rougit, c'est qu'une forme a été inventée, et il faut la faire dessiner plutôt que la garder. Le jour où « Accès des agents » sera maquetté, le design versé reprend la main sans que rien de contractuel ne change.
+>
+> La commande `kokaji jeton creer|lister|revoquer` reste la porte de l'exploitant, et la seule quand l'instance n'a pas de magasin de comptes.
 
 ## 5. La pratique dans un harness partagé (décision scellée : au choix du praticien, par ha)
 
