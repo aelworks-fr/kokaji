@@ -21,8 +21,11 @@ from .droits import (
     peut_au_service,
 )
 from .modele import (
+    CONCEPTION,
     CONTRIBUTEUR,
     ETRANGER,
+    LECTURE,
+    PORTEES,
     PRIVEE,
     PROPRIETAIRE,
     ROLES,
@@ -30,6 +33,7 @@ from .modele import (
     VISIBILITES,
     Acl,
     AclInvalide,
+    JetonAgent,
     Utilisateur,
 )
 from .portail import PortailIndisponible, inscrire
@@ -38,11 +42,14 @@ __all__ = [
     "ADMINISTRATION",
     "ANONYME",
     "COMPTE",
+    "CONCEPTION",
     "CONTRIBUTEUR",
     "DUREE_INVITATION",
     "ETRANGER",
     "GESTES",
     "GESTES_DE_SERVICE",
+    "LECTURE",
+    "PORTEES",
     "PRIVEE",
     "PROPRIETAIRE",
     "QUALITES",
@@ -54,6 +61,7 @@ __all__ = [
     "AclInvalide",
     "Comptes",
     "IdentiteInconnue",
+    "JetonAgent",
     "PortailIndisponible",
     "Utilisateur",
     "exiger",

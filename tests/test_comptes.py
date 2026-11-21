@@ -172,7 +172,7 @@ def magasin() -> Comptes:
     if not URL_COMPTES_ESSAI:
         return Comptes()
     comptes = Comptes(URL_COMPTES_ESSAI)
-    for table in ("sessions", "harness_depot", "contributeurs", "identites_externes",
+    for table in ("jetons_agent", "sessions", "harness_depot", "contributeurs", "identites_externes",
                   "invitations", "harness_acl", "utilisateurs"):
         comptes._db.execute(f"DELETE FROM {table}")
     comptes._db.commit()
@@ -561,6 +561,26 @@ class Migration(unittest.TestCase):
             qui = comptes.creer_utilisateur("Un", "un@exemple.test", MOT_DE_PASSE)
             comptes.enregistrer_harness("h", qui.id)
             self.assertEqual(comptes.harness_courant(qui.id), "h")
+
+
+class JetonsAgent(unittest.TestCase):
+    """RFC-022 D22.1 sur les deux moteurs — le détail vit dans `test_jetons_agent`."""
+
+    def setUp(self):
+        self.comptes = magasin()
+        self.addCleanup(self.comptes.fermer)
+        self.qui = self.comptes.creer_utilisateur("Une", "une@exemple.test", MOT_DE_PASSE)
+
+    def test_emettre_resoudre_revoquer(self):
+        from kokaji.comptes import IdentiteInconnue
+
+        jeton, emis = self.comptes.emettre_jeton(self.qui.id, "agent", "conception")
+        qui, lu = self.comptes.par_jeton_agent(jeton)
+        self.assertEqual((qui.id, lu.portee), (self.qui.id, "conception"))
+        self.assertIsNotNone(self.comptes.jetons_de(self.qui.id)[0].dernier_usage_le)
+        self.comptes.revoquer_jeton(self.qui.id, emis.id)
+        with self.assertRaises(IdentiteInconnue):
+            self.comptes.par_jeton_agent(jeton)
 
 
 @unittest.skipUnless(URL_COMPTES_ESSAI, "KOKAJI_COMPTES_ESSAI absent : pas de Postgres d'essai")

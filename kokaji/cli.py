@@ -1177,6 +1177,43 @@ def _inviter(args) -> int:
     return 0
 
 
+def _jeton(args) -> int:
+    """RFC-022 D22.1 — le geste de l'exploitant sur les jetons d'agent.
+
+    La personne le fait depuis son Profil ; cette commande est pour qui tient
+    la machine, et pour éprouver la surface de l'agent avant que la page
+    existe. Le jeton s'affiche une fois, sur la sortie standard : rien d'autre
+    ne le garde.
+    """
+    from .comptes import AclInvalide, Comptes, IdentiteInconnue, ou_ouvrir
+
+    comptes = Comptes(ou_ouvrir(args.comptes))
+    try:
+        qui = comptes.par_email(args.email)
+        if qui is None:
+            print(f"✗ aucun compte pour {args.email}", file=sys.stderr)
+            return 2
+        if args.geste == "creer":
+            jeton, emis = comptes.emettre_jeton(qui.id, args.nom, args.portee, args.echeance)
+            print(jeton)
+            print(f"  « {emis.nom} », portée {emis.portee}, jusqu'au {emis.expire_le[:10]} — "
+                  "montré une seule fois.", file=sys.stderr)
+        elif args.geste == "lister":
+            for j in comptes.jetons_de(qui.id):
+                etat = f"révoqué le {j.revoque_le[:10]}" if j.revoque_le else f"jusqu'au {j.expire_le[:10]}"
+                usage = j.dernier_usage_le[:10] if j.dernier_usage_le else "jamais servi"
+                print(f"{j.id}  {j.portee:<10}  {etat:<22}  {usage:<12}  {j.nom}")
+        else:
+            j = comptes.revoquer_jeton(qui.id, args.id)
+            print(f"révoqué : « {j.nom} »")
+    except (AclInvalide, IdentiteInconnue) as err:
+        print(f"✗ {err}", file=sys.stderr)
+        return 2
+    finally:
+        comptes.fermer()
+    return 0
+
+
 def _rattacher(args) -> int:
     """Lie un compte à ce qui existe déjà : le harness, et la pratique orpheline.
 
@@ -1863,6 +1900,25 @@ def main(argv: list[str] | None = None) -> int:
         help="racine du lien — sinon KOKAJI_BASE ; le produit ne connaît aucun domaine (R12.5)",
     )
 
+    from .comptes.modele import PORTEES
+
+    jeton = sous.add_parser("jeton", help="les jetons d'agent d'un compte (RFC-022)")
+    gestes_jeton = jeton.add_subparsers(dest="geste", required=True)
+    for nom_geste, aide in (
+        ("creer", "émettre un jeton — affiché une seule fois"),
+        ("lister", "les jetons d'un compte, sans leur empreinte"),
+        ("revoquer", "révoquer un jeton par son id"),
+    ):
+        g = gestes_jeton.add_parser(nom_geste, help=aide)
+        g.add_argument("--comptes", type=Path, required=True, help="le magasin")
+        g.add_argument("--email", required=True, help="le compte au nom duquel l'agent agit")
+        if nom_geste == "creer":
+            g.add_argument("--nom", required=True, help="à quoi il sert, pour le reconnaître")
+            g.add_argument("--portee", required=True, choices=PORTEES)
+            g.add_argument("--echeance", type=int, default=90, help="en jours, 365 au plus")
+        if nom_geste == "revoquer":
+            g.add_argument("--id", required=True, help="l'id du jeton (voir `lister`)")
+
     rattacher = sous.add_parser(
         "rattacher", help="lier un compte au harness et à la pratique orpheline"
     )
@@ -1979,6 +2035,8 @@ def main(argv: list[str] | None = None) -> int:
         return _compte(args)
     if args.commande == "inviter":
         return _inviter(args)
+    if args.commande == "jeton":
+        return _jeton(args)
     if args.commande == "rattacher":
         return _rattacher(args)
     if args.commande == "note":
