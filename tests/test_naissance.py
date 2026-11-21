@@ -51,6 +51,16 @@ class Copie(Bac):
         self.assertEqual(copie.version, VERSION_INITIALE)
         self.assertNotEqual(copie.version, self.source.version)
 
+    def test_la_copie_nait_sans_carte(self):
+        """RFC-021 D21.1 — la carte modélisait la source, pas la copie."""
+        _ecrire_harness(self.racine / "cartee", MINIMAL.replace(
+            "  domaine: un domaine quelconque\n",
+            "  domaine: un domaine quelconque\n  carte: https://omoikane/?carte=id-1\n"))
+        source = charger(self.racine / "cartee")
+        self.assertEqual(source.carte, "https://omoikane/?carte=id-1")
+        copie = charger(copier(source, self.vers, "neuf", "Neuf"))
+        self.assertEqual(copie.carte, "")
+
     def test_la_definition_suit(self):
         dossier = copier(self.source, self.vers, "neuf", "Neuf")
         self.assertTrue((dossier / "template.md").is_file())

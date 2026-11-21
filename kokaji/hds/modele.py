@@ -287,6 +287,9 @@ class Harness:
     exogene: bool = False
     # Estampillée une fois à l'import — une trace, pas un verrou (RFC-008 §5).
     provenance: tuple[tuple[str, str], ...] = ()
+    # RFC-021 D21.1 — l'adresse de la carte Omoikane qui modélise le harness.
+    # Documentaire comme `domaine` : montrée, jamais suivie. Vide sans carte.
+    carte: str = ""
 
     @property
     def corpus(self) -> Path:

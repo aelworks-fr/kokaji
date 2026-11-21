@@ -38,6 +38,11 @@ class Bac(unittest.TestCase):
 
         for identifiant in self.ids:
             manifest = MINIMAL.replace("id: h\n", f"id: {identifiant}\n")
+            if identifiant == "h":
+                # Le premier harness a sa carte, le second non (RFC-021).
+                manifest = manifest.replace(
+                    "  domaine: un domaine quelconque\n",
+                    "  domaine: un domaine quelconque\n  carte: https://omoikane/?carte=id-1\n")
             _ecrire_harness(racine / identifiant, manifest)
 
         self.comptes = Comptes()
@@ -187,6 +192,14 @@ class Selecteur(Bac):
         vu = self.client.get("/harness", headers=self.cle(self.deux)).json()
         self.assertEqual(vu["harness"][0]["nom"], "H")
         self.assertEqual(vu["harness"][0]["role"], "contributeur")
+
+    def test_la_liste_porte_la_carte_de_chacun(self):
+        """RFC-021 D21.5, critère 3 — `null` sans carte."""
+        self.comptes.enregistrer_harness("h", self.un.id)
+        self.comptes.enregistrer_harness("h2", self.un.id)
+        vu = self.client.get("/harness", headers=self.cle(self.un)).json()
+        cartes = {h["id"]: h["carte"] for h in vu["harness"]}
+        self.assertEqual(cartes, {"h": "https://omoikane/?carte=id-1", "h2": None})
 
     def test_un_harness_mien_mais_non_servi_n_est_pas_propose(self):
         """Le proposer mènerait à un choix qui ne peut pas aboutir."""

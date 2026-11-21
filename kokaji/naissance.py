@@ -119,6 +119,9 @@ def _manifest_recopie(source: Harness, identifiant: str, nom: str) -> dict:
     entete["id"] = identifiant
     entete["nom"] = nom
     entete["version"] = VERSION_INITIALE
+    # La carte modélisait la source, pas la copie : celle-ci divergera dès son
+    # premier scellement. Une copie naît sans carte (RFC-021 D21.1).
+    entete.pop("carte", None)
     donnees["harness"] = entete
     return donnees
 
