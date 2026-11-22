@@ -20,6 +20,9 @@ WORKDIR /kokaji
 
 COPY pyproject.toml README.md ./
 COPY kokaji ./kokaji
+# Le HDS, et lui seul, de `docs/` : la surface de l'agent le sert en ressource
+# (RFC-022 D22.9), et l'empaquetage le range sous `kokaji/standard/`.
+COPY docs/hds-v0.md ./docs/hds-v0.md
 
 RUN pip install --quiet ".[service,base]"
 

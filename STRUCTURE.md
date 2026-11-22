@@ -29,6 +29,7 @@ kokaji/              La forge — paquet Python, CLI `kokaji`
   adoption.py        Adopter un harness né hors de la forge     (RFC-008)
   depot/             Un harness, un dépôt git — init, état      (RFC-012)
   semence/           Le gabarit d'un harness neuf               (RFC-006)
+  standard/          Le HDS embarqué, servi à l'agent           (RFC-022)
 
 tests/               Tests du produit — jamais de fixture de domaine  (§0)
 pyproject.toml       Le paquet et ses extras : service, dev

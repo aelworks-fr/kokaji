@@ -319,6 +319,100 @@ class Surface(unittest.TestCase):
         self.assertTrue(refus["isError"])
         self.assertIn("aucun outil à ce nom", self.texte(refus))
 
+    # --- les ressources du §4.3 (D22.9) ---------------------------------------
+
+    def ressources(self, jeton: str) -> dict:
+        reponse = self.rpc(jeton, "resources/list")
+        self.assertEqual(reponse.status_code, 200, reponse.text)
+        return {r["uri"]: r for r in reponse.json()["result"]["resources"]}
+
+    def lire(self, jeton: str, uri: str) -> dict:
+        reponse = self.rpc(jeton, "resources/read", {"uri": uri})
+        self.assertEqual(reponse.status_code, 200, reponse.text)
+        return reponse.json()
+
+    def test_la_capacite_des_ressources_est_annoncee(self):
+        """Un client qui ne la voit pas ne demandera jamais `resources/list`."""
+        init = self.rpc(self.conception, "initialize", {}).json()["result"]
+        self.assertIn("resources", init["capabilities"])
+        self.assertFalse(init["capabilities"]["resources"]["listChanged"])
+        self.assertNotIn("subscribe", init["capabilities"]["resources"])
+
+    def test_le_catalogue_dit_le_standard_et_les_harness_lisibles(self):
+        offertes = self.ressources(self.conception)
+        self.assertIn("kokaji://standard/hds", offertes)
+        self.assertIn("kokaji://standard/proposition", offertes)
+        # Un possède `adopte` ; `autre` est à Deux, et n'apparaît donc pas.
+        self.assertIn("kokaji://harness/adopte/statuts", offertes)
+        self.assertNotIn("kokaji://harness/autre/statuts", offertes)
+        # Deux est contributeur d'`adopte` et propriétaire d'`autre` : les deux.
+        de_deux = self.ressources(self.de_deux)
+        self.assertIn("kokaji://harness/adopte/statuts", de_deux)
+        self.assertIn("kokaji://harness/autre/statuts", de_deux)
+        # La lecture seule les voit aussi : une ressource est une lecture.
+        self.assertIn("kokaji://standard/hds", self.ressources(self.lecture))
+
+    def test_le_standard_hds_est_servi_tel_quel(self):
+        lu = self.lire(self.conception, "kokaji://standard/hds")
+        (contenu,) = lu["result"]["contents"]
+        self.assertEqual(contenu["mimeType"], "text/markdown")
+        self.assertTrue(contenu["text"].startswith("# HDS"), contenu["text"][:60])
+        # Tel quel : c'est le document du dépôt, pas un résumé.
+        from kokaji.standard import ou_est_le_hds
+
+        self.assertEqual(contenu["text"], ou_est_le_hds().read_text(encoding="utf-8"))
+
+    def test_le_vocabulaire_vient_du_modele_pas_d_une_copie(self):
+        """Une liste recopiée divergerait au premier amendement du modèle."""
+        from kokaji.conception.modele import Proposition
+
+        lu = self.lire(self.conception, "kokaji://standard/proposition")
+        (contenu,) = lu["result"]["contents"]
+        self.assertEqual(contenu["mimeType"], "application/json")
+        dit = json.loads(contenu["text"])
+        self.assertEqual(dit["cles"], list(Proposition.CLES))
+        self.assertEqual(sorted(dit["forme"]), sorted(Proposition.CLES))
+        # Chaque clé est décrite : une forme vide n'apprend rien à l'agent.
+        self.assertTrue(all(dit["forme"].values()), dit["forme"])
+        # L'exemple minimal est une proposition que le modèle accepte **telle
+        # quelle** : rien à filtrer, sinon l'agent recopierait une clé refusée.
+        self.assertEqual(set(dit["exemple_minimal"]) - set(Proposition.CLES), set())
+        Proposition.depuis(dit["exemple_minimal"])
+        # `motif` est un argument du scellement, pas une clé : la ressource le dit.
+        self.assertIn("motif", dit["comment"])
+
+    def test_les_statuts_viennent_de_la_definition(self):
+        lu = self.lire(self.conception, "kokaji://harness/adopte/statuts")
+        (contenu,) = lu["result"]["contents"]
+        dit = json.loads(contenu["text"])
+        self.assertEqual(dit["harness"], "adopte")
+        definition = self.outil(self.conception, "harness_lire", harness="adopte")
+        self.assertEqual(dit["statuts_champ"],
+                         definition["structuredContent"]["statuts_champ"])
+
+    def test_sabotage_8_bis_une_ressource_d_autrui_n_existe_pas(self):
+        """D22.5 jusque dans les ressources : le même mot des deux côtés."""
+        autrui = self.lire(self.conception, "kokaji://harness/autre/statuts")
+        absent = self.lire(self.conception, "kokaji://harness/nulle-part/statuts")
+        self.assertEqual(
+            autrui["error"]["message"].replace("autre", "X"),
+            absent["error"]["message"].replace("nulle-part", "X"),
+        )
+        # Et une adresse qui n'est pas du tout une ressource se refuse de même.
+        self.assertIn("aucune ressource",
+                      self.lire(self.conception, "kokaji://pratique/ha")["error"]["message"])
+
+    def test_le_standard_voyage_avec_la_surface(self):
+        """D22.9 — le lot C livrait la surface sans le standard, parce que
+        `docs/` n'était pas dans l'image. Une ressource annoncée que le
+        déploiement ne sert pas est pire qu'une absence : ces deux lignes sont
+        ce qui fait la différence, et rien dans le code ne les rappelle.
+        """
+        racine = Path(__file__).resolve().parents[1]
+        pyproject = (racine / "pyproject.toml").read_text(encoding="utf-8")
+        self.assertIn('"docs/hds-v0.md" = "kokaji/standard/hds-v0.md"', pyproject)
+        self.assertIn("COPY docs/hds-v0.md", (racine / "Dockerfile").read_text(encoding="utf-8"))
+
     def test_sabotage_11_et_12_ni_pratique_ni_transfert(self):
         noms = {o["name"] for o in self.rpc(self.conception, "tools/list").json()["result"]["tools"]}
         self.assertFalse([n for n in noms if n.split("_")[0] == "ha"])

@@ -82,6 +82,14 @@ personne émet elle-même (`POST /moi/jetons`, ou `kokaji jeton creer`). Sur
 Il ne porte jamais l'administration, et sa portée (`lecture`, `conception`)
 s'ajoute au rôle sur le harness. La surface porte l'autorat, pas la pratique.
 
+Elle sert aussi, en **ressources** (`resources/list`, `resources/read`), le
+standard tel que le produit le versionne : `kokaji://standard/hds` (le HDS,
+servi tel quel), `kokaji://standard/proposition` (les clés d'une proposition,
+leur forme, un exemple minimal) et `kokaji://harness/<id>/statuts` pour chaque
+harness lisible. Le HDS est embarqué par l'empaquetage sous `kokaji/standard/` :
+sa source reste `docs/hds-v0.md`, et le Dockerfile emporte ce seul fichier de
+`docs/`.
+
 Brancher un agent en ligne de commande, par exemple :
 
 ```
