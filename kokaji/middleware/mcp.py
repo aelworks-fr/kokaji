@@ -76,6 +76,14 @@ PROPOSITION = {
 }
 
 
+CHEMIN_NU = {
+    "type": "string",
+    "description": "le dépôt nu, sous le dossier que le déploiement déclare — un chemin hors "
+    "de ce dossier se refuse",
+}
+BRANCHE = {"type": "string", "description": "la branche ; « main » si rien n'est dit"}
+
+
 def _sur(chemin: str, methode: str = "GET", corps: Callable | None = None):
     """Un appel à l'application du harness nommé."""
     return lambda a, qui: (a["harness"], methode, chemin, corps(a, qui) if corps else None)
@@ -127,6 +135,17 @@ OUTILS: tuple[Outil, ...] = (
           ("id", "nom"),
           _commun("/harness", "POST", lambda a, qui: {
               "id_harness": a["id"], "nom": a["nom"], "source": a.get("source", "")})),
+    Outil("harness_cloner",
+          "Faire naître un harness d'un dépôt nu qui en est déjà un (RFC-012 D12.4) : le clone "
+          "est lu et validé avant que quoi que ce soit ne s'enregistre. Un dépôt qui n'est pas "
+          "un harness ne laisse rien. Le nom vient du manifest cloné, pas d'un argument.",
+          CONCEPTION,
+          {"id": {"type": "string", "description": "l'id du harness à faire naître, immuable"},
+           "chemin": CHEMIN_NU, "branche": BRANCHE},
+          ("id", "chemin"),
+          _commun("/harness", "POST", lambda a, qui: {
+              "id_harness": a["id"],
+              "cloner_depuis": {"chemin": a["chemin"], "branche": a.get("branche", "main")}})),
     Outil("harness_adopter",
           "Adopter des textes faits main : chaque texte devient un kata servi tel quel.",
           CONCEPTION,
@@ -175,6 +194,21 @@ OUTILS: tuple[Outil, ...] = (
           CONCEPTION, {"harness": HARNESS, "utilisateur_id": {"type": "string"}},
           ("harness", "utilisateur_id"),
           lambda a, qui: (a["harness"], "DELETE", f"/membres/{a['utilisateur_id']}", None)),
+    Outil("depot_enregistrer",
+          "Lier le harness à un dépôt nu : le dépôt est créé s'il n'existe pas, l'historique y "
+          "est poussé, et la ligne ne s'écrit qu'après — un push refusé n'enregistre rien.",
+          CONCEPTION,
+          {"harness": HARNESS, "chemin": CHEMIN_NU, "branche": BRANCHE,
+           "pousser_au_scellement": {
+               "type": "boolean",
+               "description": "pousser à chaque scellement ; vrai si rien n'est dit"}},
+          ("harness", "chemin"),
+          _sur("/depot", "PUT",
+               _garder("chemin", "branche", "pousser_au_scellement"))),
+    Outil("depot_desenregistrer",
+          "Délier : la ligne seulement. Le clone et le dépôt nu restent intacts, et le harness "
+          "se réenregistre (RFC-012 D12.2 — rien n'est détruit).",
+          CONCEPTION, {"harness": HARNESS}, ("harness",), _sur("/depot", "DELETE")),
 )
 
 PAR_NOM = {o.nom: o for o in OUTILS}

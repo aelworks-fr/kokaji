@@ -50,6 +50,11 @@ class Surface(unittest.TestCase):
         self.comptes.enregistrer_harness("autre", self.deux.id)
         self.comptes.ajouter_contributeur("adopte", self.deux.id)
 
+        # Un harness qui existe ailleurs, hors du dossier servi : cette instance
+        # ne le connaît pas, et c'est de là qu'un clone a un sens.
+        self.ailleurs = self.dossier / "ailleurs"
+        adopter_textes({"ouvrir": "Tu ouvres."}, self.ailleurs, "venu", "Venu")
+
         charges, _ = charger_valides(self.dossier)
         self.client = TestClient(
             creer_tous(charges, self.dossier / "journal", self.comptes,
@@ -202,6 +207,117 @@ class Surface(unittest.TestCase):
                            proposition=PROPOSITION, auteur="Deux")
         self.assertTrue(refus["isError"])
         self.assertIn("auteur", self.texte(refus))
+
+    def test_la_surface_est_celle_du_4_2_ni_plus_ni_moins(self):
+        """Le garde qui a manqué : trois outils du §4.2 sont restés non construits
+        pendant que le tableau d'application disait le lot « appliqué en partie ».
+
+        La liste est écrite ici à la main, depuis la RFC, et non dérivée de
+        `OUTILS` : une liste qui se déduit du code ne peut pas constater qu'il
+        manque quelque chose au code.
+        """
+        noms = {o["name"] for o in self.rpc(self.conception, "tools/list").json()["result"]["tools"]}
+        self.assertEqual(noms, {
+            # lire
+            "harness_lister", "harness_lire", "coupe_voir", "depot_etat", "membres_lister",
+            "proposition_eprouver",
+            # créer
+            "harness_creer", "harness_cloner", "harness_adopter", "etape_adoptee_ajouter",
+            # concevoir
+            "proposition_sceller", "depot_pousser", "depot_tirer",
+            # posséder
+            "harness_archiver", "membres_candidats", "membre_ajouter", "membre_retirer",
+            "depot_enregistrer", "depot_desenregistrer",
+        })
+
+    def test_lier_un_depot_le_cloner_puis_delier(self):
+        """Les trois derniers outils du §4.2, de bout en bout.
+
+        Le dépôt nu naît de `depot_enregistrer`, sert de source à
+        `harness_cloner`, et `depot_desenregistrer` n'efface que la ligne.
+        """
+        import os
+        from unittest.mock import patch
+
+        from kokaji.depot import est_depot_nu, lier
+
+        # `adopter_textes` a déjà initié le dépôt du harness : on ne lui en
+        # refait pas un, on lui donne un dépôt **nu** où se pousser.
+        depots = self.dossier / "depots"
+        depots.mkdir()
+
+        with patch.dict(os.environ, {"KOKAJI_DEPOTS": str(depots)}):
+            # Hors du dossier déclaré, le chemin se refuse, et aucune ligne ne s'écrit.
+            hors = self.outil(self.conception, "depot_enregistrer",
+                              harness="adopte", chemin="/tmp/ailleurs.git")
+            self.assertTrue(hors["isError"], self.texte(hors))
+            self.assertIsNone(self.comptes.depot("adopte"))
+
+            lie = self.outil(self.conception, "depot_enregistrer",
+                             harness="adopte", chemin="adopte.git")
+            self.assertFalse(lie["isError"], self.texte(lie))
+            self.assertTrue(est_depot_nu(depots / "adopte.git"))
+            self.assertEqual(self.comptes.depot("adopte").chemin, str(depots / "adopte.git"))
+            self.assertTrue(self.comptes.depot("adopte").pousser_au_scellement)
+
+            # Un dépôt nu qui porte un harness que cette instance n'a pas :
+            # c'est le cas d'usage de `harness_cloner` (RFC-012 D12.4).
+            self.assertFalse((self.dossier / "venu").exists())
+            lier(self.ailleurs / "venu", depots / "venu.git", "main")
+            clone = self.outil(self.conception, "harness_cloner",
+                               id="venu", chemin="venu.git")
+            self.assertFalse(clone["isError"], self.texte(clone))
+            self.assertEqual(self.comptes.acl("venu").proprietaire, self.un.id)
+            # Le dépôt nu est enregistré d'office : on vient de là.
+            self.assertEqual(self.comptes.depot("venu").chemin, str(depots / "venu.git"))
+            lu = self.outil(self.conception, "harness_lire", harness="venu")
+            self.assertFalse(lu["isError"], self.texte(lu))
+
+            # L'id est celui du manifest cloné, pas un nom qu'on choisit : un id
+            # qui ne correspond pas se refuse, en nommant les deux, et ne laisse
+            # rien. Ce refus levait un TypeError avant ce lot.
+            discordant = self.outil(self.conception, "harness_cloner",
+                                    id="autre-nom", chemin="venu.git")
+            self.assertTrue(discordant["isError"])
+            self.assertIn("porte l'id « venu »", self.texte(discordant))
+            self.assertIn("autre-nom", self.texte(discordant))
+            self.assertFalse((self.dossier / "autre-nom").exists())
+
+            # Délier n'efface que la ligne : le dépôt nu reste, et on relie.
+            delie = self.outil(self.conception, "depot_desenregistrer", harness="adopte")
+            self.assertFalse(delie["isError"], self.texte(delie))
+            self.assertIsNone(self.comptes.depot("adopte"))
+            self.assertTrue(est_depot_nu(depots / "adopte.git"))
+            relie = self.outil(self.conception, "depot_enregistrer",
+                               harness="adopte", chemin="adopte.git")
+            self.assertFalse(relie["isError"], self.texte(relie))
+
+    def test_sabotage_7_un_contributeur_n_enregistre_pas_de_depot(self):
+        """Le rôle tient sous la portée : Deux a `conception`, mais il n'est que
+        contributeur d'`adopte` — enregistrer est au propriétaire (RFC-004 §3)."""
+        import os
+        from unittest.mock import patch
+
+        depots = self.dossier / "depots"
+        depots.mkdir()
+        with patch.dict(os.environ, {"KOKAJI_DEPOTS": str(depots)}):
+            for outil in ("depot_enregistrer", "depot_desenregistrer"):
+                with self.subTest(outil=outil):
+                    arguments = {"harness": "adopte"}
+                    if outil == "depot_enregistrer":
+                        arguments["chemin"] = "adopte.git"
+                    refus = self.outil(self.de_deux, outil, **arguments)
+                    self.assertTrue(refus["isError"], self.texte(refus))
+            self.assertIsNone(self.comptes.depot("adopte"))
+
+    def test_sabotage_6_la_portee_lecture_ne_touche_pas_au_depot(self):
+        noms = {o["name"] for o in self.rpc(self.lecture, "tools/list").json()["result"]["tools"]}
+        self.assertIn("depot_etat", noms)
+        for interdit in ("depot_enregistrer", "depot_desenregistrer", "harness_cloner"):
+            self.assertNotIn(interdit, noms)
+        refus = self.outil(self.lecture, "depot_desenregistrer", harness="adopte")
+        self.assertTrue(refus["isError"])
+        self.assertIn("aucun outil à ce nom", self.texte(refus))
 
     def test_sabotage_11_et_12_ni_pratique_ni_transfert(self):
         noms = {o["name"] for o in self.rpc(self.conception, "tools/list").json()["result"]["tools"]}
