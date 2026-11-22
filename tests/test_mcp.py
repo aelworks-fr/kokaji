@@ -411,7 +411,17 @@ class Surface(unittest.TestCase):
         racine = Path(__file__).resolve().parents[1]
         pyproject = (racine / "pyproject.toml").read_text(encoding="utf-8")
         self.assertIn('"docs/hds-v0.md" = "kokaji/standard/hds-v0.md"', pyproject)
-        self.assertIn("COPY docs/hds-v0.md", (racine / "Dockerfile").read_text(encoding="utf-8"))
+        # **Tout** contexte qui installe le paquet doit porter le document :
+        # `force-include` échoue sur un fichier absent, donc une image qui ne le
+        # copie pas ne se construit pas. L'image de la vigie l'a appris en CI.
+        dockerfiles = [d for d in racine.rglob("Dockerfile")
+                       if ".git" not in d.parts
+                       and "pip install" in d.read_text(encoding="utf-8")
+                       and '".[service' in d.read_text(encoding="utf-8")]
+        self.assertTrue(dockerfiles)
+        for chemin in dockerfiles:
+            with self.subTest(dockerfile=str(chemin.relative_to(racine))):
+                self.assertIn("COPY docs/hds-v0.md", chemin.read_text(encoding="utf-8"))
 
     def test_sabotage_11_et_12_ni_pratique_ni_transfert(self):
         noms = {o["name"] for o in self.rpc(self.conception, "tools/list").json()["result"]["tools"]}
