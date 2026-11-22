@@ -10,6 +10,10 @@ FROM mcr.microsoft.com/playwright/python:v1.62.0-noble
 WORKDIR /kokaji
 COPY pyproject.toml README.md ./
 COPY kokaji ./kokaji
+# Le HDS : l'empaquetage le range sous `kokaji/standard/` (RFC-022 D22.9), donc
+# tout contexte qui installe le paquet doit le porter. La vigie n'en a pas
+# l'usage ; sans lui, l'installation échoue, et c'est un test qui le rappelle.
+COPY docs/hds-v0.md ./docs/hds-v0.md
 # `playwright` **épinglé sur la version de l'image de base** : elle embarque le
 # navigateur d'une révision précise (build 1234 pour la 1.62.0), et un
 # `playwright` non épinglé tire la dernière version de PyPI, qui réclame un

@@ -36,6 +36,10 @@ packages = ["kokaji"]
 "kokaji/qg/organic-styles.css" = "kokaji/qg/organic-styles.css"
 "kokaji/qg/admin.html" = "kokaji/qg/admin.html"
 "kokaji/qg/invitation.html" = "kokaji/qg/invitation.html"
+# D22.9 — le standard voyage avec la surface. `docs/hds-v0.md` reste sa seule
+# source dans le dépôt ; la roue en emporte une copie que la surface de l'agent
+# sert telle quelle.
+"docs/hds-v0.md" = "kokaji/standard/hds-v0.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
