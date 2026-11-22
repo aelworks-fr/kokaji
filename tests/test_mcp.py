@@ -152,6 +152,15 @@ class Surface(unittest.TestCase):
     def test_sabotage_4_l_administration_est_inexprimable(self):
         lu = self.outil(self.conception, "harness_lister")
         self.assertFalse(lu["isError"], self.texte(lu))
+        # Inexprimable, pas seulement refusée : la surface ne l'**annonce** pas
+        # non plus. Le jeton est celui de Un, qui porte l'administration — le
+        # champ lisait le drapeau du compte et répondait donc `true` à un
+        # appelant qui ne peut en aucun cas l'exercer, ce qui invitait au geste
+        # refusé. Il répond désormais sur la qualité de l'appelant.
+        #
+        # Le même `assertFalse` existe au sabotage 1, mais avec le jeton de Deux,
+        # qui n'est pas administrateur : il y passait à vide.
+        self.assertFalse(lu["structuredContent"]["administration"])
         # La qualité est plafonnée : un geste de service d'administration,
         # appelé par la porte de l'agent, se refuse. Aucun outil n'y mène ;
         # on le prouve sur l'aiguilleur lui-même, dans la portée de l'agent.
